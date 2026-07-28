@@ -1,0 +1,7 @@
+# Shell scripts and container files must stay LF, even on Windows checkouts,
+# or Docker fails with "bad interpreter" / mis-parsed configs.
+*.sh              text eol=lf
+deploy/entrypoint.sh text eol=lf
+Dockerfile        text eol=lf
+*.Dockerfile      text eol=lf
+backend/services.txt text eol=lf

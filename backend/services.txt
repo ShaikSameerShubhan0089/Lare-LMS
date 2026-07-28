@@ -1,0 +1,30 @@
+# LARE platform service registry — name<TAB>dir<TAB>port
+# Consumed by run-all.ps1 / stop-all.ps1 / health.ps1 and the Procfile.
+# Order matters: infra/auth first, then domains, then gateway last.
+auth	auth	8001
+institution	institution	8002
+learner	learner	8003
+curriculum	curriculum	8004
+content	content	8005
+progress	progress	8006
+assessment	assessment	8007
+gamification	gamification	8008
+certification	certification	8009
+candidate	candidate	8010
+drive	drive	8011
+questionbank	questionbank	8012
+exam	exam	8013
+submission	submission	8014
+anticheat	anticheat	8015
+coding	coding	8016
+evaluation	evaluation	8017
+interview	interview	8018
+result	result	8019
+notification	notification	8020
+files	files	8021
+analytics	analytics	8022
+audit	audit	8023
+ai_orchestration	ai_orchestration	8024
+ai_tutor	ai_tutor	8025
+organization	organization	8026
+gateway	gateway	8000

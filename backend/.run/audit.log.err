@@ -1,0 +1,603 @@
+{"ts":"2026-07-25 11:42:28,227","svc":"audit","level":"INFO","msg":"event bus for audit using backend=http"}
+{"ts":"2026-07-25 11:42:28,258","svc":"audit","level":"INFO","msg":"serving on 127.0.0.1:8023 via waitress (threads=16)"}
+{"ts":"2026-07-25 11:42:28,270","svc":"audit","level":"INFO","msg":"Serving on http://127.0.0.1:8023"}
+{"ts":"2026-07-25 14:42:42,885","svc":"audit","level":"ERROR","msg":"handler error for evaluation.completed"}
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 114) already exists.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\libs\lare_common\events.py", line 112, in dispatch
+    h(event.payload, event)
+    ~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\events.py", line 27, in on_event
+    svc.append(s, data)
+    ~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\service.py", line 61, in append
+    s.flush()
+    ~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4352, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4487, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4448, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1048, in _emit_insert_statements
+    result = connection.execute(
+        statement, multiparams, execution_options=execution_options
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1418, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 114) already exists.
+[SQL: INSERT INTO audit_logs (id, partition_key, seq, ts, actor_type, actor_id, action, entity_type, entity_id, meta, ip, device, correlation_id, prev_hash, hash) VALUES (%(id)s::VARCHAR, %(partition_key)s::VARCHAR, %(seq)s::INTEGER, %(ts)s::TIMESTAMP WITH TIME ZONE, %(actor_type)s::VARCHAR, %(actor_id)s::VARCHAR, %(action)s::VARCHAR, %(entity_type)s::VARCHAR, %(entity_id)s::VARCHAR, %(meta)s::JSON, %(ip)s::VARCHAR, %(device)s::VARCHAR, %(correlation_id)s::VARCHAR, %(prev_hash)s::VARCHAR, %(hash)s::VARCHAR)]
+[parameters: {'id': '59a61247-2850-4535-af3c-e11d9a3a2b6a', 'partition_key': 'drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6', 'seq': 114, 'ts': datetime.datetime(2026, 7, 25, 9, 12, 42, 531549, tzinfo=datetime.timezone.utc), 'actor_type': 'service', 'actor_id': 'evaluation', 'action': 'evaluation.completed', 'entity_type': 'event', 'entity_id': 'ca585f72-e942-43e1-875a-e1fa2c95f2fd', 'meta': Json({'exam_id': 'cb19fef1-db0d-49d0-91c ... (323 chars)), 'ip': None, 'device': None, 'correlation_id': '4df6c76b-1480-4e5a-8ffa-88f17d3a72d2', 'prev_hash': 'b4d4b3cccae2dce4909c5f2d2b3c2fbe1d98898cc43f1a14e86325d2f3d860b9', 'hash': '5d3852378cd908f1f1c14cf9c98bcbba58ca40487a998a8f666948e2c7666e26'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+{"ts":"2026-07-25 15:26:24,759","svc":"audit","level":"ERROR","msg":"handler error for evaluation.completed"}
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 141) already exists.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\libs\lare_common\events.py", line 112, in dispatch
+    h(event.payload, event)
+    ~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\events.py", line 27, in on_event
+    svc.append(s, data)
+    ~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\service.py", line 61, in append
+    s.flush()
+    ~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4352, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4487, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4448, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1048, in _emit_insert_statements
+    result = connection.execute(
+        statement, multiparams, execution_options=execution_options
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1418, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 141) already exists.
+[SQL: INSERT INTO audit_logs (id, partition_key, seq, ts, actor_type, actor_id, action, entity_type, entity_id, meta, ip, device, correlation_id, prev_hash, hash) VALUES (%(id)s::VARCHAR, %(partition_key)s::VARCHAR, %(seq)s::INTEGER, %(ts)s::TIMESTAMP WITH TIME ZONE, %(actor_type)s::VARCHAR, %(actor_id)s::VARCHAR, %(action)s::VARCHAR, %(entity_type)s::VARCHAR, %(entity_id)s::VARCHAR, %(meta)s::JSON, %(ip)s::VARCHAR, %(device)s::VARCHAR, %(correlation_id)s::VARCHAR, %(prev_hash)s::VARCHAR, %(hash)s::VARCHAR)]
+[parameters: {'id': '2e9eb670-c4cd-47c5-8dcd-6da16082e509', 'partition_key': 'drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6', 'seq': 141, 'ts': datetime.datetime(2026, 7, 25, 9, 56, 24, 464993, tzinfo=datetime.timezone.utc), 'actor_type': 'service', 'actor_id': 'evaluation', 'action': 'evaluation.completed', 'entity_type': 'event', 'entity_id': 'cc0bf062-9ccb-4ee8-932f-557fb08f1542', 'meta': Json({'exam_id': 'cb19fef1-db0d-49d0-91c ... (325 chars)), 'ip': None, 'device': None, 'correlation_id': '683a7f66-60db-4eb8-8b78-52a8e015f393', 'prev_hash': '86f1002bee188f67f2ede5077730d2f13f8cdb59f5a8a0a5b9c4ac52d2de8727', 'hash': '0b3fd76a2bea4b4758f502800a48c851766f8e2c11aac06c5147e32bba97de9a'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+{"ts":"2026-07-25 15:26:25,701","svc":"audit","level":"ERROR","msg":"handler error for evaluation.completed"}
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 142) already exists.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\libs\lare_common\events.py", line 112, in dispatch
+    h(event.payload, event)
+    ~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\events.py", line 27, in on_event
+    svc.append(s, data)
+    ~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\service.py", line 61, in append
+    s.flush()
+    ~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4352, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4487, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4448, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1048, in _emit_insert_statements
+    result = connection.execute(
+        statement, multiparams, execution_options=execution_options
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1418, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 142) already exists.
+[SQL: INSERT INTO audit_logs (id, partition_key, seq, ts, actor_type, actor_id, action, entity_type, entity_id, meta, ip, device, correlation_id, prev_hash, hash) VALUES (%(id)s::VARCHAR, %(partition_key)s::VARCHAR, %(seq)s::INTEGER, %(ts)s::TIMESTAMP WITH TIME ZONE, %(actor_type)s::VARCHAR, %(actor_id)s::VARCHAR, %(action)s::VARCHAR, %(entity_type)s::VARCHAR, %(entity_id)s::VARCHAR, %(meta)s::JSON, %(ip)s::VARCHAR, %(device)s::VARCHAR, %(correlation_id)s::VARCHAR, %(prev_hash)s::VARCHAR, %(hash)s::VARCHAR)]
+[parameters: {'id': 'e12de881-6459-4e4a-8352-69e6b297541e', 'partition_key': 'drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6', 'seq': 142, 'ts': datetime.datetime(2026, 7, 25, 9, 56, 25, 410464, tzinfo=datetime.timezone.utc), 'actor_type': 'service', 'actor_id': 'evaluation', 'action': 'evaluation.completed', 'entity_type': 'event', 'entity_id': '500d41b8-8635-43fd-a8bb-5f968566e524', 'meta': Json({'exam_id': 'cb19fef1-db0d-49d0-91c ... (325 chars)), 'ip': None, 'device': None, 'correlation_id': 'fd40e421-e092-4abf-9aa4-f79cd40534b7', 'prev_hash': '668672569ad07c29e45cfc68c83c991d24d2cbaffcf8d28c72070a4383bc4dc0', 'hash': '578774fcb31b2c7399ab065ad2758dcccc8f71f7aa4760adf5e9061cf40c6238'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+{"ts":"2026-07-25 23:44:26,686","svc":"audit","level":"ERROR","msg":"handler error for exam.submitted"}
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 256) already exists.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\libs\lare_common\events.py", line 112, in dispatch
+    h(event.payload, event)
+    ~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\events.py", line 27, in on_event
+    svc.append(s, data)
+    ~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\service.py", line 61, in append
+    s.flush()
+    ~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4352, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4487, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4448, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1048, in _emit_insert_statements
+    result = connection.execute(
+        statement, multiparams, execution_options=execution_options
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1418, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 256) already exists.
+[SQL: INSERT INTO audit_logs (id, partition_key, seq, ts, actor_type, actor_id, action, entity_type, entity_id, meta, ip, device, correlation_id, prev_hash, hash) VALUES (%(id)s::VARCHAR, %(partition_key)s::VARCHAR, %(seq)s::INTEGER, %(ts)s::TIMESTAMP WITH TIME ZONE, %(actor_type)s::VARCHAR, %(actor_id)s::VARCHAR, %(action)s::VARCHAR, %(entity_type)s::VARCHAR, %(entity_id)s::VARCHAR, %(meta)s::JSON, %(ip)s::VARCHAR, %(device)s::VARCHAR, %(correlation_id)s::VARCHAR, %(prev_hash)s::VARCHAR, %(hash)s::VARCHAR)]
+[parameters: {'id': 'e90eb16a-3c9f-4db6-95a6-51009b161d1a', 'partition_key': 'drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6', 'seq': 256, 'ts': datetime.datetime(2026, 7, 25, 18, 14, 25, 999953, tzinfo=datetime.timezone.utc), 'actor_type': 'service', 'actor_id': 'exam', 'action': 'exam.submitted', 'entity_type': 'event', 'entity_id': 'b4795d6c-cafc-4492-953f-6201e57ad252', 'meta': Json({'session_id': 'b4795d6c-cafc-4492- ... (460 chars)), 'ip': None, 'device': None, 'correlation_id': '33b57121-87e1-41fa-86fa-143ac098ae9c', 'prev_hash': 'be54a62590acf3aa4bbc4ebe10243fe8a334fa44845af72df0e38be0eb30767e', 'hash': '7447c8bb2cfb769edb6c4b479dc2d1960e523c58faa75d447d169be240f2a8aa'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+{"ts":"2026-07-26 17:08:28,577","svc":"audit","level":"ERROR","msg":"handler error for evaluation.completed"}
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 262) already exists.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\libs\lare_common\events.py", line 112, in dispatch
+    h(event.payload, event)
+    ~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\events.py", line 27, in on_event
+    svc.append(s, data)
+    ~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\services\audit\app\service.py", line 61, in append
+    s.flush()
+    ~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4352, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4487, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4448, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1048, in _emit_insert_statements
+    result = connection.execute(
+        statement, multiparams, execution_options=execution_options
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1418, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\S Sameer\Desktop\Lare-lms\backend\.venv\Lib\site-packages\psycopg\cursor.py", line 97, in execute
+    raise ex.with_traceback(None)
+sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_audit_seq"
+DETAIL:  Key (partition_key, seq)=(drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6, 262) already exists.
+[SQL: INSERT INTO audit_logs (id, partition_key, seq, ts, actor_type, actor_id, action, entity_type, entity_id, meta, ip, device, correlation_id, prev_hash, hash) VALUES (%(id)s::VARCHAR, %(partition_key)s::VARCHAR, %(seq)s::INTEGER, %(ts)s::TIMESTAMP WITH TIME ZONE, %(actor_type)s::VARCHAR, %(actor_id)s::VARCHAR, %(action)s::VARCHAR, %(entity_type)s::VARCHAR, %(entity_id)s::VARCHAR, %(meta)s::JSON, %(ip)s::VARCHAR, %(device)s::VARCHAR, %(correlation_id)s::VARCHAR, %(prev_hash)s::VARCHAR, %(hash)s::VARCHAR)]
+[parameters: {'id': '7916c681-d2b9-4b74-af6a-287b53be789e', 'partition_key': 'drive:9253c7f1-716f-4aa7-8d29-748afbeacbd6', 'seq': 262, 'ts': datetime.datetime(2026, 7, 26, 11, 38, 28, 224199, tzinfo=datetime.timezone.utc), 'actor_type': 'service', 'actor_id': 'evaluation', 'action': 'evaluation.completed', 'entity_type': 'event', 'entity_id': '7aee185a-1558-4d3f-b12e-45fc8aaaa838', 'meta': Json({'exam_id': 'cb19fef1-db0d-49d0-91c ... (451 chars)), 'ip': None, 'device': None, 'correlation_id': 'a35181d3-7dea-4548-9dda-4d5573deea75', 'prev_hash': 'c2b80f1e2cb4c9d37f3a5241401a9855a655b338681c2049354becd6a417c577', 'hash': '5b0241fae03b35bab70f1cf15359d06f13cc351e2572dc12f9385fa8bc47b2f6'}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)

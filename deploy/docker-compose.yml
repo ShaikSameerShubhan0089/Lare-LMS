@@ -1,0 +1,44 @@
+# LARE production stack for a single EC2 instance.
+#   backend  — gateway + 26 services (one image, supervisord)
+#   web      — nginx: serves the SPA and proxies /api -> backend:8000
+#   redis    — event bus + rate limiting + sessions (local; swap for ElastiCache)
+#
+# Postgres is NOT here — it is Amazon RDS, referenced via DATABASE_URL in
+# deploy/.env.production. Build from the repo root:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: lare-backend
+    env_file: .env.production
+    environment:
+      # Co-located Redis => event bus auto-selects redis over http fan-out.
+      REDIS_URL: redis://redis:6379/0
+      EVENT_BUS_BACKEND: auto
+      APP_ENV: production
+    volumes:
+      # RS256 JWT keypair — mount, never bake into the image.
+      - ./keys:/app/backend/keys:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    image: lare-web
+    depends_on:
+      - backend
+    ports:
+      - "80:80"        # ALB forwards 443 (ACM) -> instance :80
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    restart: unless-stopped

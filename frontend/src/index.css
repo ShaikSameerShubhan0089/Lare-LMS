@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply font-sans text-slate-800 bg-slate-50;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display tracking-tight text-ink-900;
+  }
+  /* Accessible focus ring on every interactive element (DESIGN.md §7) */
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [tabindex] {
+    @apply outline-none;
+  }
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    @apply ring-2 ring-brand-400 ring-offset-2 ring-offset-white rounded-sm;
+  }
+  button,
+  a,
+  [role="button"] {
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Subtle brand grid used on marketing surfaces */
+.bg-grid {
+  background-image: radial-gradient(rgba(19, 41, 75, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}

@@ -1,0 +1,33 @@
+# Procfile — run the whole platform with honcho/foreman (cross-platform, no Docker).
+#   pip install honcho && honcho start
+# Each manage.py `serve` binds its own default port (matches services.txt).
+# Set shared secrets/DB/Redis in a sibling .env file (honcho auto-loads it):
+#   JWT_SECRET=... INTERNAL_JWT_SECRET=... EVENT_BUS_BACKEND=http
+#   (DATABASE_URL/REDIS_URL when moving to Supabase/Redis)
+auth:           python services/auth/manage.py serve
+institution:    python services/institution/manage.py serve
+learner:        python services/learner/manage.py serve
+curriculum:     python services/curriculum/manage.py serve
+content:        python services/content/manage.py serve
+progress:       python services/progress/manage.py serve
+assessment:     python services/assessment/manage.py serve
+gamification:   python services/gamification/manage.py serve
+certification:  python services/certification/manage.py serve
+candidate:      python services/candidate/manage.py serve
+drive:          python services/drive/manage.py serve
+questionbank:   python services/questionbank/manage.py serve
+exam:           python services/exam/manage.py serve
+submission:     python services/submission/manage.py serve
+anticheat:      python services/anticheat/manage.py serve
+coding:         python services/coding/manage.py serve
+evaluation:     python services/evaluation/manage.py serve
+interview:      python services/interview/manage.py serve
+result:         python services/result/manage.py serve
+notification:   python services/notification/manage.py serve
+files:          python services/files/manage.py serve
+analytics:      python services/analytics/manage.py serve
+audit:          python services/audit/manage.py serve
+ai_orchestration: python services/ai_orchestration/manage.py serve
+ai_tutor:       python services/ai_tutor/manage.py serve
+organization:   python services/organization/manage.py serve
+gateway:        python services/gateway/manage.py serve

@@ -1,0 +1,2 @@
+{"ts":"2026-07-25 11:41:34,232","svc":"anticheat","level":"INFO","msg":"serving on 127.0.0.1:8015 via waitress (threads=16)"}
+{"ts":"2026-07-25 11:41:34,262","svc":"anticheat","level":"INFO","msg":"Serving on http://127.0.0.1:8015"}

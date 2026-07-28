@@ -1,0 +1,649 @@
+"""Recruitment drive logic: drives, roles, eligibility, rounds, funnel, PPO."""
+from __future__ import annotations
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from datetime import datetime, timezone
+
+from lare_common.errors import BadRequest, Conflict, NotFound
+from lare_common.security import new_id
+from lare_common.service_client import ServiceClient
+
+# East-west clients: Candidate has name/email/roll; Auth is the fallback for
+# name/email (e.g. staff accounts with no candidate record).
+_AUTH = ServiceClient("drive-core", default_roles=["company_admin"], timeout=5)
+_CAND = ServiceClient("drive-core", default_roles=["company_admin"], timeout=5)
+
+
+def _resolve_names(candidate_ids: list[str]) -> dict[str, dict]:
+    """Best-effort user_id -> {name, email, roll}. Prefers the Candidate service
+    (has the roll number), falls back to Auth for any missing name/email. Never
+    fatal: on failure candidates simply show by id."""
+    ids = [c for c in dict.fromkeys(candidate_ids) if c]
+    if not ids:
+        return {}
+    out: dict[str, dict] = {}
+    try:
+        resp = _CAND.get("drive-candidate", "/drive/v1/candidates/resolve?ids=" + ",".join(ids))
+        for uid, info in ((resp or {}).get("data") or {}).items():
+            out[uid] = {"name": info.get("full_name"), "email": info.get("email"),
+                        "roll": info.get("roll_number")}
+    except Exception:  # noqa: BLE001 — labelling is cosmetic
+        pass
+    # Fill gaps (no candidate record / missing name) from Auth.
+    missing = [i for i in ids if not (out.get(i) or {}).get("name")]
+    if missing:
+        try:
+            resp = _AUTH.get("auth", "/auth/v1/users?ids=" + ",".join(missing))
+            for u in (resp or {}).get("data", []):
+                cur = out.get(u["id"], {})
+                out[u["id"]] = {"name": cur.get("name") or u.get("full_name"),
+                                "email": cur.get("email") or u.get("email"),
+                                "roll": cur.get("roll")}
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
+def _utcnow() -> datetime:
+    return datetime.now(tz=timezone.utc)
+
+from .models import (
+    ApplicationForm, Drive, DriveRole, EligibilityRule, FormSubmission,
+    PpoConfig, Registration, Round, RoundScore, SeatAllocation,
+)
+
+
+class DriveService:
+    # ---------- drives ----------
+    def create(self, s: Session, data, creator: str) -> Drive:
+        d = Drive(id=new_id(), company_id=data.company_id, company_name=data.company_name,
+                  title=data.title, reporting_time=data.reporting_time, venue=data.venue,
+                  contact_email=data.contact_email, created_by=creator)
+        s.add(d)
+        s.flush()
+        return d
+
+    def get(self, s: Session, did: str) -> Drive:
+        d = s.get(Drive, did)
+        if not d:
+            raise NotFound("Drive not found", code="drive_not_found")
+        return d
+
+    def list(self, s: Session, status: str | None, limit: int) -> list[Drive]:
+        q = select(Drive)
+        if status:
+            q = q.where(Drive.status == status)
+        return list(s.execute(q.limit(limit)).scalars().all())
+
+    def delete(self, s: Session, did: str) -> dict:
+        """Delete a drive and all its data (roles, rounds, registrations, scores,
+        forms, seats, PPO). FK ON DELETE CASCADE handles the dependents."""
+        d = self.get(s, did)
+        title = d.title
+        s.delete(d)
+        s.flush()
+        return {"id": did, "title": title, "deleted": True}
+
+    def open_drive(self, s: Session, did: str) -> Drive:
+        d = self.get(s, did)
+        if not d.rounds:
+            raise Conflict("Add at least one round before opening", code="no_rounds")
+        d.status = "open"
+        return d
+
+    # ---------- roles / eligibility / rounds ----------
+    def add_role(self, s: Session, did: str, data) -> DriveRole:
+        self.get(s, did)
+        r = DriveRole(id=new_id(), drive_id=did, title=data.title, ctc=data.ctc,
+                      positions=data.positions, description=data.description)
+        s.add(r)
+        s.flush()
+        return r
+
+    def set_eligibility(self, s: Session, did: str, data) -> EligibilityRule:
+        self.get(s, did)
+        rule = {"min_cgpa": data.min_cgpa, "branches": data.branches,
+                "max_backlogs": data.max_backlogs, "min_lms_score": data.min_lms_score}
+        er = s.execute(
+            select(EligibilityRule).where(EligibilityRule.drive_id == did)
+        ).scalar_one_or_none()
+        if er is None:
+            er = EligibilityRule(id=new_id(), drive_id=did, rule=rule)
+            s.add(er)
+        else:
+            er.rule = rule
+        s.flush()
+        return er
+
+    def add_round(self, s: Session, did: str, data) -> Round:
+        self.get(s, did)
+        r = Round(id=new_id(), drive_id=did, order=data.order, type=data.type,
+                  config=data.config, service_ref=data.service_ref)
+        s.add(r)
+        s.flush()
+        return r
+
+    def rounds(self, s: Session, did: str) -> list[Round]:
+        return list(s.execute(
+            select(Round).where(Round.drive_id == did).order_by(Round.order)
+        ).scalars().all())
+
+    # ---------- configurable workflow engine (req #4) ----------
+    def set_workflow(self, s: Session, did: str, stages: list[dict]) -> list[dict]:
+        """Replace the drive's ordered stage pipeline in one shot (drag-and-drop
+        reorder on the client). Each stage: {type, label?, optional?, config?}."""
+        self.get(s, did)
+        for r in self.rounds(s, did):
+            s.delete(r)
+        s.flush()
+        out = []
+        for i, st in enumerate(stages, start=1):
+            r = Round(id=new_id(), drive_id=did, order=st.get("order", i),
+                      type=st.get("type", "aptitude"), label=st.get("label"),
+                      optional=bool(st.get("optional", False)),
+                      config=st.get("config", {}), service_ref=st.get("service_ref"))
+            s.add(r)
+            out.append(st)
+        s.flush()
+        return self.workflow(s, did)
+
+    def workflow(self, s: Session, did: str) -> list[dict]:
+        return [{"order": r.order, "type": r.type, "label": r.label,
+                 "optional": r.optional, "config": r.config, "service_ref": r.service_ref}
+                for r in self.rounds(s, did)]
+
+    # ---------- round marks sheet (written auto + panel-scored rounds) ----------
+    def _score_out(self, r: RoundScore, names: dict | None = None) -> dict:
+        pct = round(r.marks * 100.0 / r.max_marks, 1) if r.max_marks else 0.0
+        info = (names or {}).get(r.candidate_id) or {}
+        return {"candidate_id": r.candidate_id, "marks": r.marks, "max_marks": r.max_marks,
+                "percentage": pct, "remarks": r.remarks, "cleared": r.cleared,
+                "referred": r.referred, "entered_by": r.entered_by,
+                "candidate_name": info.get("name"), "candidate_email": info.get("email"),
+                "candidate_roll": info.get("roll"),
+                "coding_attempted": r.coding_attempted, "coding_correct": r.coding_correct,
+                "coding_total": r.coding_total}
+
+    # ---------- event-driven intake (applications, auto-graded results) ----------
+    def ensure_registration(self, s: Session, did: str, candidate_id: str) -> None:
+        """Idempotently register an applicant so they appear in the Candidates tab
+        and get seeded into Round 1. Called from the candidate.registered event."""
+        if not (did and candidate_id):
+            return
+        if s.get(Drive, did) is None:
+            return  # event for a drive this instance doesn't own; ignore
+        reg = s.execute(select(Registration).where(
+            Registration.drive_id == did,
+            Registration.candidate_id == candidate_id)).scalar_one_or_none()
+        if reg is None:
+            s.add(Registration(id=new_id(), drive_id=did, candidate_id=candidate_id,
+                               status="applied", current_round=0, eligible="unknown"))
+        # Seed the Round 1 marks row so the written-test sheet lists them at once.
+        rs = s.execute(select(RoundScore).where(
+            RoundScore.drive_id == did, RoundScore.round_order == 1,
+            RoundScore.candidate_id == candidate_id)).scalar_one_or_none()
+        if rs is None:
+            s.add(RoundScore(id=new_id(), drive_id=did, round_order=1,
+                             candidate_id=candidate_id))
+        s.flush()
+
+    def record_evaluation(self, s: Session, did: str, candidate_id: str, *,
+                          total: float, max_score: float, percentage: float,
+                          passed: bool, needs_review: bool,
+                          total_questions: int = 0, correct_count: int = 0,
+                          attempted_count: int = 0, coding_total: int = 0,
+                          coding_attempted: int = 0, coding_correct: int = 0) -> None:
+        """Post an auto-graded written-test result into the Round 1 marks sheet.
+
+        Marks column = number of correct answers, Out-of = questions attempted,
+        Remarks = total questions + correct (as requested). The written test is
+        always Round 1 (later rounds are panel-entered). Values refresh on every
+        (re-)grade; `cleared` defaults from pass/fail but never overwrites an
+        admin's manual clear/reject decision."""
+        if s.get(Drive, did) is None:
+            return
+        self.ensure_registration(s, did, candidate_id)
+        rs = s.execute(select(RoundScore).where(
+            RoundScore.drive_id == did, RoundScore.round_order == 1,
+            RoundScore.candidate_id == candidate_id)).scalar_one_or_none()
+        if rs is None:
+            rs = RoundScore(id=new_id(), drive_id=did, round_order=1,
+                            candidate_id=candidate_id)
+            s.add(rs)
+        rs.marks = float(correct_count)          # Marks = correct answers
+        rs.max_marks = float(attempted_count)    # Out of = questions attempted
+        rs.coding_attempted = int(coding_attempted)
+        rs.coding_correct = int(coding_correct)
+        rs.coding_total = int(coding_total)
+        note = f"{correct_count} correct of {total_questions} questions ({percentage:.0f}%)"
+        if needs_review:
+            note += " · needs review"
+        rs.remarks = note
+        # Default `cleared` from the pass result, but never overwrite an admin's
+        # manual decision — once a human touches the row, entered_by is their id.
+        if rs.entered_by in (None, "auto-evaluation"):
+            rs.cleared = bool(passed)
+        rs.entered_by = "auto-evaluation"
+        rs.updated_at = _utcnow()
+        s.flush()
+
+    def round_scores(self, s: Session, did: str, order: int) -> dict:
+        self.get(s, did)
+        # Round 1 is seeded from the applicants; later rounds are seeded when the
+        # previous round is published (only cleared candidates advance).
+        if order == 1:
+            existing = {r.candidate_id for r in s.execute(
+                select(RoundScore).where(RoundScore.drive_id == did, RoundScore.round_order == 1)
+            ).scalars().all()}
+            for reg in s.execute(select(Registration).where(Registration.drive_id == did)).scalars().all():
+                if reg.candidate_id not in existing:
+                    s.add(RoundScore(id=new_id(), drive_id=did, round_order=1, candidate_id=reg.candidate_id))
+            s.flush()
+        rows = s.execute(
+            select(RoundScore).where(RoundScore.drive_id == did, RoundScore.round_order == order)
+            .order_by(RoundScore.marks.desc())
+        ).scalars().all()
+        wf = self.workflow(s, did)
+        stage = next((w for w in wf if w["order"] == order), None)
+        names = _resolve_names([r.candidate_id for r in rows])
+        return {"drive_id": did, "round_order": order,
+                "round": stage or {"order": order, "type": "round", "label": f"Round {order}"},
+                "scores": [self._score_out(r, names) for r in rows]}
+
+    def set_round_score(self, s: Session, did: str, order: int, candidate_id: str,
+                        *, marks=None, max_marks=None, remarks=None, cleared=None,
+                        entered_by=None) -> dict:
+        row = s.execute(
+            select(RoundScore).where(
+                RoundScore.drive_id == did, RoundScore.round_order == order,
+                RoundScore.candidate_id == candidate_id)
+        ).scalar_one_or_none()
+        if row is None:
+            row = RoundScore(id=new_id(), drive_id=did, round_order=order, candidate_id=candidate_id)
+            s.add(row)
+        if marks is not None:
+            row.marks = float(marks)
+        if max_marks is not None:
+            row.max_marks = float(max_marks)
+        if remarks is not None:
+            row.remarks = remarks
+        if cleared is not None:
+            row.cleared = bool(cleared)
+        row.entered_by = entered_by
+        row.updated_at = _utcnow()
+        s.flush()
+        return self._score_out(row)
+
+    def add_round_candidate(self, s: Session, did: str, order: int, candidate_id: str,
+                            entered_by: str | None) -> dict:
+        """Admin adds a referred candidate directly into a round."""
+        row = s.execute(
+            select(RoundScore).where(
+                RoundScore.drive_id == did, RoundScore.round_order == order,
+                RoundScore.candidate_id == candidate_id)
+        ).scalar_one_or_none()
+        if row is None:
+            row = RoundScore(id=new_id(), drive_id=did, round_order=order,
+                             candidate_id=candidate_id, referred=True, entered_by=entered_by)
+            s.add(row)
+            # ensure a registration exists so they flow through the funnel
+            reg = s.execute(select(Registration).where(
+                Registration.drive_id == did, Registration.candidate_id == candidate_id)).scalar_one_or_none()
+            if reg is None:
+                s.add(Registration(id=new_id(), drive_id=did, candidate_id=candidate_id,
+                                   status="in_round", current_round=order - 1, eligible="yes"))
+            s.flush()
+        return self._score_out(row)
+
+    def remove_round_candidate(self, s: Session, did: str, order: int, candidate_id: str) -> dict:
+        row = s.execute(
+            select(RoundScore).where(
+                RoundScore.drive_id == did, RoundScore.round_order == order,
+                RoundScore.candidate_id == candidate_id)
+        ).scalar_one_or_none()
+        if row:
+            s.delete(row)
+            s.flush()
+        return {"candidate_id": candidate_id, "removed": True}
+
+    def publish_round(self, s: Session, did: str, order: int) -> dict:
+        """Advance cleared candidates to the next round; reject the rest for now.
+
+        Returns a `notify` list the route fans out as events so each shortlisted
+        (or selected) candidate gets an in-app message + email from the company."""
+        drive = self.get(s, did)
+        rows = s.execute(
+            select(RoundScore).where(RoundScore.drive_id == did, RoundScore.round_order == order)
+        ).scalars().all()
+        wf = self.workflow(s, did)
+        is_last = order >= len(wf)
+        this_stage = next((w for w in wf if w["order"] == order), None)
+        next_stage = next((w for w in wf if w["order"] == order + 1), None)
+        this_label = (this_stage or {}).get("label") or f"Round {order}"
+        next_label = (next_stage or {}).get("label") or f"Round {order + 1}"
+        names = _resolve_names([r.candidate_id for r in rows])
+        advanced = 0
+        notify = []
+        for r in rows:
+            reg = s.execute(select(Registration).where(
+                Registration.drive_id == did, Registration.candidate_id == r.candidate_id)).scalar_one_or_none()
+            info = names.get(r.candidate_id) or {}
+            base = {"candidate_id": r.candidate_id, "user_id": r.candidate_id,
+                    "email": info.get("email"), "name": info.get("name"),
+                    "drive_id": did, "drive_title": drive.title,
+                    "company_name": drive.company_name,
+                    "company_email": drive.contact_email,
+                    "round_label": this_label}
+            if r.cleared:
+                advanced += 1
+                if reg:
+                    reg.current_round = order
+                    reg.status = "selected" if is_last else "in_round"
+                if not is_last:
+                    nxt = s.execute(select(RoundScore).where(
+                        RoundScore.drive_id == did, RoundScore.round_order == order + 1,
+                        RoundScore.candidate_id == r.candidate_id)).scalar_one_or_none()
+                    if nxt is None:
+                        s.add(RoundScore(id=new_id(), drive_id=did, round_order=order + 1,
+                                        candidate_id=r.candidate_id))
+                notify.append({**base, "outcome": "selected" if is_last else "shortlisted",
+                               "next_label": None if is_last else next_label})
+            else:
+                if reg:
+                    reg.status = "rejected"
+                # Regret note to candidates who did not clear this round.
+                notify.append({**base, "outcome": "rejected"})
+        s.flush()
+        return {"drive_id": did, "round_order": order, "advanced": advanced,
+                "final_round": is_last, "next_round": None if is_last else order + 1,
+                "notify": notify}
+
+    # ---------- extended post-selection workflow (req #3) ----------
+    def set_joining_status(self, s: Session, did: str, candidate_id: str, status: str) -> dict:
+        order = ["offer_accepted", "docs_verified", "joined", "declined"]
+        if status not in order:
+            raise BadRequest("Unknown joining status", code="bad_joining_status")
+        reg = s.execute(
+            select(Registration).where(
+                Registration.drive_id == did, Registration.candidate_id == candidate_id)
+        ).scalar_one_or_none()
+        if not reg:
+            raise NotFound("Registration not found", code="registration_not_found")
+        reg.joining_status = status
+        s.flush()
+        return {"candidate_id": candidate_id, "joining_status": status}
+
+    # ---------- eligibility evaluation ----------
+    def _evaluate(self, s: Session, did: str, cand) -> bool:
+        er = s.execute(
+            select(EligibilityRule).where(EligibilityRule.drive_id == did)
+        ).scalar_one_or_none()
+        if not er:
+            return True
+        rule = er.rule or {}
+        if rule.get("min_cgpa") is not None and (cand.cgpa or 0) < rule["min_cgpa"]:
+            return False
+        if rule.get("branches") and cand.branch not in rule["branches"]:
+            return False
+        if rule.get("max_backlogs") is not None and (cand.backlogs or 0) > rule["max_backlogs"]:
+            return False
+        if rule.get("min_lms_score") is not None and (cand.lms_score or 0) < rule["min_lms_score"]:
+            return False
+        return True
+
+    # ---------- registration / shortlist / advance ----------
+    def register(self, s: Session, did: str, data) -> dict:
+        self.get(s, did)
+        dup = s.execute(
+            select(Registration).where(
+                Registration.drive_id == did, Registration.candidate_id == data.candidate_id)
+        ).scalar_one_or_none()
+        if dup:
+            raise Conflict("Already registered", code="already_registered")
+        eligible = self._evaluate(s, did, data)
+        reg = Registration(id=new_id(), drive_id=did, candidate_id=data.candidate_id,
+                           eligible="yes" if eligible else "no")
+        s.add(reg)
+        s.flush()
+        return {"id": reg.id, "candidate_id": reg.candidate_id, "eligible": reg.eligible,
+                "status": reg.status}
+
+    def shortlist(self, s: Session, did: str, candidate_ids: list[str]) -> dict:
+        self.get(s, did)
+        updated = 0
+        skipped = []
+        for cid in candidate_ids:
+            reg = s.execute(
+                select(Registration).where(
+                    Registration.drive_id == did, Registration.candidate_id == cid)
+            ).scalar_one_or_none()
+            if not reg:
+                skipped.append(cid)
+                continue
+            if reg.eligible == "no":
+                skipped.append(cid)
+                continue
+            reg.status = "shortlisted"
+            reg.current_round = 1
+            updated += 1
+        s.flush()
+        return {"shortlisted": updated, "skipped": skipped}
+
+    def advance(self, s: Session, did: str, candidate_id: str) -> dict:
+        self.get(s, did)
+        reg = s.execute(
+            select(Registration).where(
+                Registration.drive_id == did, Registration.candidate_id == candidate_id)
+        ).scalar_one_or_none()
+        if not reg:
+            raise NotFound("Registration not found", code="registration_not_found")
+        total_rounds = len(self.rounds(s, did))
+        if reg.current_round < total_rounds:
+            reg.current_round += 1
+            reg.status = "in_round"
+        else:
+            reg.status = "selected"
+        s.flush()
+        return {"candidate_id": candidate_id, "status": reg.status,
+                "current_round": reg.current_round, "total_rounds": total_rounds}
+
+    def registrations(self, s: Session, did: str) -> list[dict]:
+        self.get(s, did)
+        rows = s.execute(
+            select(Registration).where(Registration.drive_id == did)
+        ).scalars().all()
+        names = _resolve_names([r.candidate_id for r in rows])
+        out = []
+        for r in rows:
+            info = names.get(r.candidate_id) or {}
+            out.append({"candidate_id": r.candidate_id, "status": r.status,
+                        "eligible": r.eligible, "current_round": r.current_round,
+                        "candidate_name": info.get("name"),
+                        "candidate_email": info.get("email"),
+                        "candidate_roll": info.get("roll")})
+        return out
+
+    def funnel(self, s: Session, did: str) -> dict:
+        self.get(s, did)
+        counts = dict(s.execute(
+            select(Registration.status, func.count(Registration.id))
+            .where(Registration.drive_id == did).group_by(Registration.status)
+        ).all())
+        total = s.execute(
+            select(func.count(Registration.id)).where(Registration.drive_id == did)
+        ).scalar_one()
+        return {"drive_id": did, "total": total, "by_status": counts}
+
+    def set_ppo(self, s: Session, did: str, data) -> PpoConfig:
+        self.get(s, did)
+        cfg = s.get(PpoConfig, did)
+        if cfg is None:
+            cfg = PpoConfig(drive_id=did)
+            s.add(cfg)
+        cfg.eligibility = data.eligibility
+        cfg.stages = data.stages
+        cfg.conversion_criteria = data.conversion_criteria
+        s.flush()
+        return cfg
+
+    # ---------- search (req #27) ----------
+    def search(self, s: Session, q: str, limit: int = 10) -> list[dict]:
+        like = f"%{q.lower()}%"
+        rows = s.execute(
+            select(Drive).where(
+                func.lower(Drive.title).like(like) | func.lower(Drive.company_name).like(like)
+            ).limit(limit)
+        ).scalars().all()
+        return [{"type": "drive", "id": d.id, "title": d.title,
+                 "subtitle": d.company_name, "status": d.status} for d in rows]
+
+    # ---------- dynamic form builder (req #21) ----------
+    def set_form(self, s: Session, did: str, fields: list) -> dict:
+        self.get(s, did)
+        form = s.get(ApplicationForm, did)
+        if form is None:
+            form = ApplicationForm(drive_id=did, fields=fields)
+            s.add(form)
+        else:
+            form.fields = fields
+        s.flush()
+        return {"drive_id": did, "fields": form.fields}
+
+    def get_form(self, s: Session, did: str) -> dict:
+        form = s.get(ApplicationForm, did)
+        return {"drive_id": did, "fields": form.fields if form else []}
+
+    def submit_form(self, s: Session, did: str, candidate_id: str, answers: dict) -> dict:
+        form = s.get(ApplicationForm, did)
+        # Validate required fields declared in the schema.
+        missing = [f["key"] for f in (form.fields if form else [])
+                   if f.get("required") and not answers.get(f["key"])]
+        if missing:
+            raise BadRequest(f"Missing required fields: {', '.join(missing)}",
+                             code="form_incomplete")
+        sub = s.execute(
+            select(FormSubmission).where(
+                FormSubmission.drive_id == did, FormSubmission.candidate_id == candidate_id)
+        ).scalar_one_or_none()
+        if sub is None:
+            sub = FormSubmission(id=new_id(), drive_id=did, candidate_id=candidate_id, answers=answers)
+            s.add(sub)
+        else:
+            sub.answers = answers
+        s.flush()
+        return {"id": sub.id, "drive_id": did, "candidate_id": candidate_id, "submitted": True}
+
+    def form_submissions(self, s: Session, did: str) -> list[dict]:
+        rows = s.execute(
+            select(FormSubmission).where(FormSubmission.drive_id == did)
+        ).scalars().all()
+        return [{"candidate_id": r.candidate_id, "answers": r.answers,
+                 "submitted_at": r.submitted_at.isoformat()} for r in rows]
+
+    # ---------- recruitment calendar (req #16) ----------
+    def set_schedule(self, s: Session, did: str, schedule: dict) -> dict:
+        d = self.get(s, did)
+        d.schedule = {**(d.schedule or {}), **schedule}
+        s.flush()
+        return d.schedule
+
+    def calendar(self, s: Session, did: str | None = None) -> list[dict]:
+        """Flatten drive schedule dates into calendar events. When did is None,
+        returns events across all drives."""
+        q = select(Drive)
+        if did:
+            q = q.where(Drive.id == did)
+        events: list[dict] = []
+        for d in s.execute(q).scalars().all():
+            sched = d.schedule or {}
+            for key, label in (("registration_deadline", "Registration closes"),
+                               ("exam_date", "Assessment"),
+                               ("interview_date", "Interviews"),
+                               ("joining_date", "Joining")):
+                if sched.get(key):
+                    events.append({"date": sched[key], "type": key, "label": label,
+                                   "drive_id": d.id, "title": f"{d.title} — {label}"})
+        return sorted(events, key=lambda e: e["date"])
+
+    # ---------- seat allocation (req #18) ----------
+    def allocate_seats(self, s: Session, did: str, labs: list[dict]) -> dict:
+        """Round-robin allocate registered candidates to lab/system/seat.
+        labs: [{name, systems}] where systems is the machine count per lab."""
+        self.get(s, did)
+        if not labs:
+            raise BadRequest("At least one lab with capacity is required", code="no_labs")
+        regs = s.execute(
+            select(Registration).where(Registration.drive_id == did)
+            .order_by(Registration.candidate_id)
+        ).scalars().all()
+        # clear prior allocations
+        for a in s.execute(select(SeatAllocation).where(SeatAllocation.drive_id == did)).scalars().all():
+            s.delete(a)
+        s.flush()
+        # build a flat seat list: (lab, system_no, seat_no)
+        seats = []
+        for lab in labs:
+            for n in range(1, int(lab.get("systems", 0)) + 1):
+                seats.append((lab["name"], n, f"{lab['name']}-{n:02d}"))
+        if len(regs) > len(seats):
+            raise Conflict(f"Not enough seats: {len(regs)} candidates, {len(seats)} seats",
+                           code="insufficient_seats")
+        allocated = []
+        for reg, (lab, sysno, seat) in zip(regs, seats):
+            s.add(SeatAllocation(id=new_id(), drive_id=did, candidate_id=reg.candidate_id,
+                                 lab=lab, system_no=sysno, seat_no=seat))
+            allocated.append({"candidate_id": reg.candidate_id, "lab": lab,
+                              "system_no": sysno, "seat_no": seat})
+        s.flush()
+        return {"drive_id": did, "allocated": len(allocated), "seats": len(seats),
+                "allocations": allocated}
+
+    def seat_map(self, s: Session, did: str) -> list[dict]:
+        rows = s.execute(
+            select(SeatAllocation).where(SeatAllocation.drive_id == did)
+            .order_by(SeatAllocation.lab, SeatAllocation.system_no)
+        ).scalars().all()
+        return [{"candidate_id": a.candidate_id, "lab": a.lab,
+                 "system_no": a.system_no, "seat_no": a.seat_no} for a in rows]
+
+    # ---------- hall ticket (req #17) ----------
+    def hall_ticket(self, s: Session, did: str, candidate_id: str) -> tuple[bytes, str]:
+        from lare_common.exports import to_pdf
+        from lare_common.security import hash_token
+        d = self.get(s, did)
+        # Deterministic verify code from drive+candidate (no extra storage needed).
+        code = hash_token(f"{did}:{candidate_id}")[:10].upper()
+        payload = f"HALLTICKET|{did}|{candidate_id}|{code}"
+        lines = [
+            "", f"Drive: {d.title}",
+            f"Company: {d.company_name or '-'}",
+            f"Candidate ID: {candidate_id}",
+            f"Venue: {d.venue or 'To be announced'}",
+            f"Reporting time: {d.reporting_time or 'To be announced'}",
+            "",
+            "Instructions:",
+            "  - Carry a government-issued photo ID.",
+            "  - Report 30 minutes before the reporting time.",
+            "  - Present this hall ticket (QR / code) at entry.",
+            "",
+            f"Verify code: {code}",
+            f"QR payload: {payload}",
+        ]
+        return to_pdf(f"Hall Ticket — {d.title}", lines), f"hallticket-{did}-{candidate_id}.pdf"
+
+    # ---------- serializers ----------
+    @staticmethod
+    def out(d: Drive) -> dict:
+        return {"id": d.id, "company_name": d.company_name, "title": d.title,
+                "status": d.status, "reporting_time": d.reporting_time, "venue": d.venue,
+                "contact_email": d.contact_email}
+
+    @staticmethod
+    def role_out(r: DriveRole) -> dict:
+        return {"id": r.id, "title": r.title, "ctc": r.ctc, "positions": r.positions}
+
+    @staticmethod
+    def round_out(r: Round) -> dict:
+        return {"id": r.id, "order": r.order, "type": r.type, "service_ref": r.service_ref}

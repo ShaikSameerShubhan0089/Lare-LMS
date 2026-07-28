@@ -1,0 +1,33 @@
+# systemd template unit — one instance per service (no Docker).
+#   sudo cp lare@.service /etc/systemd/system/
+#   sudo systemctl enable --now lare@auth lare@gateway lare@exam ...
+# The instance name (%i) must match a service dir under WorkingDirectory/services
+# and have a matching line in /etc/lare/ports.env (PORT_<name>).
+[Unit]
+Description=LARE microservice (%i)
+After=network.target
+# If you run Postgres/Redis on the same host, order after them:
+# After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=lare
+Group=lare
+WorkingDirectory=/opt/lare/backend/services/%i
+# Shared secrets + DATABASE_URL/REDIS_URL live here (chmod 600):
+EnvironmentFile=/etc/lare/lare.env
+EnvironmentFile=/etc/lare/ports.env
+Environment=APP_ENV=production
+# PORT_%i is resolved from ports.env (e.g. PORT_auth=8001)
+ExecStart=/opt/lare/backend/.venv/bin/gunicorn -c /opt/lare/backend/deploy/gunicorn.conf.py --bind 127.0.0.1:${PORT_%i} wsgi:app
+Restart=always
+RestartSec=3
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/lare/data
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

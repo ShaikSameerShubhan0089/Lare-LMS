@@ -1,0 +1,3 @@
+# AI Orchestration extra dependency (optional — enables LIVE Claude).
+# Without it the service runs in deterministic STUB mode.
+anthropic>=0.40.0
