@@ -21,6 +21,7 @@ REGISTRY="$APP_DIR/services.txt"
 reserved=" auth storage realtime graphql vault cron net extensions "
 schema_for() { local n="${1//-/_}"; [[ "$reserved" == *" $n "* ]] && echo "lare_$n" || echo "$n"; }
 
+units=""
 while read -r name dir port; do
   [[ -z "${name:-}" || "$name" == \#* ]] && continue
   unit="/etc/systemd/system/lare-${name}.service"
@@ -57,6 +58,7 @@ RestartSec=3
 WantedBy=multi-user.target
 UNIT
 
+  units="$units lare-${name}.service"
   echo "  wrote lare-${name}.service (:${port})"
 done < <(tr -d '\r' < "$REGISTRY")
 
@@ -71,8 +73,11 @@ WantedBy=multi-user.target
 TARGET
 
 systemctl daemon-reload
-systemctl enable lare-*.service lare.target
+# Enable (boot-persistent) AND start every unit now — explicit names, no glob.
+systemctl enable --now $units
+systemctl enable lare.target
 echo ""
-echo "Installed. Start everything:  sudo systemctl start 'lare-*.service'"
-echo "Status:                       systemctl status 'lare-gateway.service'"
-echo "Logs for one service:         journalctl -u lare-exam -f"
+echo "Installed + started $(echo $units | wc -w) units."
+echo "Status:               systemctl is-active lare-gateway lare-auth"
+echo "Restart all later:    sudo systemctl restart $units" | fold -sw 100
+echo "Logs for one service: journalctl -u lare-exam -f"
