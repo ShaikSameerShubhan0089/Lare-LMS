@@ -9,8 +9,12 @@ export function AuthLayout({ title, subtitle, children, footer }) {
       {/* Brand rail */}
       <div className="hidden lg:flex flex-col justify-between bg-ink-900 text-white p-10 relative overflow-hidden">
         <div className="bg-grid absolute inset-0 opacity-[0.15]" />
-        <Link to="/" className="relative">
-          <Logo dark />
+        <Link to="/" className="relative flex items-center gap-4">
+          <Logo dark size={92} />
+          <span className="flex flex-col leading-none">
+            <span className="font-display font-bold text-xl text-white">LARE Cloud Solutions</span>
+            <span className="text-sm text-slate-300 mt-1.5">Learning & Recruitment Platform</span>
+          </span>
         </Link>
         <div className="relative">
           <h2 className="text-3xl font-display font-bold leading-tight text-white">
@@ -34,17 +38,18 @@ export function AuthLayout({ title, subtitle, children, footer }) {
           </ul>
         </div>
         <p className="relative text-xs text-slate-400">
-          © {new Date().getFullYear()} LARE IT Cloud Solutions
+          © {new Date().getFullYear()} LARE Cloud Solutions · A unit of LARE Consulting &amp; Technology Pvt. Ltd.
         </p>
       </div>
 
       {/* Form panel */}
       <div className="flex flex-col justify-center px-5 py-12 sm:px-10">
         <div className="mx-auto w-full max-w-sm">
-          <div className="lg:hidden mb-8">
+          <div className="lg:hidden mb-8 flex flex-col items-center text-center">
             <Link to="/">
-              <Logo />
+              <Logo size={104} />
             </Link>
+            <p className="mt-3 font-display font-bold text-lg text-ink-900">LARE Cloud Solutions</p>
           </div>
           <h1 className="text-2xl font-display font-bold text-ink-900">{title}</h1>
           {subtitle && <p className="mt-1.5 text-slate-500">{subtitle}</p>}

@@ -1,22 +1,4 @@
-{"ts":"2026-07-25 11:41:47,556","svc":"evaluation","level":"INFO","msg":"event bus for evaluation using backend=http"}
-{"ts":"2026-07-25 11:41:47,594","svc":"evaluation","level":"INFO","msg":"serving on 127.0.0.1:8017 via waitress (threads=16)"}
-{"ts":"2026-07-25 11:41:47,609","svc":"evaluation","level":"INFO","msg":"Serving on http://127.0.0.1:8017"}
-{"ts":"2026-07-25 14:30:35,003","svc":"evaluation","level":"INFO","msg":"auto-graded session 14ee493d-5340-48de-8b0b-5e237393910b: 40.0%"}
-{"ts":"2026-07-25 14:30:56,865","svc":"evaluation","level":"INFO","msg":"auto-graded session b57cc776-0d89-41d4-b6b1-f5482d7816d5: 0.0%"}
-{"ts":"2026-07-25 14:35:35,223","svc":"evaluation","level":"INFO","msg":"auto-graded session 7de930ef-da88-4716-90ea-8b9062e9c2c9: 0.0%"}
-{"ts":"2026-07-25 14:39:21,437","svc":"evaluation","level":"INFO","msg":"auto-graded session 38b3e234-fc81-496b-9796-3ef9ddeac3ef: 0.0%"}
-{"ts":"2026-07-25 14:41:43,297","svc":"evaluation","level":"INFO","msg":"auto-graded session d4bc838e-f872-4891-a538-1cb7e12894ff: 1.2%"}
-{"ts":"2026-07-25 14:42:37,753","svc":"evaluation","level":"INFO","msg":"auto-graded session ca585f72-e942-43e1-875a-e1fa2c95f2fd: 0.0%"}
-{"ts":"2026-07-25 14:42:38,808","svc":"evaluation","level":"INFO","msg":"auto-graded session ca585f72-e942-43e1-875a-e1fa2c95f2fd: 0.0%"}
-{"ts":"2026-07-25 14:43:30,965","svc":"evaluation","level":"INFO","msg":"auto-graded session fe449696-be70-47e7-894e-f2a03b156bfa: 8.8%"}
-{"ts":"2026-07-25 14:43:31,757","svc":"evaluation","level":"INFO","msg":"auto-graded session fe449696-be70-47e7-894e-f2a03b156bfa: 8.8%"}
-{"ts":"2026-07-25 14:45:28,006","svc":"evaluation","level":"INFO","msg":"auto-graded session 0cc79771-1ec6-470d-a0f8-ed2fa1313a52: 0.0%"}
-{"ts":"2026-07-25 14:45:59,296","svc":"evaluation","level":"INFO","msg":"auto-graded session 13663ec5-e1d0-4181-b615-902206c81221: 30.0%"}
-{"ts":"2026-07-25 14:48:44,084","svc":"evaluation","level":"INFO","msg":"auto-graded session 4b854a4d-9cba-4b33-94b1-77d4ca94dfcc: 10.0%"}
-{"ts":"2026-07-25 14:52:35,118","svc":"evaluation","level":"INFO","msg":"auto-graded session b74882a2-7a4c-4629-a388-42264b3ff120: 12.5%"}
-{"ts":"2026-07-25 15:01:12,809","svc":"evaluation","level":"INFO","msg":"auto-graded session 4548c9a1-d68b-489c-8763-34f3663f657a: 35.0%"}
-{"ts":"2026-07-25 15:11:09,597","svc":"evaluation","level":"INFO","msg":"auto-graded session 9ed6eeb9-6017-4de3-aedd-69c148287755: 11.2%"}
-{"ts":"2026-07-25 15:14:11,996","svc":"evaluation","level":"INFO","msg":"auto-graded session 771d1009-44db-47d8-9024-86378d5901be: 28.8%"}
-{"ts":"2026-07-25 15:26:19,013","svc":"evaluation","level":"INFO","msg":"auto-graded session cc0bf062-9ccb-4ee8-932f-557fb08f1542: 36.2%"}
-{"ts":"2026-07-25 15:26:20,380","svc":"evaluation","level":"INFO","msg":"auto-graded session 500d41b8-8635-43fd-a8bb-5f968566e524: 18.8%"}
-{"ts":"2026-07-25 15:26:21,691","svc":"evaluation","level":"INFO","msg":"auto-graded session 500d41b8-8635-43fd-a8bb-5f968566e524: 18.8%"}
+{"ts":"2026-07-28 22:37:18,925","svc":"evaluation","level":"INFO","msg":"event bus for evaluation using backend=http"}
+{"ts":"2026-07-28 22:37:18,949","svc":"evaluation","level":"INFO","msg":"serving on 127.0.0.1:8017 via waitress (threads=16)"}
+{"ts":"2026-07-28 22:37:18,957","svc":"evaluation","level":"INFO","msg":"Serving on http://127.0.0.1:8017"}
+{"ts":"2026-07-28 23:14:21,483","svc":"evaluation","level":"INFO","msg":"auto-graded session 7ca71101-23c4-4ad0-bf50-5fc2720e6c0e: 0.0%"}

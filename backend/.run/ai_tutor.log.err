@@ -1,2 +1,2 @@
-{"ts":"2026-07-25 11:42:42,536","svc":"ai_tutor","level":"INFO","msg":"serving on 127.0.0.1:8025 via waitress (threads=16)"}
-{"ts":"2026-07-25 11:42:42,572","svc":"ai_tutor","level":"INFO","msg":"Serving on http://127.0.0.1:8025"}
+{"ts":"2026-07-28 22:38:09,355","svc":"ai_tutor","level":"INFO","msg":"serving on 127.0.0.1:8025 via waitress (threads=16)"}
+{"ts":"2026-07-28 22:38:09,366","svc":"ai_tutor","level":"INFO","msg":"Serving on http://127.0.0.1:8025"}

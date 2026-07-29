@@ -44,3 +44,8 @@ keys/
 deploy/.env.production
 deploy/keys/
 !deploy/.env.production.example
+
+
+.claude/
+.env
+*.json

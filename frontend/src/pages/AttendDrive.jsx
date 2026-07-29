@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { GraduationCap, ArrowRight, CheckCircle2, Copy, IdCard, AlertTriangle } from "lucide-react";
 import { Card, Button, Field, Input } from "../components/ui/primitives.jsx";
+import { Logo } from "../components/ui/Logo.jsx";
 import { api, tokens } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
 
@@ -157,7 +158,17 @@ export default function AttendDrive() {
 function Shell({ children }) {
   return (
     <div className="min-h-screen grid place-items-center bg-slate-50 px-4 py-10">
-      <div className="w-full max-w-md">{children}</div>
+      <div className="w-full max-w-md">
+        <div className="flex flex-col items-center text-center mb-6">
+          <Logo size={132} />
+          <p className="mt-3 font-display font-bold text-3xl text-ink-900">LARE Hire</p>
+          <p className="text-base text-amber-600 font-medium">Find the right talent, faster.</p>
+        </div>
+        {children}
+        <p className="mt-6 text-center text-[11px] text-slate-400">
+          A unit of LARE Consulting &amp; Technology Pvt. Ltd.
+        </p>
+      </div>
     </div>
   );
 }

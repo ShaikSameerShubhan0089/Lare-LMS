@@ -7,7 +7,7 @@ import { useAsync } from "../hooks/useAsync.js";
 import { api, withFallback } from "../lib/api.js";
 import { demoDrives } from "../lib/demo.js";
 
-// Student view of LARE Drive. Students register via the public "Attend Drive"
+// Student view of LARE Hire. Students register via the public "Attend Drive"
 // flow, so here they simply see the open drive(s) and start the assessment — no
 // per-drive apply step. No LMS content here.
 export default function Drives() {

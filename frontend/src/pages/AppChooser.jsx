@@ -9,8 +9,8 @@ const APPS = [
   {
     to: "/lms",
     icon: GraduationCap,
-    name: "LARE LMS",
-    tagline: "Learning & Training",
+    name: "LARE Learn",
+    tagline: "Four years. One platform. Career-ready.",
     desc: "The 4-year structured training programme — curriculum, assessments, gamified progress, certificates, and the AI tutor.",
     accent: "from-brand-500/15 to-brand-500/0 text-brand-600",
     ring: "hover:border-brand-300",
@@ -18,8 +18,8 @@ const APPS = [
   {
     to: "/drive",
     icon: Briefcase,
-    name: "LARE Drive",
-    tagline: "Campus Recruitment",
+    name: "LARE Hire",
+    tagline: "Find the right talent, faster.",
     desc: "Online recruitment & assessment — drives, proctored exams, coding rounds, interviews, results, and offers.",
     accent: "from-amber-500/15 to-amber-500/0 text-amber-600",
     ring: "hover:border-amber-300",
@@ -32,8 +32,8 @@ export default function AppChooser() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="h-16 flex items-center justify-between px-6 lg:px-10 border-b border-slate-200 bg-white">
-        <Logo />
+      <header className="h-24 flex items-center justify-between px-6 lg:px-10 border-b border-slate-200 bg-white">
+        <Logo size={84} />
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-500 hidden sm:block">{user?.full_name || user?.email}</span>
           <button

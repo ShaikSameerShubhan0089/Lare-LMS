@@ -38,8 +38,11 @@ const STUDENT = ["student"];
 export const PRODUCTS = {
   lms: {
     key: "lms",
-    title: "LARE LMS",
-    tagline: "Learning & Training",
+    title: "LARE Learn",
+    tagline: "Four years. One platform. Career-ready.",
+    icon: GraduationCap,
+    pill: "bg-brand-500/10 text-brand-700 ring-1 ring-brand-500/20",
+    tile: "bg-gradient-to-br from-brand-500 to-brand-600",
     base: "/lms",
     gamified: true,
     items: [
@@ -62,13 +65,16 @@ export const PRODUCTS = {
         ],
       },
     ],
-    switchTo: { label: "Switch to Drive", to: "/drive" },
+    switchTo: { label: "Switch to Hire", to: "/drive" },
     home: "/lms",
   },
   drive: {
     key: "drive",
-    title: "LARE Drive",
-    tagline: "Campus Recruitment",
+    title: "LARE Hire",
+    tagline: "Find the right talent, faster.",
+    icon: Briefcase,
+    pill: "bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20",
+    tile: "bg-gradient-to-br from-amber-500 to-amber-600",
     base: "/drive",
     gamified: false,
     // Students only browse & take their drive tests here. No LMS anything.
@@ -85,7 +91,7 @@ export const PRODUCTS = {
         ],
       },
     ],
-    switchTo: { label: "Switch to LMS", to: "/lms" },
+    switchTo: { label: "Switch to Learn", to: "/lms" },
     home: "/drive",
   },
 };
@@ -113,6 +119,8 @@ export function AppShell({ children, product = "lms" }) {
     .map((s) => s[0]?.toUpperCase())
     .join("");
 
+  const firstName = (user?.full_name || user?.email || "there").split(/[\s@]/)[0];
+
   return (
     <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[260px_1fr]">
       <aside
@@ -120,11 +128,12 @@ export function AppShell({ children, product = "lms" }) {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="h-16 flex items-center gap-2.5 px-5 border-b border-white/10">
-          <Logo dark />
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-400/90 border-l border-white/15 pl-2.5">
-            {cfg.title.replace("LARE ", "")}
-          </span>
+        <div className="px-4 py-4 flex items-center gap-3 border-b border-white/10">
+          <Logo dark size={64} />
+          <div className="min-w-0">
+            <p className="font-display font-bold text-white text-[17px] leading-none">{cfg.title}</p>
+            <p className="text-[11px] text-amber-400/90 mt-1.5 leading-tight">{cfg.tagline}</p>
+          </div>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -170,6 +179,19 @@ export function AppShell({ children, product = "lms" }) {
             <LogOut size={19} strokeWidth={1.75} /> Sign out
           </button>
         </div>
+
+        {/* Parent-company attribution */}
+        <div className="px-4 py-3.5 border-t border-white/10 flex items-center gap-3">
+          <img
+            src="/brand/lare-parent.png"
+            alt="LARE Consulting & Technology Pvt. Ltd."
+            className="h-14 w-14 object-contain rounded-lg bg-white p-1 shrink-0 shadow-sm"
+          />
+          <p className="text-[11px] leading-snug text-slate-400">
+            A unit of
+            <span className="block text-slate-200 font-semibold text-xs mt-0.5">LARE Consulting &amp; Technology Pvt. Ltd.</span>
+          </p>
+        </div>
       </aside>
 
       {open && (
@@ -185,13 +207,20 @@ export function AppShell({ children, product = "lms" }) {
           >
             <Menu size={20} />
           </button>
-          <div className="hidden lg:block">
-            <p className="text-sm text-slate-400">{cfg.title} · {cfg.tagline}</p>
-            <p className="font-display font-semibold text-ink-900 -mt-0.5">
-              {user?.full_name || user?.email}
-            </p>
+          <div className="hidden lg:flex items-center gap-3.5">
+            <span className={`grid place-items-center h-12 w-12 rounded-xl text-white shadow-sm ${cfg.tile}`}>
+              <cfg.icon size={24} strokeWidth={2} />
+            </span>
+            <div className="leading-tight">
+              <p className="font-display font-bold text-ink-900 text-xl -mb-0.5">{cfg.title}</p>
+              <p className="text-[13px] text-slate-500 font-medium">{cfg.tagline}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-right leading-tight mr-1">
+              <p className="text-[11px] text-slate-400">Welcome back</p>
+              <p className="font-display font-semibold text-ink-900 text-sm -mt-0.5">{firstName}</p>
+            </div>
             {cfg.gamified && (
               <Badge tone="amber"><Trophy size={13} /> Level 4</Badge>
             )}

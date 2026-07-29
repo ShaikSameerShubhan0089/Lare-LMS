@@ -43,7 +43,7 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen grid place-items-center bg-slate-50 px-4">
       <div className="w-full max-w-md">
-        <div className="flex justify-center mb-6"><Logo /></div>
+        <div className="flex justify-center mb-6"><Logo size={104} /></div>
         <Card className="p-8">
           {step === "request" && (
             <>

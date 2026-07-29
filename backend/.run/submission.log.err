@@ -1,2 +1,2 @@
-{"ts":"2026-07-25 11:41:27,804","svc":"submission","level":"INFO","msg":"serving on 127.0.0.1:8014 via waitress (threads=16)"}
-{"ts":"2026-07-25 11:41:27,823","svc":"submission","level":"INFO","msg":"Serving on http://127.0.0.1:8014"}
+{"ts":"2026-07-28 22:37:00,415","svc":"submission","level":"INFO","msg":"serving on 127.0.0.1:8014 via waitress (threads=16)"}
+{"ts":"2026-07-28 22:37:00,425","svc":"submission","level":"INFO","msg":"Serving on http://127.0.0.1:8014"}

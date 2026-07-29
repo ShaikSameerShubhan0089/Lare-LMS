@@ -68,7 +68,7 @@ export default function App() {
       {/* Post-login app chooser (two standalone apps, one platform) */}
       <Route path="/apps" element={<Protected bare><AppChooser /></Protected>} />
 
-      {/* ================= LARE LMS ================= */}
+      {/* ================= LARE Learn (LMS) ================= */}
       <Route path="/lms" element={lms(<Dashboard />)} />
       <Route path="/lms/learning" element={lms(<MyLearning />)} />
       <Route path="/lms/assessments" element={lms(<Assessments />)} />
@@ -83,7 +83,7 @@ export default function App() {
       <Route path="/lms/profile" element={lms(<Profile />)} />
       <Route path="/lms/settings" element={lms(<Settings />)} />
 
-      {/* ================= LARE Drive ================= */}
+      {/* ================= LARE Hire (Drive) ================= */}
       <Route path="/drive" element={drive(<Drives />)} />
       <Route path="/drive/test/:examId" element={drive(<ExamPortal />)} />
       <Route path="/drive/recruiter/drives" element={driveStaff(<RecruiterDrives />)} />

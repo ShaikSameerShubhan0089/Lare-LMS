@@ -23,9 +23,9 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
-      <header className="h-16 border-b border-slate-100">
+      <header className="h-24 border-b border-slate-100">
         <div className="mx-auto max-w-6xl h-full px-5 flex items-center justify-between">
-          <Logo />
+          <Logo size={84} />
           <nav className="flex items-center gap-2">
             <Button as={Link} to="/login" variant="ghost" size="sm">
               Sign in
@@ -160,10 +160,26 @@ export default function Landing() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-100">
-        <div className="mx-auto max-w-6xl px-5 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400">
-          <Logo />
-          <p>© {new Date().getFullYear()} LARE IT Cloud Solutions. Confidential.</p>
+      <footer className="border-t border-slate-100 bg-slate-50/50">
+        <div className="mx-auto max-w-6xl px-5 py-8 flex flex-col sm:flex-row items-center justify-between gap-5 text-sm text-slate-400">
+          <div className="flex items-center gap-3">
+            <Logo size={72} />
+            <div className="leading-tight">
+              <p className="font-display font-semibold text-ink-900">LARE Cloud Solutions</p>
+              <p className="text-xs text-slate-400">© {new Date().getFullYear()} · All rights reserved.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-center sm:text-right">
+            <img
+              src="/brand/lare-parent.png"
+              alt="LARE Consulting & Technology Pvt. Ltd."
+              className="h-16 w-16 object-contain rounded-lg"
+            />
+            <p className="text-sm leading-tight text-slate-500">
+              A unit of
+              <span className="block font-semibold text-ink-900">LARE Consulting &amp; Technology Pvt. Ltd.</span>
+            </p>
+          </div>
         </div>
       </footer>
     </div>
