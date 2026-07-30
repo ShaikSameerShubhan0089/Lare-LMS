@@ -73,6 +73,10 @@ async function request(path, opts = {}) {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    // Never let the browser reuse a cached response: these are per-user (the
+    // cache key is the URL, not the token), so on a shared machine a cached
+    // /me would leak the previous user's profile to the next student.
+    cache: "no-store",
   });
 
   if (raw) return res;
