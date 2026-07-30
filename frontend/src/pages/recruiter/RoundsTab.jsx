@@ -15,6 +15,7 @@ export default function RoundsTab({ id }) {
   const [flash, setFlash] = useState(null);
   const [dl, setDl] = useState("");
   const [sq, setSq] = useState("");
+  const [filterC, setFilterC] = useState("all");
 
   async function download(cleared) {
     setDl(cleared ? "cleared" : "all");
@@ -93,10 +94,12 @@ export default function RoundsTab({ id }) {
 
   const scores = data?.scores || [];
   const sQuery = sq.trim().toLowerCase();
-  const shown = sQuery
-    ? scores.filter((s) => [s.candidate_name, s.candidate_email, s.candidate_roll, s.candidate_id]
-        .some((v) => (v || "").toLowerCase().includes(sQuery)))
-    : scores;
+  const shown = scores.filter((s) => {
+    const matchQ = !sQuery || [s.candidate_name, s.candidate_email, s.candidate_roll, s.candidate_id]
+      .some((v) => (v || "").toLowerCase().includes(sQuery));
+    const matchC = filterC === "all" || (filterC === "cleared" ? s.cleared : !s.cleared);
+    return matchQ && matchC;
+  });
   const roundLabel = data?.round?.label || `Round ${order}`;
   const isWritten = ["aptitude", "coding", "verbal", "technical", "sql"].includes(data?.round?.type);
 
@@ -153,12 +156,18 @@ export default function RoundsTab({ id }) {
         </div>
 
         {scores.length > 0 && (
-          <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
-            <div className="relative max-w-xs w-full">
+          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
+            <div className="relative max-w-xs w-full sm:w-auto">
               <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input value={sq} onChange={(e) => setSq(e.target.value)}
-                placeholder="Search this round by name, email, roll…" className="h-9 pl-8" />
+                placeholder="Search this round by name, email, roll…" className="h-9 pl-8 sm:w-72" />
             </div>
+            <select value={filterC} onChange={(e) => setFilterC(e.target.value)}
+              className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white">
+              <option value="all">All candidates</option>
+              <option value="cleared">Cleared only</option>
+              <option value="not_cleared">Not cleared</option>
+            </select>
             <span className="text-xs text-slate-400 whitespace-nowrap">{shown.length} of {scores.length}</span>
           </div>
         )}
