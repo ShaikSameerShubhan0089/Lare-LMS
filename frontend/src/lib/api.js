@@ -173,6 +173,7 @@ export const api = {
   addRound: (id, body) => request(`/drive/v1/drives/${id}/rounds`, { method: "POST", body }),
   getWorkflow: (id) => request(`/drive/v1/drives/${id}/workflow`),
   setWorkflow: (id, stages) => request(`/drive/v1/drives/${id}/workflow`, { method: "PUT", body: { stages } }),
+  deleteRound: (id, order) => request(`/drive/v1/drives/${id}/rounds/${order}`, { method: "DELETE" }),
   roundScores: (id, order) => request(`/drive/v1/drives/${id}/rounds/${order}/scores`),
   setRoundScore: (id, order, body) => request(`/drive/v1/drives/${id}/rounds/${order}/scores`, { method: "POST", body }),
   addRoundCandidate: (id, order, candidate_id) => request(`/drive/v1/drives/${id}/rounds/${order}/candidates`, { method: "POST", body: { candidate_id } }),

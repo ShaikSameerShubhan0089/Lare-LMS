@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft, Briefcase, Users, ListChecks, SlidersHorizontal, Rocket,
   Plus, Check, ChevronRight, Award, BarChart3, Trophy, MessagesSquare,
-  ChevronUp, ChevronDown, Trash2, CheckCircle2,
+  ChevronUp, ChevronDown, Trash2, CheckCircle2, Search,
 } from "lucide-react";
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { PageHeader, Loading, DataSource } from "../../components/ui/states.jsx";
@@ -335,7 +335,18 @@ function Eligibility({ id }) {
 function Candidates({ id, rounds }) {
   const regs = useAsync(() => withFallback(api.driveRegistrations(id), demoRegistrations), [id]);
   const [rows, setRows] = useState(null);
+  const [q, setQ] = useState("");
+  const [statusF, setStatusF] = useState("all");
   const list = rows ?? regs.data ?? [];
+
+  const query = q.trim().toLowerCase();
+  const filtered = list.filter((r) => {
+    const matchesQ = !query || [r.candidate_name, r.candidate_email, r.candidate_roll, r.candidate_id]
+      .some((v) => (v || "").toLowerCase().includes(query));
+    const matchesS = statusF === "all" || r.status === statusF;
+    return matchesQ && matchesS;
+  });
+  const STATUSES = ["all", "applied", "shortlisted", "in_round", "selected", "rejected"];
 
   if (regs.loading) return <Loading />;
 
@@ -357,9 +368,23 @@ function Candidates({ id, rounds }) {
 
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="flex items-center justify-between p-5 border-b border-slate-100">
-        <h2 className="font-display font-semibold text-ink-900">Registered candidates</h2>
-        <DataSource live={regs.live} />
+      <div className="flex flex-wrap items-center justify-between gap-3 p-5 border-b border-slate-100">
+        <h2 className="font-display font-semibold text-ink-900">
+          Registered candidates
+          <span className="ml-2 text-sm font-normal text-slate-400">{filtered.length} of {list.length}</span>
+        </h2>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Search name, email, roll…" className="h-9 pl-8 w-56" />
+          </div>
+          <select value={statusF} onChange={(e) => setStatusF(e.target.value)}
+            className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white capitalize">
+            {STATUSES.map((st) => <option key={st} value={st}>{st === "all" ? "All statuses" : st.replace("_", " ")}</option>)}
+          </select>
+          <DataSource live={regs.live} />
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -373,7 +398,12 @@ function Candidates({ id, rounds }) {
             </tr>
           </thead>
           <tbody>
-            {list.map((r) => (
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400">
+                {list.length ? "No candidates match your search." : "No candidates yet."}
+              </td></tr>
+            )}
+            {filtered.map((r) => (
               <tr key={r.candidate_id} className="border-t border-slate-100">
                 <td className="px-5 py-3 font-medium text-ink-900">
                   {r.candidate_name || r.candidate_email ? (

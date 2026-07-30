@@ -154,6 +154,57 @@ class DriveService:
                  "optional": r.optional, "config": r.config, "service_ref": r.service_ref}
                 for r in self.rounds(s, did)]
 
+    def delete_round(self, s: Session, did: str, order: int) -> dict:
+        """Remove one round mid-pipeline and re-sequence everything after it, so
+        candidates flow straight into the next round. E.g. deleting GD (round 2)
+        from Written→GD→JAM→Interview leaves Written→JAM→Interview and the people
+        who were heading to GD now sit in JAM."""
+        self.get(s, did)
+        rounds = self.rounds(s, did)
+        if len(rounds) <= 1:
+            raise BadRequest("A drive must keep at least one round.", code="min_one_round")
+        if not any(r.order == order for r in rounds):
+            raise NotFound("Round not found.", code="round_not_found")
+
+        # 1) drop the round definition and its marks rows
+        for r in rounds:
+            if r.order == order:
+                s.delete(r)
+        for rs in s.execute(select(RoundScore).where(
+                RoundScore.drive_id == did, RoundScore.round_order == order)).scalars().all():
+            s.delete(rs)
+        s.flush()
+
+        # 2) shift every later round (and its marks) up by one slot
+        for r in self.rounds(s, did):
+            if r.order > order:
+                r.order -= 1
+        for rs in s.execute(select(RoundScore).where(
+                RoundScore.drive_id == did, RoundScore.round_order > order)).scalars().all():
+            rs.round_order -= 1
+        # 3) move candidates: those past the deleted round step back one; those who
+        #    were sitting in it now belong to the round that shifted into its slot
+        for reg in s.execute(select(Registration).where(
+                Registration.drive_id == did)).scalars().all():
+            if reg.current_round > order:
+                reg.current_round -= 1
+        s.flush()
+
+        # 4) seed the new round's marks sheet for candidates now sitting in it
+        n_rounds = len(self.rounds(s, did))
+        if order <= n_rounds:
+            existing = {rs.candidate_id for rs in s.execute(select(RoundScore).where(
+                RoundScore.drive_id == did, RoundScore.round_order == order)).scalars().all()}
+            for reg in s.execute(select(Registration).where(
+                    Registration.drive_id == did,
+                    Registration.current_round == order,
+                    Registration.status != "rejected")).scalars().all():
+                if reg.candidate_id not in existing:
+                    s.add(RoundScore(id=new_id(), drive_id=did, round_order=order,
+                                     candidate_id=reg.candidate_id))
+            s.flush()
+        return {"deleted_round": order, "rounds": self.workflow(s, did)}
+
     # ---------- round marks sheet (written auto + panel-scored rounds) ----------
     def _score_out(self, r: RoundScore, names: dict | None = None) -> dict:
         pct = round(r.marks * 100.0 / r.max_marks, 1) if r.max_marks else 0.0

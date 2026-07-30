@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, Plus, Trash2, CheckCircle2, Rocket, Users, Download } from "lucide-react";
+import { Trophy, Plus, Trash2, CheckCircle2, Rocket, Users, Download, Search } from "lucide-react";
 import { Card, Badge, Button, Input } from "../../components/ui/primitives.jsx";
 import { api } from "../../lib/api.js";
 
@@ -14,12 +14,28 @@ export default function RoundsTab({ id }) {
   const [addId, setAddId] = useState("");
   const [flash, setFlash] = useState(null);
   const [dl, setDl] = useState("");
+  const [sq, setSq] = useState("");
 
   async function download(cleared) {
     setDl(cleared ? "cleared" : "all");
     try { await api.downloadRoundXlsx(id, order, cleared); }
     catch (e) { setFlash(e?.message || "Export failed."); }
     finally { setDl(""); }
+  }
+
+  async function deleteRound() {
+    const label = data?.round?.label || `Round ${order}`;
+    if (!window.confirm(
+      `Delete "${label}"?\n\nLater rounds move up one step and any candidates in this round advance straight to the next round. This can't be undone.`
+    )) return;
+    const wasOrder = order;
+    try { await api.deleteRound(id, order); }
+    catch (e) { setFlash(e?.message || "Could not delete the round."); return; }
+    const wf = await api.getWorkflow(id).catch(() => []);
+    setRounds(wf || []);
+    setFlash(`Deleted "${label}" — pipeline updated.`);
+    setOrder(1);
+    if (wasOrder === 1) load();
   }
 
   useEffect(() => {
@@ -76,6 +92,11 @@ export default function RoundsTab({ id }) {
   }
 
   const scores = data?.scores || [];
+  const sQuery = sq.trim().toLowerCase();
+  const shown = sQuery
+    ? scores.filter((s) => [s.candidate_name, s.candidate_email, s.candidate_roll, s.candidate_id]
+        .some((v) => (v || "").toLowerCase().includes(sQuery)))
+    : scores;
   const roundLabel = data?.round?.label || `Round ${order}`;
   const isWritten = ["aptitude", "coding", "verbal", "technical", "sql"].includes(data?.round?.type);
 
@@ -121,11 +142,26 @@ export default function RoundsTab({ id }) {
             <Button variant="secondary" onClick={() => download(true)} disabled={!scores.length || !!dl}>
               <Download size={16} /> {dl === "cleared" ? "Preparing…" : "Export cleared"}
             </Button>
+            <Button variant="ghost" onClick={deleteRound} disabled={rounds.length <= 1}
+              className="text-rose-600 hover:bg-rose-50" title="Remove this round; later rounds shift up">
+              <Trash2 size={16} /> Delete round
+            </Button>
             <Button variant="amber" onClick={publish} disabled={!scores.length}>
               <Rocket size={16} /> Publish round
             </Button>
           </div>
         </div>
+
+        {scores.length > 0 && (
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+            <div className="relative max-w-xs w-full">
+              <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input value={sq} onChange={(e) => setSq(e.target.value)}
+                placeholder="Search this round by name, email, roll…" className="h-9 pl-8" />
+            </div>
+            <span className="text-xs text-slate-400 whitespace-nowrap">{shown.length} of {scores.length}</span>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -146,7 +182,9 @@ export default function RoundsTab({ id }) {
                 <tr><td colSpan={6} className="py-8 text-center text-slate-400">
                   No candidates in this round yet{order > 1 ? " — publish the previous round to advance candidates" : ""}.
                 </td></tr>
-              ) : scores.map((s) => (
+              ) : shown.length === 0 ? (
+                <tr><td colSpan={6} className="py-8 text-center text-slate-400">No candidates match your search.</td></tr>
+              ) : shown.map((s) => (
                 <tr key={s.candidate_id} className={s.cleared ? "bg-teal-500/5" : ""}>
                   <td className="py-2 px-4 font-medium text-ink-900">
                     {s.candidate_name || s.candidate_email ? (

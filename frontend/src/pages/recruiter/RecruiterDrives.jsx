@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Building2, MapPin, Clock, ChevronRight, X, Trash2 } from "lucide-react";
+import { Plus, Building2, MapPin, Clock, ChevronRight, X, Trash2, Search } from "lucide-react";
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { PageHeader, Loading, DataSource } from "../../components/ui/states.jsx";
 import { useAsync } from "../../hooks/useAsync.js";
@@ -12,9 +12,17 @@ export default function RecruiterDrives() {
   const [creating, setCreating] = useState(false);
   const [extra, setExtra] = useState([]);
   const [removed, setRemoved] = useState(() => new Set());
+  const [q, setQ] = useState("");
+  const [statusF, setStatusF] = useState("all");
 
   if (drives.loading) return <Loading />;
-  const list = [...(drives.data || []), ...extra].filter((d) => !removed.has(d.id));
+  const all = [...(drives.data || []), ...extra].filter((d) => !removed.has(d.id));
+  const query = q.trim().toLowerCase();
+  const list = all.filter((d) => {
+    const matchesQ = !query || [d.title, d.company_name, d.venue].some((v) => (v || "").toLowerCase().includes(query));
+    const matchesS = statusF === "all" || d.status === statusF;
+    return matchesQ && matchesS;
+  });
 
   async function del(d) {
     if (!window.confirm(`Delete "${d.title}"? This permanently removes the drive and all its rounds, marks, registrations, and results.`)) return;
@@ -36,6 +44,27 @@ export default function RecruiterDrives() {
           </div>
         }
       />
+
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <div className="relative">
+          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="Search drives by title, company, venue…" className="h-9 pl-8 w-72" />
+        </div>
+        <select value={statusF} onChange={(e) => setStatusF(e.target.value)}
+          className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white capitalize">
+          {["all", "draft", "open", "closed"].map((st) => (
+            <option key={st} value={st}>{st === "all" ? "All statuses" : st}</option>
+          ))}
+        </select>
+        <span className="text-xs text-slate-400">{list.length} of {all.length}</span>
+      </div>
+
+      {list.length === 0 && (
+        <Card className="p-8 text-center text-slate-400">
+          {all.length ? "No drives match your search." : "No drives yet — create your first one."}
+        </Card>
+      )}
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
         {list.map((d) => (

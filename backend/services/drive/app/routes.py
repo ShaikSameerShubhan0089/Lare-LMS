@@ -44,6 +44,14 @@ def get_workflow(did):
         return ok(_svc().workflow(s, did))
 
 
+@bp.delete("/drive/v1/drives/<did>/rounds/<int:order>")
+@require_roles(*MANAGE)
+def delete_round(did, order):
+    """Delete a round mid-pipeline; later rounds shift up and candidates flow on."""
+    with _db().session() as s:
+        return ok(_svc().delete_round(s, did, order))
+
+
 # ---------- round marks sheet (written auto + panel-scored rounds) ----------
 @bp.get("/drive/v1/drives/<did>/rounds/<int:order>/scores")
 @require_roles(*MANAGE)
