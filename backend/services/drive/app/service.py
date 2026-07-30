@@ -476,6 +476,93 @@ class DriveService:
         ).scalar_one()
         return {"drive_id": did, "total": total, "by_status": counts}
 
+    # ---------- analytics + exports ----------
+    def analytics(self, s: Session, did: str) -> dict:
+        """Written-test (Round 1) analytics: attendance, pass rate, score
+        distribution and coding-question stats for the admin dashboard."""
+        self.get(s, did)
+        total_registered = s.execute(
+            select(func.count(Registration.id)).where(Registration.drive_id == did)
+        ).scalar_one()
+        reg_by_status = dict(s.execute(
+            select(Registration.status, func.count(Registration.id))
+            .where(Registration.drive_id == did).group_by(Registration.status)
+        ).all())
+
+        r1 = s.execute(select(RoundScore).where(
+            RoundScore.drive_id == did, RoundScore.round_order == 1)).scalars().all()
+        # "Attended" = the written test produced/holds a score for them.
+        attended = [r for r in r1 if r.entered_by is not None]
+        n_att = len(attended)
+        n_cleared = len([r for r in r1 if r.cleared])
+
+        buckets = [0, 0, 0, 0, 0]  # 0–20, 20–40, 40–60, 60–80, 80–100 (%)
+        pct_sum = 0.0
+        for r in attended:
+            pct = (r.marks * 100.0 / r.max_marks) if r.max_marks else 0.0
+            pct_sum += pct
+            buckets[min(int(pct // 20), 4)] += 1
+
+        coding = [r for r in attended if (r.coding_total or 0) > 0]
+        total_cod_att = sum(r.coding_attempted or 0 for r in coding)
+        total_cod_cor = sum(r.coding_correct or 0 for r in coding)
+        return {
+            "drive_id": did,
+            "total_registered": total_registered,
+            "registrations_by_status": reg_by_status,
+            "written": {
+                "attended": n_att,
+                "cleared": n_cleared,
+                "pass_rate": round(n_cleared * 100.0 / n_att, 1) if n_att else 0.0,
+                "avg_percentage": round(pct_sum / n_att, 1) if n_att else 0.0,
+                "score_distribution": [
+                    {"band": "0–20%", "count": buckets[0]},
+                    {"band": "20–40%", "count": buckets[1]},
+                    {"band": "40–60%", "count": buckets[2]},
+                    {"band": "60–80%", "count": buckets[3]},
+                    {"band": "80–100%", "count": buckets[4]},
+                ],
+            },
+            "coding": {
+                "students_with_coding": len(coding),
+                "students_attempted": len([r for r in coding if (r.coding_attempted or 0) > 0]),
+                "total_questions": sum(r.coding_total or 0 for r in coding),
+                "total_attempted": total_cod_att,
+                "total_correct": total_cod_cor,
+                "accuracy": round(total_cod_cor * 100.0 / total_cod_att, 1) if total_cod_att else 0.0,
+            },
+        }
+
+    def export_round(self, s: Session, did: str, order: int,
+                     cleared_only: bool = False) -> tuple[bytes, str]:
+        """Build an .xlsx of a round's marks sheet (all attendees, or only the
+        cleared ones) for sharing with college officials."""
+        from lare_common.exports import to_xlsx
+        data = self.round_scores(s, did, order)
+        scores = data["scores"]
+        if cleared_only:
+            scores = [x for x in scores if x.get("cleared")]
+        headers = ["Name", "Email", "Roll No", "Correct", "Attempted", "Percentage",
+                   "Coding Correct", "Coding Attempted", "Coding Total", "Remarks", "Result"]
+        rows = []
+        for x in scores:
+            rows.append([
+                x.get("candidate_name") or "",
+                x.get("candidate_email") or "",
+                x.get("candidate_roll") or "",
+                x.get("marks") or 0,
+                x.get("max_marks") or 0,
+                x.get("percentage") or 0,
+                x.get("coding_correct") if x.get("coding_correct") is not None else "",
+                x.get("coding_attempted") if x.get("coding_attempted") is not None else "",
+                x.get("coding_total") if x.get("coding_total") is not None else "",
+                x.get("remarks") or "",
+                "Cleared" if x.get("cleared") else "Not cleared",
+            ])
+        kind = "cleared" if cleared_only else "attendees"
+        blob = to_xlsx(headers, rows, sheet=kind.capitalize())
+        return blob, f"drive-{kind}-round{order}.xlsx"
+
     def set_ppo(self, s: Session, did: str, data) -> PpoConfig:
         self.get(s, did)
         cfg = s.get(PpoConfig, did)

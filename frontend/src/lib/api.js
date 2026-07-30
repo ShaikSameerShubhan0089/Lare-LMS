@@ -183,6 +183,24 @@ export const api = {
   shortlist: (id, candidate_ids) => request(`/drive/v1/drives/${id}/shortlist`, { method: "POST", body: { candidate_ids } }),
   advance: (id, candidate_id) => request(`/drive/v1/drives/${id}/advance`, { method: "POST", body: { candidate_id } }),
   funnel: (id) => request(`/drive/v1/drives/${id}/funnel`),
+  driveAnalytics: (id) => request(`/drive/v1/drives/${id}/analytics`),
+  // Download a round's marks as .xlsx (cleared=true → only cleared students).
+  downloadRoundXlsx: async (id, order, cleared = false) => {
+    const res = await request(
+      `/drive/v1/drives/${id}/rounds/${order}/export${cleared ? "?cleared=true" : ""}`,
+      { raw: true },
+    );
+    if (!res.ok) throw new Error(res.status === 401 ? "Session expired — sign in again." : "Export failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `drive-${cleared ? "cleared" : "attendees"}-round${order}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   driveRegistrations: (id) => request(`/drive/v1/drives/${id}/registrations`),
   setPpo: (id, body) => request(`/drive/v1/drives/${id}/ppo-config`, { method: "POST", body }),
 

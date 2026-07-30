@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, Plus, Trash2, CheckCircle2, Rocket, Users } from "lucide-react";
+import { Trophy, Plus, Trash2, CheckCircle2, Rocket, Users, Download } from "lucide-react";
 import { Card, Badge, Button, Input } from "../../components/ui/primitives.jsx";
 import { api } from "../../lib/api.js";
 
@@ -13,6 +13,14 @@ export default function RoundsTab({ id }) {
   const [loading, setLoading] = useState(true);
   const [addId, setAddId] = useState("");
   const [flash, setFlash] = useState(null);
+  const [dl, setDl] = useState("");
+
+  async function download(cleared) {
+    setDl(cleared ? "cleared" : "all");
+    try { await api.downloadRoundXlsx(id, order, cleared); }
+    catch (e) { setFlash(e?.message || "Export failed."); }
+    finally { setDl(""); }
+  }
 
   useEffect(() => {
     (async () => {
@@ -106,9 +114,17 @@ export default function RoundsTab({ id }) {
                 : "Panel round — enter each candidate's marks and remarks, then publish."}
             </p>
           </div>
-          <Button variant="amber" onClick={publish} disabled={!scores.length}>
-            <Rocket size={16} /> Publish round
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => download(false)} disabled={!scores.length || !!dl}>
+              <Download size={16} /> {dl === "all" ? "Preparing…" : "Export all"}
+            </Button>
+            <Button variant="secondary" onClick={() => download(true)} disabled={!scores.length || !!dl}>
+              <Download size={16} /> {dl === "cleared" ? "Preparing…" : "Export cleared"}
+            </Button>
+            <Button variant="amber" onClick={publish} disabled={!scores.length}>
+              <Rocket size={16} /> Publish round
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

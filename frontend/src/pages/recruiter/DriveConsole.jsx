@@ -13,6 +13,7 @@ import { demoDriveDetail, demoRegistrations, demoFunnel } from "../../lib/demo.j
 import ResultsTab from "./ResultsTab.jsx";
 import InterviewsTab from "./InterviewsTab.jsx";
 import RoundsTab from "./RoundsTab.jsx";
+import AnalyticsTab from "./AnalyticsTab.jsx";
 
 const TABS = [
   { id: "overview", label: "Overview", icon: Briefcase },
@@ -20,6 +21,7 @@ const TABS = [
   { id: "eligibility", label: "Eligibility", icon: SlidersHorizontal },
   { id: "candidates", label: "Candidates", icon: Users },
   { id: "rounds", label: "Rounds & Marks", icon: CheckCircle2 },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "interviews", label: "Interviews", icon: MessagesSquare },
   { id: "results", label: "Results & Offers", icon: Trophy },
   { id: "ppo", label: "PPO", icon: Award },
@@ -84,6 +86,7 @@ export default function DriveConsole() {
       {tab === "eligibility" && <Eligibility id={id} />}
       {tab === "candidates" && <Candidates id={id} rounds={(d.rounds || []).length} />}
       {tab === "rounds" && <RoundsTab id={id} />}
+      {tab === "analytics" && <AnalyticsTab id={id} />}
       {tab === "interviews" && <InterviewsTab id={id} />}
       {tab === "results" && <ResultsTab id={id} />}
       {tab === "ppo" && <Ppo id={id} />}

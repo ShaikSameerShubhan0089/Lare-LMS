@@ -308,6 +308,27 @@ def funnel(did):
         return ok(_svc().funnel(s, did))
 
 
+@bp.get("/drive/v1/drives/<did>/analytics")
+@require_roles(*MANAGE)
+def analytics(did):
+    with _db().session() as s:
+        return ok(_svc().analytics(s, did))
+
+
+@bp.get("/drive/v1/drives/<did>/rounds/<int:order>/export")
+@require_roles(*MANAGE)
+def export_round(did, order):
+    """Download a round's marks as .xlsx. ?cleared=true → only cleared students."""
+    cleared_only = request.args.get("cleared", "").lower() in ("1", "true", "yes")
+    with _db().session() as s:
+        blob, filename = _svc().export_round(s, did, order, cleared_only)
+    return Response(
+        blob,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @bp.post("/drive/v1/drives/<did>/ppo-config")
 @require_roles("super_admin", "company_admin")
 def set_ppo(did):
