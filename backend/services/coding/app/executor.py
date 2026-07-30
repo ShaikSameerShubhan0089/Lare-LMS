@@ -78,7 +78,10 @@ def _langs() -> dict[str, dict]:
         },
         "java": {
             "file": "Main.java", "bin": "javac",
-            "compile": ["javac", "Main.java"], "run": ["java", "Main"],
+            "compile": ["javac", "Main.java"],
+            # RLIMIT_AS is skipped for the JVM (see run()); bound heap + code
+            # cache with flags instead so it initialises under memory limits.
+            "run": ["java", "-Xmx256m", "-XX:ReservedCodeCacheSize=64m", "Main"],
             "version": ["javac", "-version"],
         },
         "cpp": {
@@ -128,10 +131,10 @@ class _BaseRunner(Executor):
         if not shutil.which(spec["bin"]):
             return RunResult("", f"toolchain '{spec['bin']}' not available on this host",
                              None, 0, False)
-        # Node/V8 reserves a large virtual region that RLIMIT_AS would abort, so
-        # skip the address-space cap for JS (heap bounded via --max-old-space-size);
-        # the CPU cap and wall-clock timeout still apply.
-        preexec = _rlimit_preexec(mem_mb, cap_as=language != "javascript")
+        # Node/V8 and the JVM both reserve a large virtual region that RLIMIT_AS
+        # would abort, so skip the address-space cap for them (heap bounded via
+        # runtime flags); the CPU cap and wall-clock timeout still apply.
+        preexec = _rlimit_preexec(mem_mb, cap_as=language not in ("javascript", "java"))
 
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / spec["file"]).write_text(code, encoding="utf-8")
