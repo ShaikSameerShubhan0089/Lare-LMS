@@ -349,6 +349,7 @@ class DriveService:
         return self._score_out(row)
 
     def remove_round_candidate(self, s: Session, did: str, order: int, candidate_id: str) -> dict:
+        # Delete this candidate's score for the round.
         row = s.execute(
             select(RoundScore).where(
                 RoundScore.drive_id == did, RoundScore.round_order == order,
@@ -356,7 +357,21 @@ class DriveService:
         ).scalar_one_or_none()
         if row:
             s.delete(row)
-            s.flush()
+        # Round 1 is auto-seeded from the registrations, so deleting just the
+        # score row would reappear on the next reload. Removing a student from
+        # Round 1 therefore means removing them from the drive entirely: drop
+        # the registration and all their round scores so the delete sticks.
+        if order == 1:
+            reg = s.execute(select(Registration).where(
+                Registration.drive_id == did,
+                Registration.candidate_id == candidate_id)).scalar_one_or_none()
+            if reg:
+                s.delete(reg)
+            for rs in s.execute(select(RoundScore).where(
+                    RoundScore.drive_id == did,
+                    RoundScore.candidate_id == candidate_id)).scalars().all():
+                s.delete(rs)
+        s.flush()
         return {"candidate_id": candidate_id, "removed": True}
 
     def publish_round(self, s: Session, did: str, order: int) -> dict:
