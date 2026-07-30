@@ -38,9 +38,13 @@ class RunResult:
     oom: bool = False
 
 
-def _rlimit_preexec(mem_mb: int):
+def _rlimit_preexec(mem_mb: int, cap_as: bool = True):
     """POSIX preexec that caps address space (RLIMIT_AS) so runaway solutions get
-    killed instead of exhausting the host. No-op on Windows (no `resource`)."""
+    killed instead of exhausting the host. No-op on Windows (no `resource`).
+
+    ``cap_as=False`` skips the address-space cap (kept for Node/V8, which
+    reserves a huge virtual region that RLIMIT_AS would abort); the CPU cap
+    still applies and the JS heap is bounded via ``--max-old-space-size``."""
     try:
         import resource  # POSIX only
     except Exception:  # noqa: BLE001
@@ -49,7 +53,8 @@ def _rlimit_preexec(mem_mb: int):
     def _apply():
         cap = mem_mb * 1024 * 1024
         try:
-            resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
+            if cap_as:
+                resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
             resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
         except Exception:  # noqa: BLE001
             pass
@@ -67,7 +72,9 @@ def _langs() -> dict[str, dict]:
         },
         "javascript": {
             "file": "main.js", "bin": "node",
-            "run": ["node", "main.js"], "version": ["node", "--version"],
+            # RLIMIT_AS is skipped for node (see run()); bound the JS heap here.
+            "run": ["node", "--max-old-space-size=256", "main.js"],
+            "version": ["node", "--version"],
         },
         "java": {
             "file": "Main.java", "bin": "javac",
@@ -121,7 +128,10 @@ class _BaseRunner(Executor):
         if not shutil.which(spec["bin"]):
             return RunResult("", f"toolchain '{spec['bin']}' not available on this host",
                              None, 0, False)
-        preexec = _rlimit_preexec(mem_mb)
+        # Node/V8 reserves a large virtual region that RLIMIT_AS would abort, so
+        # skip the address-space cap for JS (heap bounded via --max-old-space-size);
+        # the CPU cap and wall-clock timeout still apply.
+        preexec = _rlimit_preexec(mem_mb, cap_as=language != "javascript")
 
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / spec["file"]).write_text(code, encoding="utf-8")
@@ -186,7 +196,13 @@ class SandboxedExecutor(_BaseRunner):
                     "--bindmount_ro", "/usr", "--bindmount", f"{workdir}:{workdir}", "--", *argv]
         return [self.bwrap, "--unshare-all", "--die-with-parent", "--new-session",
                 "--ro-bind", "/usr", "/usr", "--ro-bind", "/lib", "/lib",
-                "--ro-bind", "/lib64", "/lib64", "--proc", "/proc", "--dev", "/dev",
+                "--ro-bind", "/lib64", "/lib64",
+                # /etc resolves update-alternatives symlinks (javac/java) and
+                # provides CA certs / JVM config; sys.prefix mounts the Python
+                # venv so the interpreter is reachable inside the sandbox.
+                "--ro-bind", "/etc", "/etc",
+                "--ro-bind", sys.prefix, sys.prefix,
+                "--proc", "/proc", "--dev", "/dev",
                 "--bind", workdir, workdir, "--chdir", workdir, "--", *argv]
 
 
