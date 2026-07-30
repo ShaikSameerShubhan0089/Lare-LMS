@@ -404,8 +404,8 @@ class DriveService:
             else:
                 if reg:
                     reg.status = "rejected"
-                # Regret note to candidates who did not clear this round.
-                notify.append({**base, "outcome": "rejected"})
+                # Non-cleared candidates are NOT notified — only selected/
+                # shortlisted students receive the email + in-app message.
         s.flush()
         return {"drive_id": did, "round_order": order, "advanced": advanced,
                 "final_round": is_last, "next_round": None if is_last else order + 1,
