@@ -42,6 +42,16 @@ class AssessmentService:
         s.flush()
         return a
 
+    def list(self, s: Session, year_no: int | None = None, limit: int = 100) -> list[Assessment]:
+        q = select(Assessment)
+        if year_no:
+            q = q.where(Assessment.year_no == year_no)
+        return list(s.execute(q.order_by(Assessment.created_at.desc()).limit(limit)).scalars().all())
+
+    def list_out(self, s: Session, a: Assessment) -> dict:
+        n = s.execute(select(func.count(Item.id)).where(Item.assessment_id == a.id)).scalar_one()
+        return {**self.out(a), "objectives": a.objectives or [], "item_count": int(n)}
+
     def get(self, s: Session, aid: str) -> Assessment:
         a = s.get(Assessment, aid)
         if not a:

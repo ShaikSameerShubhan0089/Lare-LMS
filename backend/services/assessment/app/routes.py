@@ -41,6 +41,15 @@ def create():
         return created(_svc().out(_svc().create(s, data)))
 
 
+@bp.get("/lms/v1/assessments")
+@require_roles(*READ)
+def list_assessments():
+    year = request.args.get("year_no")
+    with _db().session() as s:
+        rows = _svc().list(s, int(year) if year else None)
+        return ok([_svc().list_out(s, a) for a in rows])
+
+
 @bp.get("/lms/v1/assessments/summary")
 @require_roles(*READ)
 def summary():

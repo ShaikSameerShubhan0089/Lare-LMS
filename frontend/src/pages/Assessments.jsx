@@ -23,6 +23,16 @@ export default function Assessments() {
   const [live, setLive] = useState(false);
   const [violations, setViolations] = useState(0);
   const [lastSignal, setLastSignal] = useState("");
+  const [list, setList] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await api.listAssessments();
+        if (rows?.length) setList(rows);
+      } catch { /* offline / demo */ }
+    })();
+  }, []);
 
   const vRef = useRef(0);
   const submittedRef = useRef(false);
@@ -30,11 +40,12 @@ export default function Assessments() {
 
   const proctored = !!assessment?.proctored;
 
-  async function start() {
-    let a = demoAssessment;
+  async function start(chosen) {
+    const target = chosen || assessment || demoAssessment;
+    let a = target;
     let att = null;
     try {
-      a = await api.getAssessment(demoAssessment.id);
+      a = await api.getAssessment(target.id);
       att = await api.startAttempt(a.id, learnerId);
       setLive(true);
     } catch {
@@ -94,25 +105,38 @@ export default function Assessments() {
   }, [phase, proctored]);
 
   if (phase === "intro") {
+    const cards = list.length ? list : [{
+      id: demoAssessment.id, title: demoAssessment.title,
+      item_count: demoAssessment.items.length, passing_pct: demoAssessment.pass_pct,
+      time_limit_min: demoAssessment.duration_min, proctored: false,
+    }];
     return (
       <div>
-        <PageHeader title="Assessments" subtitle="Weekly quizzes build your skill scorecard" />
-        <Card className="p-6 max-w-lg">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="grid place-items-center h-11 w-11 rounded-md bg-brand-500/10 text-brand-600">
-              <FileCheck2 size={22} />
-            </span>
-            <div>
-              <h2 className="font-display font-semibold text-ink-900">{assessment.title}</h2>
-              <p className="text-sm text-slate-500">{assessment.items.length} questions · pass {assessment.pass_pct}%</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-slate-500 mb-5">
-            <span className="flex items-center gap-1.5"><Timer size={15} /> {assessment.duration_min} min</span>
-            <span className="flex items-center gap-1.5"><Trophy size={15} /> +XP on pass</span>
-          </div>
-          <Button onClick={start}>Start assessment</Button>
-        </Card>
+        <PageHeader title="Assessments" subtitle="Pick an assessment to build your skill scorecard" />
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {cards.map((a) => (
+            <Card key={a.id} className="p-6 flex flex-col">
+              <div className="flex items-start justify-between">
+                <span className="grid place-items-center h-11 w-11 rounded-md bg-brand-500/10 text-brand-600">
+                  <FileCheck2 size={22} />
+                </span>
+                {a.proctored && (
+                  <Badge tone="amber"><ShieldAlert size={13} /> Proctored</Badge>
+                )}
+              </div>
+              <h2 className="mt-4 font-display font-semibold text-ink-900">{a.title}</h2>
+              <p className="text-sm text-slate-500">{a.item_count} questions · pass {a.passing_pct}%</p>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
+                {a.time_limit_min > 0 && <span className="flex items-center gap-1.5"><Timer size={14} /> {a.time_limit_min} min</span>}
+                <span className="flex items-center gap-1.5"><Trophy size={14} /> +XP on pass</span>
+              </div>
+              <Button className="mt-5" onClick={() => start(a)}>Start assessment</Button>
+            </Card>
+          ))}
+        </div>
+        {!list.length && (
+          <p className="mt-4 text-sm text-slate-400">Showing a sample assessment — your trainer's published assessments will appear here.</p>
+        )}
       </div>
     );
   }
@@ -194,7 +218,7 @@ export default function Assessments() {
         )}
         <div className="flex gap-2 justify-center mt-6">
           <Button variant="secondary" onClick={() => setPhase("intro")}>Back</Button>
-          <Button onClick={start}><RotateCcw size={16} /> Retake</Button>
+          <Button onClick={() => start(assessment)}><RotateCcw size={16} /> Retake</Button>
         </div>
       </Card>
     </div>

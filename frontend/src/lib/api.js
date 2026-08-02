@@ -302,6 +302,7 @@ export const api = {
   gradeAnswer: (answerId, score) => request(`/lms/v1/answers/${answerId}/grade`, { method: "POST", body: { score } }),
 
   // ---- LMS assessments (student take-flow) ----
+  listAssessments: () => request("/lms/v1/assessments"),
   createAssessment: (body) => request("/lms/v1/assessments", { method: "POST", body }),
   getAssessment: (aid) => request(`/lms/v1/assessments/${aid}`),
   startAttempt: (aid, learnerId) => request(`/lms/v1/assessments/${aid}/attempts`, { method: "POST", body: { learner_id: learnerId } }),
