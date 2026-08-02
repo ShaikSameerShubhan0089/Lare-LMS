@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
 from lare_common.auth_context import current_identity, require_roles
-from lare_common.errors import BadRequest
+from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import created, ok
 
 from .schemas import AssessmentIn, GradeIn, StartIn, SubmitIn
@@ -49,6 +49,19 @@ def summary():
         raise BadRequest("learner_id is required", code="learner_id_required")
     with _db().session() as s:
         return ok(_svc().summary(s, learner_id))
+
+
+@bp.get("/lms/v1/assessments/twin/<learner_id>")
+@require_roles(*READ)
+def twin(learner_id):
+    """LMS Cognitive Twin skill profile. A student sees only their own; staff
+    (trainers/admins) may view any learner's."""
+    ident = current_identity()
+    staff = ("super_admin", "company_admin", "college_admin", "trainer")
+    if not ident.has_role(*staff) and learner_id != ident.user_id:
+        raise Forbidden("You can only view your own skill map.")
+    with _db().session() as s:
+        return ok(_svc().skill_profile(s, learner_id))
 
 
 @bp.get("/lms/v1/assessments/<aid>")

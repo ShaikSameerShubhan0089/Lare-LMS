@@ -161,6 +161,78 @@ class AssessmentService:
             })
         return out
 
+    # ---------- Cognitive Twin v0.1 (LMS): learner skill profile ----------
+    def skill_profile(self, s: Session, learner_id: str) -> dict:
+        """Build an LMS learner's skill model from their assessment history —
+        per learning-objective (topic) and per scorecard dimension (category)
+        mastery. Reads only LMS assessment data; fully separate from LARE Hire."""
+        attempts = s.execute(
+            select(Attempt).where(Attempt.learner_id == learner_id)
+        ).scalars().all()
+        graded = [a for a in attempts if a.status in ("submitted", "graded")]
+
+        a_ids = {a.assessment_id for a in graded}
+        assessments = {}
+        if a_ids:
+            assessments = {a.id: a for a in s.execute(
+                select(Assessment).where(Assessment.id.in_(a_ids))).scalars().all()}
+
+        cat_store, topic_store = {}, {}
+        tot_att = tot_cor = 0
+
+        def _acc(store: dict, key: str, awarded: float, mx: float, correct: int):
+            b = store.setdefault(key, {"attempted": 0, "correct": 0, "awarded": 0.0, "max": 0.0})
+            b["attempted"] += 1
+            b["correct"] += correct
+            b["awarded"] += awarded
+            b["max"] += mx
+
+        for att in graded:
+            a = assessments.get(att.assessment_id)
+            category = (a.dimension if a else None) or (a.type if a else None) or "general"
+            objectives = [str(o) for o in ((a.objectives if a else None) or []) if o]
+            answers = s.execute(select(Answer).where(Answer.attempt_id == att.id)).scalars().all()
+            for ans in answers:
+                mx = float(ans.max_score or 0)
+                if mx <= 0:
+                    continue
+                awarded = ans.final_score if ans.final_score is not None else (ans.auto_score or 0)
+                awarded = float(awarded or 0)
+                correct = 1 if awarded >= mx else 0
+                _acc(cat_store, category, awarded, mx, correct)
+                for obj in objectives:
+                    _acc(topic_store, obj, awarded, mx, correct)
+                tot_att += 1
+                tot_cor += correct
+
+        def _mastery(b: dict) -> float:
+            return round(b["awarded"] * 100.0 / b["max"], 1) if b["max"] else 0.0
+
+        def _band(pct: float) -> str:
+            return "strong" if pct >= 80 else ("developing" if pct >= 55 else "weak")
+
+        def _fmt(store: dict, sort: bool = False) -> list[dict]:
+            rows = [{"name": k, "attempted": v["attempted"], "correct": v["correct"],
+                     "mastery": _mastery(v), "band": _band(_mastery(v))}
+                    for k, v in store.items()]
+            rows.sort(key=lambda r: (r["mastery"] if sort else 0, r["attempted"]), reverse=sort)
+            return rows
+
+        overall_pct = round(
+            sum(v["awarded"] for v in cat_store.values()) * 100.0
+            / sum(v["max"] for v in cat_store.values()), 1) if cat_store else 0.0
+        topics = _fmt(topic_store, sort=True)
+        return {
+            "learner_id": learner_id,
+            "exams_taken": len(graded),
+            "overall": {"attempted": tot_att, "correct": tot_cor, "mastery": overall_pct},
+            "by_category": _fmt(cat_store),
+            "strengths": [t for t in topics if t["band"] == "strong"][:6],
+            "focus_areas": sorted([t for t in topics if t["band"] != "strong"],
+                                  key=lambda r: r["mastery"])[:6],
+            "topics": topics,
+        }
+
     # ---------- serializers ----------
     @staticmethod
     def item_for_attempt(it: Item) -> dict:
