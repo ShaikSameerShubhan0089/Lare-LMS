@@ -1,12 +1,17 @@
-import { useState } from "react";
-import { FileCheck2, CheckCircle2, Timer, Trophy, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FileCheck2, CheckCircle2, Timer, Trophy, RotateCcw, ShieldAlert } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
 import { PageHeader, DataSource } from "../components/ui/states.jsx";
 import { useAuth } from "../lib/auth.jsx";
 import { api } from "../lib/api.js";
+import { attachProctoring, SIGNAL_LABEL } from "../lib/proctor.js";
 import { demoAssessment, DEMO_LEARNER_ID } from "../lib/demo.js";
 
+const VIOLATION_LIMIT = 5;
+
 // Student LMS assessment take-flow: start attempt -> answer -> submit -> score.
+// Proctored assessments enforce fullscreen + tab-switch/copy-paste rules and
+// auto-submit at 5 warnings — the same anti-cheat used in LARE Hire exams.
 export default function Assessments() {
   const { user } = useAuth();
   const learnerId = user?.id || DEMO_LEARNER_ID;
@@ -16,6 +21,14 @@ export default function Assessments() {
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
   const [live, setLive] = useState(false);
+  const [violations, setViolations] = useState(0);
+  const [lastSignal, setLastSignal] = useState("");
+
+  const vRef = useRef(0);
+  const submittedRef = useRef(false);
+  const submitRef = useRef(() => {});
+
+  const proctored = !!assessment?.proctored;
 
   async function start() {
     let a = demoAssessment;
@@ -31,10 +44,20 @@ export default function Assessments() {
     setAttemptId(att?.attempt_id || `att-demo`);
     setAnswers({});
     setResult(null);
+    vRef.current = 0;
+    submittedRef.current = false;
+    setViolations(0);
+    setLastSignal("");
     setPhase("taking");
+    if (a?.proctored) {
+      try { await document.documentElement.requestFullscreen?.(); } catch { /* user can decline */ }
+    }
   }
 
-  async function submit() {
+  async function submit(reason) {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* ignore */ } }
     const payload = Object.fromEntries(
       Object.entries(answers).map(([qid, option]) => [qid, { option }])
     );
@@ -42,15 +65,33 @@ export default function Assessments() {
     try {
       res = await api.submitAttempt(attemptId, payload);
     } catch {
-      // demo grading: award for chosen "b" on the seeded questions
       const correct = { i1: "b", i2: "b", i3: "b" };
       const got = assessment.items.filter((it) => answers[it.id] === correct[it.id]).length;
       const pct = Math.round((got / assessment.items.length) * 100);
       res = { percentage: pct, passed: pct >= (assessment.pass_pct || 60), score: got, max_score: assessment.items.length, demo: true };
     }
+    if (reason === "proctor") res = { ...res, auto_submitted: true };
     setResult(res);
     setPhase("done");
   }
+  submitRef.current = submit;
+
+  // Proctoring: attach the anti-cheat listeners only while taking a proctored
+  // assessment; each violation counts toward the 5-flag auto-submit.
+  useEffect(() => {
+    if (phase !== "taking" || !proctored) return;
+    const detach = attachProctoring({
+      onViolation: (type) => {
+        if (submittedRef.current) return;
+        const next = Math.min(vRef.current + 1, VIOLATION_LIMIT);
+        vRef.current = next;
+        setViolations(next);
+        setLastSignal(SIGNAL_LABEL[type] || type);
+        if (next >= VIOLATION_LIMIT) submitRef.current("proctor");
+      },
+    });
+    return detach;
+  }, [phase, proctored]);
 
   if (phase === "intro") {
     return (
@@ -85,11 +126,22 @@ export default function Assessments() {
           subtitle={`${answered}/${assessment.items.length} answered`}
           right={<DataSource live={live} />}
         />
+        {proctored && (
+          <div className={`max-w-2xl mb-4 rounded-lg p-3.5 flex items-center gap-3 text-sm ${
+            violations >= 3 ? "bg-rose-500/10 text-rose-700" : "bg-amber-500/10 text-amber-700"}`}>
+            <ShieldAlert size={18} className="shrink-0" />
+            <div>
+              <span className="font-semibold">Proctored assessment · {violations}/{VIOLATION_LIMIT} warnings.</span>{" "}
+              Stay in fullscreen — switching tabs, copying, or exiting fullscreen is flagged. At {VIOLATION_LIMIT} it auto-submits.
+              {lastSignal && <span className="block text-xs mt-0.5 opacity-80">Last flag: {lastSignal}</span>}
+            </div>
+          </div>
+        )}
         <div className="space-y-4 max-w-2xl">
           {assessment.items.map((it, i) => (
             <Card key={it.id} className="p-5">
               <p className="font-medium text-ink-900 mb-3">
-                <span className="text-slate-400 mr-2">{i + 1}.</span>{it.stem}
+                <span className="text-slate-400 mr-2">{i + 1}.</span>{it.prompt || it.stem}
               </p>
               <div className="space-y-2">
                 {it.options.map((o) => (
@@ -112,7 +164,7 @@ export default function Assessments() {
               </div>
             </Card>
           ))}
-          <Button onClick={submit} disabled={answered === 0} size="lg">
+          <Button onClick={() => submit()} disabled={answered === 0} size="lg">
             <CheckCircle2 size={18} /> Submit assessment
           </Button>
         </div>
@@ -135,6 +187,11 @@ export default function Assessments() {
         <p className="text-sm text-slate-500 mt-3">
           {result.score}/{result.max_score} correct{result.pending_grading?.length ? ` · ${result.pending_grading.length} pending manual grade` : ""}
         </p>
+        {result.auto_submitted && (
+          <p className="text-xs text-rose-600 mt-2 flex items-center justify-center gap-1.5">
+            <ShieldAlert size={13} /> Auto-submitted after reaching the warning limit.
+          </p>
+        )}
         <div className="flex gap-2 justify-center mt-6">
           <Button variant="secondary" onClick={() => setPhase("intro")}>Back</Button>
           <Button onClick={start}><RotateCcw size={16} /> Retake</Button>

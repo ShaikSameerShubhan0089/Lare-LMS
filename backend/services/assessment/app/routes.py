@@ -67,10 +67,11 @@ def twin(learner_id):
 @bp.get("/lms/v1/assessments/<aid>")
 @require_roles(*READ)
 def get_assessment(aid):
+    ident = current_identity()
     with _db().session() as s:
         a = _svc().get(s, aid)
         return ok({**_svc().out(a),
-                   "items": [_svc().item_for_attempt(it) for it in _svc().items(s, aid)]})
+                   "items": _svc().delivery_items(s, a, ident.user_id)})
 
 
 @bp.post("/lms/v1/assessments/<aid>/attempts")

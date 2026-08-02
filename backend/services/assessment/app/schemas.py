@@ -23,6 +23,8 @@ class AssessmentIn(BaseModel):
     negative_marking: float = Field(default=0.0, ge=0)
     dimension: str = Field(default="aptitude", pattern="^(communication|coding|aptitude|project)$")
     objectives: list[str] = []
+    proctored: bool = False
+    shuffle: bool = False
     items: list[ItemIn] = []
 
 

@@ -33,6 +33,10 @@ class Assessment(Base):
     negative_marking: Mapped[float] = mapped_column(Float, default=0.0)
     dimension: Mapped[str] = mapped_column(String(16), default="aptitude")  # scorecard dim
     objectives: Mapped[list] = mapped_column(JSON, default=list)
+    # Anti-cheat: proctored quizzes enforce tab-switch/copy-paste/fullscreen rules
+    # (5-flag auto-submit); shuffle randomises question + option order per student.
+    proctored: Mapped[bool] = mapped_column(Boolean, default=False)
+    shuffle: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     items: Mapped[list["Item"]] = relationship(cascade="all, delete-orphan")

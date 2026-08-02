@@ -31,6 +31,7 @@ class AssessmentService:
             time_limit_min=data.time_limit_min, attempts_allowed=data.attempts_allowed,
             passing_pct=data.passing_pct, negative_marking=data.negative_marking,
             dimension=data.dimension, objectives=data.objectives,
+            proctored=data.proctored, shuffle=data.shuffle,
         )
         s.add(a)
         s.flush()
@@ -244,7 +245,23 @@ class AssessmentService:
     def out(a: Assessment) -> dict:
         return {"id": a.id, "title": a.title, "year_no": a.year_no, "type": a.type,
                 "attempts_allowed": a.attempts_allowed, "passing_pct": a.passing_pct,
-                "dimension": a.dimension}
+                "time_limit_min": a.time_limit_min, "dimension": a.dimension,
+                "proctored": bool(a.proctored), "shuffle": bool(a.shuffle)}
+
+    def delivery_items(self, s: Session, a: Assessment, seed: str) -> list[dict]:
+        """Items served to a candidate. When shuffle is on, question and option
+        order are randomised per student (seeded so a page reload is stable), so
+        'the answer is C' and screen-peeking don't help. Grading is by id, so
+        order never affects scoring."""
+        import random
+        rows = [self.item_for_attempt(it) for it in self.items(s, a.id)]
+        if a.shuffle:
+            random.Random(f"{seed}:{a.id}").shuffle(rows)
+            for it in rows:
+                opts = list(it.get("options") or [])
+                random.Random(f"{seed}:{it['id']}").shuffle(opts)
+                it["options"] = opts
+        return rows
 
     def attempt_out(self, s: Session, att: Attempt) -> dict:
         answers = s.execute(select(Answer).where(Answer.attempt_id == att.id)).scalars().all()
