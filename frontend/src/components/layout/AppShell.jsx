@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   Bell,
+  Brain,
 } from "lucide-react";
 import { Logo } from "../ui/Logo.jsx";
 import { Badge } from "../ui/primitives.jsx";
@@ -80,6 +81,7 @@ export const PRODUCTS = {
     // Students only browse & take their drive tests here. No LMS anything.
     items: [
       { to: "/drive", icon: Briefcase, label: "My Drives", end: true, roles: STUDENT },
+      { to: "/drive/skill-map", icon: Brain, label: "My Skill Map", roles: STUDENT },
     ],
     sections: [
       {

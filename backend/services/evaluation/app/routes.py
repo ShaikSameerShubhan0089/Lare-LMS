@@ -4,8 +4,8 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import require_roles
-from lare_common.errors import BadRequest
+from lare_common.auth_context import current_identity, require_roles
+from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import created, ok
 
 from .schemas import KeyIn, RankIn, RunIn
@@ -72,6 +72,19 @@ def reevaluate(session_id):
 def get_eval(session_id):
     with _db().session() as s:
         return ok(_svc().get(s, session_id))
+
+
+@bp.get("/drive/v1/evaluations/twin/<candidate_id>")
+@require_roles("super_admin", "company_admin", "recruiter", "student")
+def twin(candidate_id):
+    """Cognitive Twin skill profile. A student may only view their own; staff
+    (recruiters/admins) may view any candidate's."""
+    ident = current_identity()
+    is_staff = ident.has_role(*STAFF)
+    if not is_staff and candidate_id != ident.user_id:
+        raise Forbidden("You can only view your own skill map.")
+    with _db().session() as s:
+        return ok(_svc().skill_profile(s, candidate_id))
 
 
 @bp.post("/drive/v1/evaluations/rank")

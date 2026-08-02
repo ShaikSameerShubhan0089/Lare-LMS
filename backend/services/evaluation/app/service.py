@@ -37,6 +37,21 @@ def _attempted(resp) -> bool:
 
 # East-west client to the Coding service for running submissions during grading.
 _CODE = ServiceClient("drive-evaluation", default_roles=["company_admin"], timeout=90)
+# East-west client to the Question Bank — resolves question IDs to topic tags for
+# the Cognitive Twin skill profile.
+_QB = ServiceClient("drive-evaluation", default_roles=["company_admin"], timeout=15)
+
+
+def _mastery(correct: int, attempted: int) -> float:
+    return round(correct * 100.0 / attempted, 1) if attempted else 0.0
+
+
+def _band(pct: float) -> str:
+    if pct >= 80:
+        return "strong"
+    if pct >= 55:
+        return "developing"
+    return "weak"
 
 
 class EvaluationService:
@@ -193,6 +208,82 @@ class EvaluationService:
         if not ev:
             raise NotFound("Evaluation not found", code="evaluation_not_found")
         return self.out(ev)
+
+    # ---------- Cognitive Twin v0.1: per-learner skill profile ----------
+    def _question_meta(self, qids: list[str]) -> dict:
+        """qid -> {category, difficulty, tags} from the Question Bank."""
+        if not qids:
+            return {}
+        try:
+            resp = _QB.post("drive-questionbank", "/drive/v1/questions/meta", {"ids": qids})
+            items = (resp or {}).get("data") or []
+            return {it["id"]: it for it in items}
+        except Exception:  # noqa: BLE001 — twin degrades gracefully without topics
+            log.warning("question-bank meta lookup failed; skill map without topics")
+            return {}
+
+    def skill_profile(self, s: Session, candidate_id: str) -> dict:
+        """Build a learner's skill model from every written test they've taken:
+        per-topic, per-category and per-difficulty mastery. The foundation of the
+        Cognitive Twin — computed from data the platform already collects."""
+        evals = s.execute(
+            select(Evaluation).where(Evaluation.candidate_id == candidate_id)
+        ).scalars().all()
+
+        # Fold every question the learner has answered into attempted/correct.
+        per_q: dict[str, dict] = {}
+        for ev in evals:
+            for qs in (ev.question_scores or []):
+                qid = qs.get("qid") or qs.get("question_id")
+                if not qid:
+                    continue
+                rec = per_q.setdefault(qid, {"attempted": 0, "correct": 0})
+                rec["attempted"] += 1
+                ok_flag = qs.get("correct")
+                if ok_flag is None:
+                    ok_flag = float(qs.get("awarded", 0) or 0) > 0
+                if ok_flag:
+                    rec["correct"] += 1
+
+        meta = self._question_meta(list(per_q.keys()))
+
+        def _bucket(store: dict, key: str, rec: dict):
+            b = store.setdefault(key, {"attempted": 0, "correct": 0})
+            b["attempted"] += rec["attempted"]
+            b["correct"] += rec["correct"]
+
+        by_cat, by_topic, by_diff = {}, {}, {}
+        tot_a = tot_c = 0
+        for qid, rec in per_q.items():
+            m = meta.get(qid) or {}
+            _bucket(by_cat, m.get("category") or "other", rec)
+            _bucket(by_diff, m.get("difficulty") or "easy", rec)
+            for tag in (m.get("tags") or []):
+                _bucket(by_topic, str(tag), rec)
+            tot_a += rec["attempted"]
+            tot_c += rec["correct"]
+
+        def _fmt(store: dict, sort: bool = False) -> list[dict]:
+            rows = [{"name": k, "attempted": v["attempted"], "correct": v["correct"],
+                     "mastery": _mastery(v["correct"], v["attempted"]),
+                     "band": _band(_mastery(v["correct"], v["attempted"]))}
+                    for k, v in store.items()]
+            rows.sort(key=lambda r: (r["mastery"] if sort else 0, r["attempted"]), reverse=sort)
+            return rows
+
+        topics = _fmt(by_topic, sort=True)
+        return {
+            "candidate_id": candidate_id,
+            "exams_taken": len(evals),
+            "overall": {"attempted": tot_a, "correct": tot_c, "mastery": _mastery(tot_c, tot_a)},
+            "by_category": _fmt(by_cat),
+            "by_difficulty": _fmt(by_diff),
+            "strengths": [t for t in topics if t["band"] == "strong"][:6],
+            "focus_areas": sorted(
+                [t for t in topics if t["band"] in ("weak", "developing")],
+                key=lambda r: r["mastery"])[:6],
+            "topics": topics,
+        }
 
     def compute_ranks(self, s: Session, exam_id: str) -> list[dict]:
         evals = s.execute(

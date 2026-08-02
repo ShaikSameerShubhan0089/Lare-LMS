@@ -12,6 +12,7 @@ import MyLearning from "./pages/MyLearning.jsx";
 import Achievements from "./pages/Achievements.jsx";
 import ExamPortal from "./pages/ExamPortal.jsx";
 import Drives from "./pages/Drives.jsx";
+import SkillMap from "./pages/SkillMap.jsx";
 import Analytics from "./pages/Analytics.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Profile from "./pages/Profile.jsx";
@@ -85,6 +86,7 @@ export default function App() {
 
       {/* ================= LARE Hire (Drive) ================= */}
       <Route path="/drive" element={drive(<Drives />)} />
+      <Route path="/drive/skill-map" element={drive(<SkillMap />)} />
       <Route path="/drive/test/:examId" element={drive(<ExamPortal />)} />
       <Route path="/drive/recruiter/drives" element={driveStaff(<RecruiterDrives />)} />
       <Route path="/drive/recruiter/drives/:id" element={driveStaff(<DriveConsole />)} />

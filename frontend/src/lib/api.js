@@ -184,6 +184,8 @@ export const api = {
   shortlist: (id, candidate_ids) => request(`/drive/v1/drives/${id}/shortlist`, { method: "POST", body: { candidate_ids } }),
   advance: (id, candidate_id) => request(`/drive/v1/drives/${id}/advance`, { method: "POST", body: { candidate_id } }),
   funnel: (id) => request(`/drive/v1/drives/${id}/funnel`),
+  // Cognitive Twin v0.1 — a learner's skill profile from their exam history.
+  skillTwin: (candidateId) => request(`/drive/v1/evaluations/twin/${candidateId}`),
   driveAnalytics: (id) => request(`/drive/v1/drives/${id}/analytics`),
   // Download a round's marks as .xlsx (cleared=true → only cleared students).
   downloadRoundXlsx: async (id, order, cleared = false) => {

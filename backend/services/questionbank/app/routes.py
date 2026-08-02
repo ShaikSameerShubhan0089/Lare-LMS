@@ -111,6 +111,16 @@ def workflow(qid, action):
         return ok(_svc().out(_svc().transition(s, qid, action, ident.user_id), with_key=True))
 
 
+@bp.post("/drive/v1/questions/meta")
+@require_roles(*AUTHOR)
+def question_meta():
+    # Topic metadata for a set of question IDs (internal — Cognitive Twin). No
+    # stems or answer keys are returned.
+    body = request.get_json(silent=True) or {}
+    with _db().session() as s:
+        return ok(_svc().meta(s, body.get("ids") or []))
+
+
 @bp.get("/drive/v1/questions/search")
 @require_roles(*AUTHOR)
 def search_questions():

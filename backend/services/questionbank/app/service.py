@@ -283,6 +283,16 @@ class QuestionBankService:
             q = q.where(and_(*conds))
         return list(s.execute(q.limit(limit)).scalars().all())
 
+    def meta(self, s: Session, ids: list[str]) -> list[dict]:
+        """Topic metadata for a set of question IDs — no stems, no answer keys.
+        Used by the Cognitive Twin to map answered questions to skills/topics."""
+        ids = [i for i in dict.fromkeys(ids) if i]
+        if not ids:
+            return []
+        rows = s.execute(select(Question).where(Question.id.in_(ids))).scalars().all()
+        return [{"id": q.id, "category": q.category, "difficulty": q.difficulty,
+                 "tags": q.tags or []} for q in rows]
+
     # ---------- blueprints ----------
     def create_blueprint(self, s: Session, data) -> Blueprint:
         bp = Blueprint(id=new_id(), name=data.name, spec=data.spec)
