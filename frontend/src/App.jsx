@@ -73,6 +73,7 @@ export default function App() {
       <Route path="/lms" element={lms(<Dashboard />)} />
       <Route path="/lms/learning" element={lms(<MyLearning />)} />
       <Route path="/lms/assessments" element={lms(<Assessments />)} />
+      <Route path="/lms/skill-map" element={lms(<SkillMap />)} />
       <Route path="/lms/achievements" element={lms(<Achievements />)} />
       <Route path="/lms/tutor" element={lms(<Tutor />)} />
       <Route path="/lms/certificates" element={lms(<Certificates />)} />
@@ -86,7 +87,6 @@ export default function App() {
 
       {/* ================= LARE Hire (Drive) ================= */}
       <Route path="/drive" element={drive(<Drives />)} />
-      <Route path="/drive/skill-map" element={drive(<SkillMap />)} />
       <Route path="/drive/test/:examId" element={drive(<ExamPortal />)} />
       <Route path="/drive/recruiter/drives" element={driveStaff(<RecruiterDrives />)} />
       <Route path="/drive/recruiter/drives/:id" element={driveStaff(<DriveConsole />)} />

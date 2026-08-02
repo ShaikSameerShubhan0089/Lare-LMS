@@ -50,6 +50,7 @@ export const PRODUCTS = {
       { to: "/lms", icon: LayoutDashboard, label: "Dashboard", end: true, roles: STUDENT },
       { to: "/lms/learning", icon: BookOpen, label: "My Learning", roles: STUDENT },
       { to: "/lms/assessments", icon: ClipboardList, label: "Assessments", roles: STUDENT },
+      { to: "/lms/skill-map", icon: Brain, label: "My Skill Map", roles: STUDENT },
       { to: "/lms/achievements", icon: Trophy, label: "Achievements", roles: STUDENT },
       { to: "/lms/tutor", icon: Sparkles, label: "AI Tutor", roles: STUDENT },
       { to: "/lms/certificates", icon: Award, label: "Certificates", roles: STUDENT },
@@ -81,7 +82,6 @@ export const PRODUCTS = {
     // Students only browse & take their drive tests here. No LMS anything.
     items: [
       { to: "/drive", icon: Briefcase, label: "My Drives", end: true, roles: STUDENT },
-      { to: "/drive/skill-map", icon: Brain, label: "My Skill Map", roles: STUDENT },
     ],
     sections: [
       {
