@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ClipboardCheck, UserCheck, Award, CheckCircle2, GraduationCap,
-  Plus, Trash2, ShieldAlert, Shuffle, FilePlus2,
+  Plus, Trash2, ShieldAlert, Shuffle, FilePlus2, Compass,
 } from "lucide-react";
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { PageHeader, Loading, DataSource } from "../../components/ui/states.jsx";
@@ -77,16 +77,102 @@ export default function TrainerConsole() {
       </Card>
 
       <CreateAssessment onCreated={(m) => setFlash(m)} />
+      <CareerManager onChange={(m) => setFlash(m)} />
       <SubjectiveGrading onGraded={(m) => setFlash(m)} />
     </div>
   );
 }
 
+// Career-role targets for the LMS Skills-to-Opportunity (Career Readiness) map.
+function CareerManager({ onChange }) {
+  const [list, setList] = useState(null);
+  const [form, setForm] = useState({ title: "", description: "", skillsText: "" });
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    try { setList(await api.listCareers()); } catch { setList([]); }
+  }
+  useEffect(() => { load(); }, []);
+
+  function parseSkills(text) {
+    return (text || "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => {
+      const [name, w] = t.split(":").map((x) => x.trim());
+      const weight = Number(w);
+      return { name, weight: weight > 0 ? weight : 1 };
+    });
+  }
+
+  async function add(e) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.createCareer({
+        title: form.title, description: form.description || null,
+        required_skills: parseSkills(form.skillsText),
+      });
+      setForm({ title: "", description: "", skillsText: "" });
+      onChange && onChange("Career role added.");
+      load();
+    } catch {
+      onChange && onChange("Couldn't save the career role.");
+    } finally { setBusy(false); }
+  }
+
+  async function remove(cid) {
+    try { await api.deleteCareer(cid); load(); onChange && onChange("Career role removed."); }
+    catch { onChange && onChange("Couldn't remove it."); }
+  }
+
+  return (
+    <Card className="p-6 mt-6">
+      <h2 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2">
+        <Compass size={18} className="text-brand-500" /> Career targets
+      </h2>
+      <p className="text-sm text-slate-500 mb-4">
+        Define the roles students aim for. Their Career Readiness is matched against these required skills.
+      </p>
+
+      <div className="space-y-2 mb-4">
+        {(list || []).map((c) => (
+          <div key={c.id} className="rounded-md border border-slate-100 p-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium text-ink-900">{c.title}</p>
+              {c.description && <p className="text-xs text-slate-500">{c.description}</p>}
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {(c.required_skills || []).map((sk) => (
+                  <span key={sk.name} className="rounded bg-brand-500/10 text-brand-700 px-1.5 py-0.5 text-[11px]">
+                    {sk.name}{sk.weight > 1 ? `·${sk.weight}` : ""}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => remove(c.id)} className="text-xs text-rose-500 hover:underline shrink-0">Remove</button>
+          </div>
+        ))}
+        {list && list.length === 0 && <p className="text-sm text-slate-400">No career roles yet — add one below or run the seed.</p>}
+      </div>
+
+      <form onSubmit={add} className="space-y-3 border-t border-slate-100 pt-4">
+        <Field label="Role title">
+          <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Backend Developer" />
+        </Field>
+        <Field label="Description">
+          <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Builds APIs and databases" />
+        </Field>
+        <Field label="Required skills" hint="Comma-separated, optional ':' weight — e.g. SQL:2, Arrays, Python">
+          <Input required value={form.skillsText} onChange={(e) => setForm({ ...form, skillsText: e.target.value })} placeholder="SQL:2, Arrays, Python" />
+        </Field>
+        <Button type="submit" variant="secondary" disabled={busy}>{busy ? "Saving…" : "Add career target"}</Button>
+      </form>
+    </Card>
+  );
+}
+
 const DIMENSIONS = ["aptitude", "coding", "communication", "project"];
-const blankQ = () => ({ prompt: "", options: ["", "", "", ""], correct: "a" });
+const blankQ = () => ({ prompt: "", options: ["", "", "", ""], correct: "a", difficulty: "medium" });
 
 function CreateAssessment({ onCreated }) {
-  const [meta, setMeta] = useState({ title: "", dimension: "aptitude", passing_pct: 60, duration: 0, objectives: "" });
+  const [meta, setMeta] = useState({ title: "", dimension: "aptitude", passing_pct: 60, duration: 0, attempts: 1, objectives: "" });
   const [proctored, setProctored] = useState(false);
   const [shuffle, setShuffle] = useState(true);
   const [questions, setQuestions] = useState([blankQ()]);
@@ -103,7 +189,7 @@ function CreateAssessment({ onCreated }) {
       .map((q, i) => ({
         item_type: "mcq", prompt: q.prompt.trim(),
         options: q.options.map((t, k) => ({ id: "abcd"[k], text: t.trim() })).filter((o) => o.text),
-        correct: { option: q.correct }, weight: 1, order: i,
+        correct: { option: q.correct }, weight: 1, order: i, difficulty: q.difficulty || "medium",
       }));
     if (!meta.title.trim() || items.length === 0) {
       onCreated("Add a title and at least one question with options.");
@@ -112,6 +198,7 @@ function CreateAssessment({ onCreated }) {
     const body = {
       title: meta.title.trim(), dimension: meta.dimension, year_no: 1, type: "quiz",
       time_limit_min: Number(meta.duration) || 0, passing_pct: Number(meta.passing_pct) || 60,
+      attempts_allowed: Math.max(1, Number(meta.attempts) || 1),
       objectives: meta.objectives.split(",").map((o) => o.trim()).filter(Boolean),
       proctored, shuffle, items,
     };
@@ -143,9 +230,10 @@ function CreateAssessment({ onCreated }) {
             </select>
           </Field>
         </div>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Field label="Passing %"><Input type="number" min="0" max="100" value={meta.passing_pct} onChange={(e) => setMeta({ ...meta, passing_pct: e.target.value })} /></Field>
           <Field label="Time limit (min)"><Input type="number" min="0" value={meta.duration} onChange={(e) => setMeta({ ...meta, duration: e.target.value })} placeholder="0 = none" /></Field>
+          <Field label="Attempts allowed"><Input type="number" min="1" value={meta.attempts} onChange={(e) => setMeta({ ...meta, attempts: e.target.value })} /></Field>
           <Field label="Topics (comma-separated)"><Input value={meta.objectives} onChange={(e) => setMeta({ ...meta, objectives: e.target.value })} placeholder="Arrays, Loops" /></Field>
         </div>
 
@@ -166,6 +254,16 @@ function CreateAssessment({ onCreated }) {
               <div className="flex items-center gap-2 mb-2">
                 <span className="grid place-items-center h-6 w-6 rounded bg-ink-900 text-white text-xs font-semibold shrink-0">{i + 1}</span>
                 <Input value={q.prompt} onChange={(e) => setQ(i, { prompt: e.target.value })} placeholder="Question text" className="h-9 flex-1" />
+                <select
+                  value={q.difficulty}
+                  onChange={(e) => setQ(i, { difficulty: e.target.value })}
+                  title="Difficulty — drives the Adaptive Drill"
+                  className="h-9 rounded-md border border-slate-200 text-sm px-2 text-slate-600"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
                 {questions.length > 1 && (
                   <button type="button" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))} className="text-slate-300 hover:text-rose-500"><Trash2 size={15} /></button>
                 )}

@@ -123,6 +123,38 @@ def register_handlers(bus, db, svc) -> None:
                              template_key="round.shortlisted", subject=subject, body=body,
                              from_name=company, reply_to=reply, dedupe_key=event.id)
 
+    def on_coach_nudge(payload, event):
+        """The AI study coach nudges a learner about their weakest area + plan —
+        in-app and a friendly, motivating email."""
+        p = payload or {}
+        user_id = p.get("user_id") or p.get("learner_id")
+        if not user_id:
+            return
+        name = p.get("name") or "there"
+        weakest = p.get("weakest") or "your focus areas"
+        quick_win = p.get("quick_win") or ""
+        plan_lines = p.get("plan_lines") or []
+        subject = f"Your LARE study plan — let's tackle {weakest}"
+        inapp = f"New study plan ready: your top focus is {weakest}. Open Skill Map to see it."
+        plan_txt = "\n".join(f"  • {line}" for line in plan_lines)
+        body = (
+            f"Hi {name},\n\n"
+            f"I looked at your recent assessments, and your biggest opportunity right now "
+            f"is {weakest}. Here's a focused plan to turn that into a strength:\n\n"
+            f"{plan_txt}\n\n"
+            + (f"Quick win to start with: {quick_win}\n\n" if quick_win else "")
+            + f"Open LARE Learn -> My Skill Map to see the full plan, a 2-minute explainer of "
+            f"your top gap, and 3 practice problems. Small, steady effort adds up fast — "
+            f"you've got this!\n\n"
+            f"— Your LARE study coach")
+        with db.session() as s:
+            svc.notify_inapp(s, user_id=user_id, template_key="coach.nudge",
+                             subject=subject, body=inapp, dedupe_key=event.id)
+            svc.notify_email(s, user_id=user_id, to=p.get("email"),
+                             template_key="coach.nudge", subject=subject, body=body,
+                             dedupe_key=event.id)
+
     for etype in TEMPLATES:
         bus.on(etype, on_event)
     bus.on("round.shortlisted", on_shortlisted)
+    bus.on("coach.nudge", on_coach_nudge)

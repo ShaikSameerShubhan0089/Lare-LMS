@@ -159,6 +159,15 @@ export const api = {
   game: (learnerId) => request(`/lms/v1/gamification/${learnerId}`),
   leaderboard: () => request("/lms/v1/gamification/leaderboard/global"),
   certificates: (learnerId) => request(`/lms/v1/certificates/for/${learnerId}`),
+  downloadCertificatePdf: async (certId, certNo) => {
+    const res = await request(`/lms/v1/certificates/${certId}/pdf`, { raw: true });
+    if (!res.ok) throw new Error("Download failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `certificate-${certNo || certId}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
   assessmentSummary: (learnerId) => request(`/lms/v1/assessments/summary?learner_id=${learnerId}`),
 
   // ---- Drive (candidate) ----
@@ -184,9 +193,84 @@ export const api = {
   shortlist: (id, candidate_ids) => request(`/drive/v1/drives/${id}/shortlist`, { method: "POST", body: { candidate_ids } }),
   advance: (id, candidate_id) => request(`/drive/v1/drives/${id}/advance`, { method: "POST", body: { candidate_id } }),
   funnel: (id) => request(`/drive/v1/drives/${id}/funnel`),
+  // LARE Hire — a candidate's verified skill tags from real drive-exam performance.
+  candidateSkills: (candidateId) => request(`/drive/v1/evaluations/twin/${candidateId}`),
   // Cognitive Twin v0.1 (LARE Learn) — a learner's skill profile from their LMS
   // assessment history. Separate from LARE Hire's evaluation data.
   skillTwin: (learnerId) => request(`/lms/v1/assessments/twin/${learnerId}`),
+  // AI Coach — the learner's persistent study plan. force=true regenerates it.
+  skillCoach: (learnerId, force = false) =>
+    request(`/lms/v1/assessments/coach/${learnerId}${force ? "?force=1" : ""}`),
+  // Mark a plan day done/undone (persisted progress against the plan).
+  coachProgress: (learnerId, day, done) =>
+    request(`/lms/v1/assessments/coach/${learnerId}/progress`, { method: "POST", body: { day, done } }),
+  // Nudge: send the learner their weakest area + plan via in-app + email.
+  nudgePlan: (learnerId) => request(`/lms/v1/assessments/nudge/${learnerId}`, { method: "POST" }),
+  // LARE Learn — coding practice bank (feeds the Skill Map). Same sandbox as
+  // Drive coding rounds, but a student-facing practice surface.
+  practiceProblems: (params = "") => request(`/lms/v1/practice/problems${params}`),
+  practiceOpen: (problem_id, language) =>
+    request("/lms/v1/practice/session", { method: "POST", body: { problem_id, language } }),
+  practiceRun: (sid, code) =>
+    request(`/lms/v1/practice/${sid}/run`, { method: "POST", body: { code } }),
+  practiceSubmit: (sid, code) =>
+    request(`/lms/v1/practice/${sid}/submit`, { method: "POST", body: { code } }),
+  practiceSkills: (learnerId) => request(`/lms/v1/practice/skills/${learnerId}`),
+  // Adversarial viva — prove you understand your own solution (cheat-resistant).
+  vivaStart: (sid) => request(`/lms/v1/practice/${sid}/viva`, { method: "POST" }),
+  vivaGrade: (vivaId, answer) =>
+    request(`/lms/v1/practice/viva/${vivaId}`, { method: "POST", body: { answer } }),
+  // LARE Learn — Skills-to-Opportunity: career-role readiness from the LMS twin.
+  careerReadiness: (learnerId) => request(`/lms/v1/careers/readiness/${learnerId}`),
+  listCareers: () => request("/lms/v1/careers"),
+  createCareer: (body) => request("/lms/v1/careers", { method: "POST", body }),
+  deleteCareer: (cid) => request(`/lms/v1/careers/${cid}`, { method: "DELETE" }),
+  // LARE Hire — Skills-to-Opportunity: open drives matched to a candidate's skills.
+  matchedOpportunities: (candidateId) =>
+    request(`/drive/v1/opportunities${candidateId ? `?candidate_id=${candidateId}` : ""}`),
+  // LARE Learn — Lifelong Reinforcement: forgetting-aware spaced review queue.
+  reviewQueue: (learnerId) => request(`/lms/v1/reviews/${learnerId}`),
+  submitReview: (learnerId, skill, outcome) =>
+    request(`/lms/v1/reviews/${learnerId}/review`, { method: "POST", body: { skill, outcome } }),
+  // LARE Learn — Embodied Practice Worlds: browser workplace simulations.
+  listWorlds: () => request("/lms/v1/worlds"),
+  startWorld: (worldId) => request(`/lms/v1/worlds/${worldId}/start`, { method: "POST" }),
+  answerWorld: (runId, step_id, choice) =>
+    request(`/lms/v1/worlds/runs/${runId}/answer`, { method: "POST", body: { step_id, choice } }),
+  // LARE Learn — Generative Learning Fabric: on-demand AI micro-lessons.
+  generateLesson: (learnerId, topic, force = false) =>
+    request(`/lms/v1/micro-lessons/${learnerId}/generate`, { method: "POST", body: { topic, force } }),
+  listLessons: (learnerId) => request(`/lms/v1/micro-lessons/${learnerId}`),
+  // Author-facing: AI-generate lesson blocks to review + save into a curriculum lesson.
+  authorBlocks: (topic) => request("/lms/v1/micro-lessons/author-blocks", { method: "POST", body: { topic } }),
+  // LARE Learn — Human Knowledge Mesh: AI-matched peer teach-back.
+  meshOverview: (learnerId) => request(`/lms/v1/mesh/${learnerId}`),
+  meshSessions: (learnerId) => request(`/lms/v1/mesh/${learnerId}/sessions`),
+  meshRequest: (topic, mentor_id, note) =>
+    request("/lms/v1/mesh/request", { method: "POST", body: { topic, mentor_id, note } }),
+  meshRespond: (sessionId, accept) =>
+    request(`/lms/v1/mesh/${sessionId}/respond`, { method: "POST", body: { accept } }),
+  meshComplete: (sessionId) => request(`/lms/v1/mesh/${sessionId}/complete`, { method: "POST" }),
+  // LARE Learn — Flow layer: adaptive drill that tunes difficulty in real time.
+  drillStart: (topic, target) =>
+    request("/lms/v1/drill/start", { method: "POST", body: { topic: topic || null, target: target || 8 } }),
+  drillAnswer: (drillId, item_id, option, elapsed_ms) =>
+    request(`/lms/v1/drill/${drillId}/answer`, { method: "POST", body: { item_id, option, elapsed_ms } }),
+  // LARE Learn — Sovereign Learning Wallet: signed, verifiable competence record.
+  getWallet: (learnerId) => request(`/lms/v1/wallet/${learnerId}`),
+  issueWallet: (learnerId) => request(`/lms/v1/wallet/${learnerId}/issue`, { method: "POST" }),
+  revokeWallet: (learnerId) => request(`/lms/v1/wallet/${learnerId}/revoke`, { method: "POST" }),
+  verifyWallet: (verifyId) => request(`/verify/wallet/${verifyId}`, { auth: false }),
+  downloadWalletPdf: async (learnerId) => {
+    const res = await request(`/lms/v1/wallet/${learnerId}/export.pdf`, { raw: true });
+    if (!res.ok) throw new Error("Export failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "lare-wallet.pdf";
+    document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+  },
   driveAnalytics: (id) => request(`/drive/v1/drives/${id}/analytics`),
   // Download a round's marks as .xlsx (cleared=true → only cleared students).
   downloadRoundXlsx: async (id, order, cleared = false) => {
@@ -294,6 +378,13 @@ export const api = {
   addYear: (cid, body) => request(`/lms/v1/curricula/${cid}/years`, { method: "POST", body }),
   addModule: (yid, body) => request(`/lms/v1/years/${yid}/modules`, { method: "POST", body }),
   addLesson: (mid, body) => request(`/lms/v1/modules/${mid}/lessons`, { method: "POST", body }),
+  getLesson: (lid) => request(`/lms/v1/lessons/${lid}`),
+  setLessonContent: (lid, content) => request(`/lms/v1/lessons/${lid}/content`, { method: "PUT", body: { content } }),
+  gradeLessonCheck: (lid, block_id, choice) =>
+    request(`/lms/v1/lessons/${lid}/check`, { method: "POST", body: { block_id, choice } }),
+  // A lesson check counts as real practice → feeds the review schedule (twin).
+  recordActivity: (learnerId, skill, good, mastery = 0) =>
+    request(`/lms/v1/reviews/${learnerId}/activity`, { method: "POST", body: { skill, good, mastery, source: "written" } }),
   publishCurriculum: (cid) => request(`/lms/v1/curricula/${cid}/publish`, { method: "POST" }),
 
   // ---- Progress writes (Trainer) ----

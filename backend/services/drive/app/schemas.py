@@ -12,11 +12,17 @@ class DriveIn(BaseModel):
     contact_email: str | None = None  # company email — notifications reply here
 
 
+class SkillReq(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    weight: float = Field(default=1.0, gt=0, le=10)
+
+
 class RoleIn(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     ctc: str | None = None
     positions: int = Field(default=1, ge=1)
     description: str | None = None
+    skills: list[SkillReq] = []
 
 
 class EligibilityIn(BaseModel):

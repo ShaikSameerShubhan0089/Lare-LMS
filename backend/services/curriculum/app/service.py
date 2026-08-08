@@ -89,10 +89,77 @@ class CurriculumService:
         y = self._year(s, m.year_track_id)
         self._editable(self._curriculum_of_year(s, y))
         l = Lesson(id=new_id(), module_id=mid, title=data.title, order=data.order,
-                   content_ref=data.content_ref)
+                   content_ref=data.content_ref,
+                   content=getattr(data, "content", None) or [])
         s.add(l)
         s.flush()
         return l
+
+    def get_lesson(self, s: Session, lid: str) -> Lesson:
+        l = s.get(Lesson, lid)
+        if not l:
+            raise NotFound("Lesson not found", code="lesson_not_found")
+        return l
+
+    def set_lesson_content(self, s: Session, lid: str, blocks: list) -> Lesson:
+        """Save a lesson's living-lesson blocks. Allowed even after publish —
+        the *structure* is immutable, but teaching material can be improved."""
+        l = self.get_lesson(s, lid)
+        l.content = self._clean_blocks(blocks)
+        s.flush()
+        return l
+
+    @staticmethod
+    def _clean_blocks(blocks: list) -> list:
+        """Normalise/whitelist blocks and drop empties. Each block gets an id."""
+        out = []
+        for i, b in enumerate(blocks or []):
+            b = b if isinstance(b, dict) else {}
+            t = b.get("type")
+            if t not in ("text", "code", "callout", "check"):
+                continue
+            b.setdefault("id", "b{}".format(i + 1))
+            if t == "text" and not (b.get("html") or "").strip():
+                continue
+            if t == "code" and not (b.get("code") or "").strip():
+                continue
+            if t == "callout" and not (b.get("text") or "").strip():
+                continue
+            if t == "check":
+                if not (b.get("question") or "").strip() or not (b.get("options") or []):
+                    continue
+                for j, o in enumerate(b["options"]):
+                    o.setdefault("id", "abcd"[j] if j < 4 else str(j))
+            out.append(b)
+        return out
+
+    def grade_check(self, s: Session, lid: str, block_id: str, choice: str) -> dict:
+        """Grade an in-lesson check (server holds the answer). Returns whether the
+        choice is correct plus the explanation and the skill it trains, so the
+        client can feed the twin's review schedule."""
+        l = self.get_lesson(s, lid)
+        block = next((b for b in (l.content or [])
+                      if b.get("id") == block_id and b.get("type") == "check"), None)
+        if block is None:
+            raise NotFound("Check not found", code="check_not_found")
+        return {"correct": choice == block.get("answer"),
+                "answer": block.get("answer"),
+                "explain": block.get("explain") or "",
+                "skill": block.get("skill") or l.title}
+
+    def lesson_out(self, l: Lesson, *, for_learner: bool = False) -> dict:
+        """Serialize a lesson with its content. For a learner, strip check answers
+        so the client can't read the key before answering."""
+        blocks = []
+        for b in (l.content or []):
+            if for_learner and b.get("type") == "check":
+                b = {**b, "options": [{"id": o.get("id"), "text": o.get("text")}
+                                      for o in (b.get("options") or [])]}
+                b.pop("answer", None)
+                b.pop("explain", None)
+            blocks.append(b)
+        return {"id": l.id, "title": l.title, "module_id": l.module_id,
+                "order": l.order, "content": blocks}
 
     def add_objective(self, s: Session, lid: str, data) -> Objective:
         self._lesson(s, lid)
@@ -176,6 +243,7 @@ class CurriculumService:
                     mod["lessons"].append({
                         "id": l.id, "title": l.title, "order": l.order,
                         "content_ref": l.content_ref,
+                        "blocks": len(l.content or []),
                         "objectives": [
                             {"id": o.id, "statement": o.statement, "skill_tag": o.skill_tag}
                             for o in objs

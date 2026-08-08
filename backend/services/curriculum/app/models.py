@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lare_common.db import Base
@@ -68,6 +68,15 @@ class Lesson(Base):
     title: Mapped[str] = mapped_column(String(255))
     order: Mapped[int] = mapped_column(Integer, default=0)
     content_ref: Mapped[str | None] = mapped_column(String(128))
+    # A LARE "living lesson": an ordered list of interactive blocks — rich text,
+    # runnable code, callouts, and inline checks that feed the learner's twin.
+    # Not a static file/URL like a conventional LMS.
+    #   [{"type":"text","html":"..."},
+    #    {"type":"code","language":"python","code":"...","note":"..."},
+    #    {"type":"callout","tone":"tip|info|warning","text":"..."},
+    #    {"type":"check","skill":"...","question":"...",
+    #     "options":[{"id":"a","text":"..."}],"answer":"a","explain":"..."}]
+    content: Mapped[list] = mapped_column(JSON, default=list)
 
     objectives: Mapped[list["Objective"]] = relationship(cascade="all, delete-orphan")
 

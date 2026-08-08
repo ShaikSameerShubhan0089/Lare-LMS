@@ -4,13 +4,13 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import require_roles
+from lare_common.auth_context import current_identity, require_roles
 from lare_common.errors import BadRequest
 from lare_common.responses import created, ok
 
 from .schemas import (
-    CurriculumIn, LessonIn, MapCohortIn, MapItemIn, ModuleIn, ObjectiveIn,
-    OutcomeCheckIn, YearTrackIn,
+    CurriculumIn, LessonContentIn, LessonIn, MapCohortIn, MapItemIn, ModuleIn,
+    ObjectiveIn, OutcomeCheckIn, YearTrackIn,
 )
 from .service import CurriculumService
 
@@ -18,7 +18,10 @@ bp = Blueprint("curriculum", __name__)
 
 # Curriculum designers = company_admin / super_admin; trainers/TPO read.
 DESIGN = ("super_admin", "company_admin")
+# Teaching material is authored by designers and trainers.
+AUTHOR_CONTENT = ("super_admin", "company_admin", "trainer")
 READ = ("super_admin", "company_admin", "college_admin", "trainer", "student")
+STAFF = ("super_admin", "company_admin", "college_admin", "trainer")
 
 
 def _svc() -> CurriculumService:
@@ -95,7 +98,38 @@ def add_lesson(mid):
     data = _parse(LessonIn, request.get_json(silent=True))
     with _db().session() as s:
         l = _svc().add_lesson(s, mid, data)
-        return created({"id": l.id, "title": l.title})
+        return created(_svc().lesson_out(l))
+
+
+@bp.get("/lms/v1/lessons/<lid>")
+@require_roles(*READ)
+def get_lesson(lid):
+    """A lesson with its living-lesson blocks. Students get check answers
+    stripped (so the key isn't leaked before answering); staff get the full
+    lesson for editing."""
+    ident = current_identity()
+    for_learner = not ident.has_role(*STAFF)
+    with _db().session() as s:
+        return ok(_svc().lesson_out(_svc().get_lesson(s, lid), for_learner=for_learner))
+
+
+@bp.put("/lms/v1/lessons/<lid>/content")
+@require_roles(*AUTHOR_CONTENT)
+def set_lesson_content(lid):
+    data = _parse(LessonContentIn, request.get_json(silent=True))
+    with _db().session() as s:
+        return ok(_svc().lesson_out(_svc().set_lesson_content(s, lid, data.content)))
+
+
+@bp.post("/lms/v1/lessons/<lid>/check")
+@require_roles(*READ)
+def grade_lesson_check(lid):
+    b = request.get_json(silent=True) or {}
+    block_id = b.get("block_id")
+    if not block_id:
+        raise BadRequest("block_id is required", code="block_id_required")
+    with _db().session() as s:
+        return ok(_svc().grade_check(s, lid, block_id, b.get("choice", "")))
 
 
 @bp.post("/lms/v1/lessons/<lid>/objectives")

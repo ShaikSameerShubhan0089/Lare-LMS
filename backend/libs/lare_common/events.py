@@ -47,6 +47,7 @@ SUBSCRIBERS: dict[str, list[str]] = {
     "round.shortlisted":    ["lare-notify"],
     "offer.created":        ["lare-notify"],
     "badge.earned":         ["lare-notify"],
+    "coach.nudge":          ["lare-notify"],
     "drive.registered":     [],
     # Drive registers the applicant so they appear in Candidates + Round 1.
     "candidate.registered": ["drive-core", "lare-notify"],

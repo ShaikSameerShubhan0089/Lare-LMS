@@ -13,6 +13,18 @@ import Achievements from "./pages/Achievements.jsx";
 import ExamPortal from "./pages/ExamPortal.jsx";
 import Drives from "./pages/Drives.jsx";
 import SkillMap from "./pages/SkillMap.jsx";
+import CodingPractice from "./pages/CodingPractice.jsx";
+import CareerReadiness from "./pages/CareerReadiness.jsx";
+import MatchedOpportunities from "./pages/MatchedOpportunities.jsx";
+import KeepSharp from "./pages/KeepSharp.jsx";
+import Wallet from "./pages/Wallet.jsx";
+import WalletVerify from "./pages/WalletVerify.jsx";
+import CertificateVerify from "./pages/CertificateVerify.jsx";
+import AdaptiveDrill from "./pages/AdaptiveDrill.jsx";
+import PeerMesh from "./pages/PeerMesh.jsx";
+import Lessons from "./pages/Lessons.jsx";
+import PracticeWorlds from "./pages/PracticeWorlds.jsx";
+import LessonViewer from "./pages/LessonViewer.jsx";
 import Analytics from "./pages/Analytics.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Profile from "./pages/Profile.jsx";
@@ -65,6 +77,8 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       {/* Public, no-login Drive registration */}
       <Route path="/drive/attend" element={<AttendDrive />} />
+      <Route path="/verify/wallet/:verifyId" element={<WalletVerify />} />
+      <Route path="/verify/:verifyId" element={<CertificateVerify />} />
 
       {/* Post-login app chooser (two standalone apps, one platform) */}
       <Route path="/apps" element={<Protected bare><AppChooser /></Protected>} />
@@ -74,6 +88,15 @@ export default function App() {
       <Route path="/lms/learning" element={lms(<MyLearning />)} />
       <Route path="/lms/assessments" element={lms(<Assessments />)} />
       <Route path="/lms/skill-map" element={lms(<SkillMap />)} />
+      <Route path="/lms/practice" element={lms(<CodingPractice />)} />
+      <Route path="/lms/careers" element={lms(<CareerReadiness />)} />
+      <Route path="/lms/keep-sharp" element={lms(<KeepSharp />)} />
+      <Route path="/lms/wallet" element={lms(<Wallet />)} />
+      <Route path="/lms/drill" element={lms(<AdaptiveDrill />)} />
+      <Route path="/lms/mesh" element={lms(<PeerMesh />)} />
+      <Route path="/lms/lessons" element={lms(<Lessons />)} />
+      <Route path="/lms/lesson/:lid" element={lms(<LessonViewer />)} />
+      <Route path="/lms/worlds" element={lms(<PracticeWorlds />)} />
       <Route path="/lms/achievements" element={lms(<Achievements />)} />
       <Route path="/lms/tutor" element={lms(<Tutor />)} />
       <Route path="/lms/certificates" element={lms(<Certificates />)} />
@@ -87,6 +110,7 @@ export default function App() {
 
       {/* ================= LARE Hire (Drive) ================= */}
       <Route path="/drive" element={drive(<Drives />)} />
+      <Route path="/drive/opportunities" element={drive(<MatchedOpportunities />)} />
       <Route path="/drive/test/:examId" element={drive(<ExamPortal />)} />
       <Route path="/drive/recruiter/drives" element={driveStaff(<RecruiterDrives />)} />
       <Route path="/drive/recruiter/drives/:id" element={driveStaff(<DriveConsole />)} />

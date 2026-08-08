@@ -23,6 +23,11 @@ class LessonIn(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     order: int = 0
     content_ref: str | None = None
+    content: list[dict] = []
+
+
+class LessonContentIn(BaseModel):
+    content: list[dict] = []
 
 
 class ObjectiveIn(BaseModel):

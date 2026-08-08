@@ -14,6 +14,8 @@ from lare_common.service_client import ServiceClient
 # name/email (e.g. staff accounts with no candidate record).
 _AUTH = ServiceClient("drive-core", default_roles=["company_admin"], timeout=5)
 _CAND = ServiceClient("drive-core", default_roles=["company_admin"], timeout=5)
+# Reads the candidate's Hire skill profile (drive-exam performance) for matching.
+_EVAL = ServiceClient("drive-core", default_roles=["recruiter"], timeout=6)
 
 
 def _resolve_names(candidate_ids: list[str]) -> dict[str, dict]:
@@ -93,11 +95,79 @@ class DriveService:
         d.status = "open"
         return d
 
+    # ---------- Skills-to-Opportunity match (LARE Hire) ----------
+    def _candidate_skill_map(self, candidate_id: str) -> dict[str, float]:
+        """name(lower) -> mastery, from the candidate's Hire skill twin (their
+        drive-exam performance). Best-effort: no twin data → empty map → every
+        required skill counts as a gap, which is the honest 0% match."""
+        try:
+            resp = _EVAL.get("drive-evaluation",
+                             "/drive/v1/evaluations/twin/{}".format(candidate_id),
+                             user_id=candidate_id)
+        except Exception:  # noqa: BLE001
+            return {}
+        data = (resp or {}).get("data") or resp or {}
+        m: dict[str, float] = {}
+        for row in (data.get("topics") or []) + (data.get("by_category") or []):
+            name = str(row.get("name", "")).strip().lower()
+            if name:
+                m[name] = max(m.get(name, 0.0), float(row.get("mastery") or 0))
+        return m
+
+    @staticmethod
+    def _drive_required_skills(d: Drive) -> dict[str, float]:
+        """Merge required skills across a drive's roles: skill name -> max weight."""
+        req: dict[str, float] = {}
+        for role in (d.roles or []):
+            for sk in (role.skills or []):
+                name = str(sk.get("name", "")).strip()
+                if not name:
+                    continue
+                w = float(sk.get("weight") or 1.0)
+                req[name] = max(req.get(name, 0.0), w)
+        return req
+
+    def match_opportunities(self, s: Session, candidate_id: str,
+                            threshold: float = 55.0) -> dict:
+        """Rank OPEN drives by how well the candidate's skills match the roles'
+        required skills. Returns matched skills, gaps, and a match %."""
+        skill_map = self._candidate_skill_map(candidate_id)
+        drives = self.list(s, status="open", limit=200)
+        matches, unspecified = [], []
+        for d in drives:
+            req = self._drive_required_skills(d)
+            base = {"drive_id": d.id, "title": d.title, "company_name": d.company_name,
+                    "reporting_time": d.reporting_time, "venue": d.venue,
+                    "roles": [self.role_out(r) for r in (d.roles or [])]}
+            if not req:
+                unspecified.append(base)
+                continue
+            matched, missing = [], []
+            num = den = 0.0
+            for name, weight in req.items():
+                mastery = skill_map.get(name.lower(), 0.0)
+                num += weight * min(mastery, 100.0) / 100.0
+                den += weight
+                entry = {"name": name, "mastery": round(mastery, 1), "weight": weight}
+                (matched if mastery >= threshold else missing).append(entry)
+            match_pct = round(num / den * 100.0, 1) if den else 0.0
+            matched.sort(key=lambda r: r["mastery"], reverse=True)
+            missing.sort(key=lambda r: (-r["weight"], r["mastery"]))
+            matches.append({**base, "match_pct": match_pct,
+                            "matched": matched, "missing": missing,
+                            "required_count": len(req)})
+        matches.sort(key=lambda r: r["match_pct"], reverse=True)
+        return {"candidate_id": candidate_id, "has_skill_data": bool(skill_map),
+                "matches": matches, "unspecified": unspecified}
+
     # ---------- roles / eligibility / rounds ----------
     def add_role(self, s: Session, did: str, data) -> DriveRole:
         self.get(s, did)
+        skills = [{"name": sk.name, "weight": sk.weight}
+                  for sk in (getattr(data, "skills", None) or [])]
         r = DriveRole(id=new_id(), drive_id=did, title=data.title, ctc=data.ctc,
-                      positions=data.positions, description=data.description)
+                      positions=data.positions, description=data.description,
+                      skills=skills)
         s.add(r)
         s.flush()
         return r
@@ -795,7 +865,8 @@ class DriveService:
 
     @staticmethod
     def role_out(r: DriveRole) -> dict:
-        return {"id": r.id, "title": r.title, "ctc": r.ctc, "positions": r.positions}
+        return {"id": r.id, "title": r.title, "ctc": r.ctc, "positions": r.positions,
+                "skills": r.skills or []}
 
     @staticmethod
     def round_out(r: Round) -> dict:

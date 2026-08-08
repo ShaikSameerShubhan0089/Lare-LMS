@@ -228,6 +228,21 @@ def list_drives():
         return ok([_svc().out(d) for d in _svc().list(s, status, limit)])
 
 
+@bp.get("/drive/v1/opportunities")
+@require_roles(*READ)
+def opportunities():
+    """Skills-to-Opportunity (LARE Hire): open drives ranked by how well the
+    candidate's drive-exam skills match the roles. A student sees their own; staff
+    may pass ?candidate_id= to view any."""
+    ident = current_identity()
+    cid = request.args.get("candidate_id") or ident.user_id
+    if not ident.has_role("super_admin", "company_admin", "recruiter", "college_admin") \
+            and cid != ident.user_id:
+        raise Forbidden("You can only view your own opportunities.")
+    with _db().session() as s:
+        return ok(_svc().match_opportunities(s, cid))
+
+
 @bp.get("/drive/v1/drives/<did>")
 @require_roles(*READ)
 def get_drive(did):

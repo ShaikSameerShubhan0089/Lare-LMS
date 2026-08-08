@@ -16,11 +16,19 @@ class ProblemIn(BaseModel):
     sample_cases: list[CaseIn] = []
     hidden_cases: list[CaseIn] = []
     max_score: float = Field(default=100.0, gt=0)
+    skill: str = Field(default="General", max_length=64)
+    difficulty: str = Field(default="easy", pattern="^(easy|medium|hard)$")
+    practice: bool = False
 
 
 class OpenSessionIn(BaseModel):
     problem_id: str
     exam_session_id: str | None = None
+    language: str = "python"
+
+
+class OpenPracticeIn(BaseModel):
+    problem_id: str
     language: str = "python"
 
 

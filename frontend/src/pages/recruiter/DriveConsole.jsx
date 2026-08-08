@@ -144,7 +144,16 @@ const STAGE_TYPES = ["aptitude", "technical", "verbal", "coding", "sql", "gd", "
 
 function Config({ d, id, onChange }) {
   const [roles, setRoles] = useState(d.roles || []);
-  const [role, setRole] = useState({ title: "", ctc: "", positions: 1 });
+  const [role, setRole] = useState({ title: "", ctc: "", positions: 1, skillsText: "" });
+
+  // "Arrays, SQL:2, Python" -> [{name:"Arrays",weight:1},{name:"SQL",weight:2},...]
+  function parseSkills(text) {
+    return (text || "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => {
+      const [name, w] = t.split(":").map((x) => x.trim());
+      const weight = Number(w);
+      return { name, weight: weight > 0 ? weight : 1 };
+    });
+  }
 
   // Fully-customisable round pipeline (persisted via the workflow engine).
   const [stages, setStages] = useState([]);
@@ -165,16 +174,18 @@ function Config({ d, id, onChange }) {
 
   async function addRole(e) {
     e.preventDefault();
+    const skills = parseSkills(role.skillsText);
+    const payload = { title: role.title, ctc: role.ctc, positions: Number(role.positions), skills };
     let created;
     try {
-      created = await api.addRole(id, { ...role, positions: Number(role.positions) });
+      created = await api.addRole(id, payload);
     } catch {
-      created = { id: `r-${Date.now()}`, ...role };
+      created = { id: `r-${Date.now()}`, ...payload };
     }
     const next = [...roles, created];
     setRoles(next);
     onChange({ ...d, roles: next });
-    setRole({ title: "", ctc: "", positions: 1 });
+    setRole({ title: "", ctc: "", positions: 1, skillsText: "" });
   }
 
   const addStage = () => setStages((s) => [...s, { type: "aptitude", label: "", optional: false }]);
@@ -208,11 +219,20 @@ function Config({ d, id, onChange }) {
         <div className="space-y-2 mb-4">
           {roles.map((r) => (
             <div key={r.id} className="rounded-md border border-slate-100 p-3 flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-ink-900">{r.title}</p>
                 <p className="text-xs text-slate-500">{r.ctc || "—"} · {r.positions} positions</p>
+                {(r.skills || []).length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {r.skills.map((sk) => (
+                      <span key={sk.name} className="rounded bg-brand-500/10 text-brand-700 px-1.5 py-0.5 text-[11px]">
+                        {sk.name}{sk.weight > 1 ? `·${sk.weight}` : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <Briefcase size={16} className="text-slate-300" />
+              <Briefcase size={16} className="text-slate-300 shrink-0" />
             </div>
           ))}
           {roles.length === 0 && <p className="text-sm text-slate-400">No roles yet.</p>}
@@ -229,6 +249,9 @@ function Config({ d, id, onChange }) {
               <Input type="number" min="1" value={role.positions} onChange={(e) => setRole({ ...role, positions: e.target.value })} />
             </Field>
           </div>
+          <Field label="Required skills" hint="Comma-separated. Add a weight with ':' — e.g. Arrays, SQL:2, Python. Powers candidate skill-matching.">
+            <Input value={role.skillsText} onChange={(e) => setRole({ ...role, skillsText: e.target.value })} placeholder="Arrays, SQL:2, Python" />
+          </Field>
           <Button type="submit" variant="secondary" className="w-full"><Plus size={16} /> Add role</Button>
         </form>
       </Card>

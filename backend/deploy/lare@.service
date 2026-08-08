@@ -18,6 +18,10 @@ WorkingDirectory=/opt/lare/backend/services/%i
 EnvironmentFile=/etc/lare/lare.env
 EnvironmentFile=/etc/lare/ports.env
 Environment=APP_ENV=production
+# Each service uses its own Postgres schema = its instance name (matches
+# bootstrap-postgres.sh). The reserved name `auth` is overridden to `lare_auth`
+# via a drop-in: /etc/systemd/system/lare@auth.service.d/schema.conf
+Environment=DB_SCHEMA=%i
 # PORT_%i is resolved from ports.env (e.g. PORT_auth=8001)
 ExecStart=/opt/lare/backend/.venv/bin/gunicorn -c /opt/lare/backend/deploy/gunicorn.conf.py --bind 127.0.0.1:${PORT_%i} wsgi:app
 Restart=always

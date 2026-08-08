@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, Plus, Trash2, CheckCircle2, Rocket, Users, Download, Search } from "lucide-react";
+import { Trophy, Plus, Trash2, CheckCircle2, Rocket, Users, Download, Search, BadgeCheck, X } from "lucide-react";
 import { Card, Badge, Button, Input } from "../../components/ui/primitives.jsx";
 import { api } from "../../lib/api.js";
 
@@ -16,6 +16,7 @@ export default function RoundsTab({ id }) {
   const [dl, setDl] = useState("");
   const [sq, setSq] = useState("");
   const [filterC, setFilterC] = useState("all");
+  const [skillsFor, setSkillsFor] = useState(null);
 
   async function download(cleared) {
     setDl(cleared ? "cleared" : "all");
@@ -218,6 +219,10 @@ export default function RoundsTab({ id }) {
                       </Badge>
                     )}
                     {s.referred && <Badge tone="amber" className="ml-2">referred</Badge>}
+                    <button onClick={() => setSkillsFor(s)}
+                      className="ml-2 inline-flex items-center gap-1 text-xs text-brand-600 hover:underline align-middle">
+                      <BadgeCheck size={13} /> Verified skills
+                    </button>
                   </td>
                   <td className="py-2 px-4">
                     <Input type="number" defaultValue={s.marks} className="h-9"
@@ -256,6 +261,90 @@ export default function RoundsTab({ id }) {
           </div>
           <Button variant="secondary" onClick={add} disabled={!addId.trim()}><Plus size={16} /> Add</Button>
         </div>
+      </Card>
+
+      {skillsFor && <SkillsModal candidate={skillsFor} onClose={() => setSkillsFor(null)} />}
+    </div>
+  );
+}
+
+// Recruiter proof-of-competence: a candidate's verified skill tags, straight from
+// their real drive-exam performance (the Drive evaluation twin).
+function SkillsModal({ candidate, onClose }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const name = candidate.candidate_name || candidate.candidate_email || candidate.candidate_id;
+
+  useEffect(() => {
+    (async () => {
+      try { setData(await api.candidateSkills(candidate.candidate_id)); }
+      catch { setData({ error: true }); }
+      finally { setLoading(false); }
+    })();
+  }, [candidate.candidate_id]);
+
+  const tone = { strong: "teal", developing: "amber", weak: "rose" };
+  const topics = data?.topics || [];
+  const cats = data?.by_category || [];
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/40 p-4" onClick={onClose}>
+      <Card className="w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="font-display text-lg font-bold text-ink-900 flex items-center gap-2">
+              <BadgeCheck size={18} className="text-brand-500" /> Verified skills
+            </h2>
+            <p className="text-sm text-slate-500">{name}{candidate.candidate_roll ? ` · ${candidate.candidate_roll}` : ""}</p>
+          </div>
+          <button onClick={onClose} className="grid place-items-center h-9 w-9 rounded-md hover:bg-slate-100"><X size={18} /></button>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-slate-400 py-6 text-center">Loading proof…</p>
+        ) : !data || data.error || data.exams_taken === 0 ? (
+          <p className="text-sm text-slate-400 py-6 text-center">No verified exam performance yet for this candidate.</p>
+        ) : (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3.5">
+              <span className="font-display text-2xl font-bold text-ink-900 tabular-nums">{data.overall?.mastery ?? 0}%</span>
+              <div className="text-sm text-slate-500">
+                overall · {data.overall?.correct}/{data.overall?.attempted} correct across {data.exams_taken} exam(s)
+                {candidate.coding_total > 0 && <span className="block">coding: {candidate.coding_correct || 0}/{candidate.coding_attempted || 0} of {candidate.coding_total}</span>}
+              </div>
+            </div>
+
+            {cats.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">By area</p>
+                <div className="flex flex-wrap gap-2">
+                  {cats.map((c) => (
+                    <Badge key={c.name} tone={tone[c.band] || "slate"} className="capitalize">
+                      {c.name} {c.band} · {c.mastery}%
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {topics.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Verified topics</p>
+                <div className="flex flex-wrap gap-2">
+                  {topics.map((t) => (
+                    <span key={t.name} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${
+                      t.band === "strong" ? "bg-teal-500/10 text-teal-700"
+                        : t.band === "weak" ? "bg-rose-500/10 text-rose-700" : "bg-amber-500/10 text-amber-700"}`}>
+                      {t.band === "strong" && <BadgeCheck size={13} />}
+                      {t.name} · {t.mastery}%
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-slate-400">Evidence-backed — computed from this candidate's actual answers, not a self-reported claim.</p>
+          </div>
+        )}
       </Card>
     </div>
   );

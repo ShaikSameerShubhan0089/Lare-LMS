@@ -57,6 +57,15 @@ class GatewayConfig(BaseConfig):
         "/lms/v1/assessments": "lms-assessment",
         "/lms/v1/attempts": "lms-assessment",
         "/lms/v1/answers": "lms-assessment",
+        "/lms/v1/practice": "drive-coding",
+        "/lms/v1/careers": "lms-assessment",
+        "/lms/v1/reviews": "lms-assessment",
+        "/lms/v1/wallet": "lms-assessment",
+        "/lms/v1/drill": "lms-assessment",
+        "/lms/v1/mesh": "lms-assessment",
+        "/lms/v1/micro-lessons": "lms-assessment",
+        "/lms/v1/worlds": "lms-assessment",
+        "/verify/wallet": "lms-assessment",
         "/lms/v1/gamification": "lms-gamification",
         "/lms/v1/cert-templates": "lms-certification",
         "/lms/v1/certificates": "lms-certification",
@@ -66,6 +75,7 @@ class GatewayConfig(BaseConfig):
         "/drive/v1/candidates": "drive-candidate",
         "/drive/v1/attend": "drive-candidate",
         "/drive/v1/drives": "drive-core",
+        "/drive/v1/opportunities": "drive-core",
         "/drive/v1/questions": "drive-questionbank",
         "/drive/v1/blueprints": "drive-questionbank",
         "/drive/v1/exams": "drive-exam",
@@ -121,4 +131,7 @@ class GatewayConfig(BaseConfig):
         "/drive/v1/questions/generate",  # LLM question generation
         "/ai/v1/complete",               # LLM completion
         "/drive/v1/coding/run-adhoc",    # multi-case code execution
+        "/lms/v1/assessments/coach",     # LLM study-plan generation
+        "/lms/v1/practice",              # code execution (run/submit) + AI viva
+        "/lms/v1/micro-lessons",         # LLM micro-lesson generation
     )

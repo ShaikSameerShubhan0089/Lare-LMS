@@ -3,7 +3,10 @@
 // can warn and auto-submit on threshold. Detections are advisory — the backend
 // applies weighted scoring and the auto-submit decision.
 
-export function attachProctoring({ onViolation }) {
+// `block` (default true) = exam mode: also prevents right-click. Pass block:false
+// on practice/learning surfaces so integrity is still *flagged* (visible to the
+// student) without breaking normal use like copy/paste of code.
+export function attachProctoring({ onViolation, block = true }) {
   const record = (type) => onViolation(type);
 
   const onVisibility = () => {
@@ -13,7 +16,7 @@ export function attachProctoring({ onViolation }) {
   // NOT flagged — it produced false positives when a device simply went idle.
   // Actual tab/app switching is still caught by visibilitychange above.
   const onContextMenu = (e) => {
-    e.preventDefault();
+    if (block) e.preventDefault();
     record("right_click");
   };
   const onCopy = () => record("copy");

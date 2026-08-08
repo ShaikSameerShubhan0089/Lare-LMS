@@ -42,7 +42,7 @@ export default function Assessments() {
 
   async function start(chosen) {
     const target = chosen || assessment || demoAssessment;
-    let a = target;
+    let a = null;
     let att = null;
     try {
       a = await api.getAssessment(target.id);
@@ -51,6 +51,9 @@ export default function Assessments() {
     } catch {
       setLive(false);
     }
+    // Fall back to the full demo assessment (which has items) if the fetch failed
+    // or returned no questions — never enter the take-flow without items.
+    if (!a || !Array.isArray(a.items) || a.items.length === 0) a = demoAssessment;
     setAssessment(a);
     setAttemptId(att?.attempt_id || `att-demo`);
     setAnswers({});
@@ -77,8 +80,9 @@ export default function Assessments() {
       res = await api.submitAttempt(attemptId, payload);
     } catch {
       const correct = { i1: "b", i2: "b", i3: "b" };
-      const got = assessment.items.filter((it) => answers[it.id] === correct[it.id]).length;
-      const pct = Math.round((got / assessment.items.length) * 100);
+      const its = assessment.items || [];
+      const got = its.filter((it) => answers[it.id] === correct[it.id]).length;
+      const pct = its.length ? Math.round((got / its.length) * 100) : 0;
       res = { percentage: pct, passed: pct >= (assessment.pass_pct || 60), score: got, max_score: assessment.items.length, demo: true };
     }
     if (reason === "proctor") res = { ...res, auto_submitted: true };
@@ -142,12 +146,13 @@ export default function Assessments() {
   }
 
   if (phase === "taking") {
+    const items = assessment.items || [];
     const answered = Object.keys(answers).length;
     return (
       <div>
         <PageHeader
           title={assessment.title}
-          subtitle={`${answered}/${assessment.items.length} answered`}
+          subtitle={`${answered}/${items.length} answered`}
           right={<DataSource live={live} />}
         />
         {proctored && (
@@ -162,7 +167,7 @@ export default function Assessments() {
           </div>
         )}
         <div className="space-y-4 max-w-2xl">
-          {assessment.items.map((it, i) => (
+          {items.map((it, i) => (
             <Card key={it.id} className="p-5">
               <p className="font-medium text-ink-900 mb-3">
                 <span className="text-slate-400 mr-2">{i + 1}.</span>{it.prompt || it.stem}

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { PlayCircle, FileText, BookOpen, Lock, CheckCircle2, Layers } from "lucide-react";
+import { Link } from "react-router-dom";
+import { PlayCircle, FileText, BookOpen, Lock, CheckCircle2, Layers, ChevronRight } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
 import { PageHeader, Loading, DataSource } from "../components/ui/states.jsx";
 import { useAsync } from "../hooks/useAsync.js";
@@ -57,12 +58,16 @@ export default function MyLearning() {
                     </div>
                     <ul className="mt-3 space-y-1.5">
                       {m.lessons.map((l) => (
-                        <li key={l.id} className="text-sm text-slate-600 flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-                          {l.title}
-                          {l.objectives?.[0]?.skill_tag && (
-                            <Badge tone="brand" className="ml-1">{l.objectives[0].skill_tag}</Badge>
-                          )}
+                        <li key={l.id}>
+                          <Link to={`/lms/lesson/${l.id}`}
+                            className="text-sm text-slate-600 flex items-center gap-2 rounded-md -mx-1 px-1 py-1 hover:bg-brand-500/5 hover:text-brand-700 group">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-300 group-hover:bg-brand-400" />
+                            <span className="flex-1">{l.title}</span>
+                            {l.objectives?.[0]?.skill_tag && (
+                              <Badge tone="brand">{l.objectives[0].skill_tag}</Badge>
+                            )}
+                            <ChevronRight size={14} className="text-slate-300 group-hover:text-brand-400" />
+                          </Link>
                         </li>
                       ))}
                     </ul>

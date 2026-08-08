@@ -31,6 +31,19 @@ CERT_TYPES = {
 
 
 class CertificationService:
+    @staticmethod
+    def _new_verify_id(s: Session) -> str:
+        """A readable, unique public verification code, e.g. LARE-VER-4821."""
+        import random
+        from .models import Certificate
+        for _ in range(60):
+            vid = "LARE-VER-{:04d}".format(random.randint(1000, 9999))
+            if s.execute(select(Certificate).where(
+                    Certificate.verify_id == vid)).scalar_one_or_none() is None:
+                return vid
+        # extremely unlikely fallback if the 4-digit space is exhausted
+        return "LARE-VER-" + random_token(6).upper()
+
     def upsert_template(self, s: Session, data) -> "Template":  # noqa: F821
         from .models import Template
         t = s.execute(select(Template).where(Template.year_no == data.year_no)).scalar_one_or_none()
@@ -66,7 +79,7 @@ class CertificationService:
             template_id=tmpl.id if tmpl else None,
             cert_no=f"LARE-Y{data.year_no}-{seq:06d}",
             cert_name=cert_name,
-            verify_id=random_token(12),
+            verify_id=self._new_verify_id(s),
             ppo_tag=bool(data.ppo_tag and data.year_no == 4),
             holder_name=data.holder_name,
         )
@@ -85,7 +98,7 @@ class CertificationService:
         cert = Certificate(
             id=new_id(), learner_id=learner_id, year_no=0,
             cert_no=f"LARE-{cert_type[:4].upper()}-{seq:06d}",
-            cert_name=name, verify_id=random_token(12),
+            cert_name=name, verify_id=self._new_verify_id(s),
             ppo_tag=False, holder_name=holder_name)
         s.add(cert)
         s.flush()
@@ -151,5 +164,7 @@ class CertificationService:
     def out(cert) -> dict:
         return {"id": cert.id, "learner_id": cert.learner_id, "year_no": cert.year_no,
                 "cert_no": cert.cert_no, "certificate": cert.cert_name,
+                "holder_name": cert.holder_name,
+                "issued_at": cert.issued_at.isoformat() if cert.issued_at else None,
                 "verify_id": cert.verify_id, "verify_url": f"/verify/{cert.verify_id}",
                 "status": cert.status, "ppo_tag": cert.ppo_tag}

@@ -22,6 +22,13 @@ import {
   Menu,
   Bell,
   Brain,
+  Compass,
+  Target,
+  Repeat,
+  Wallet as WalletIcon,
+  Gauge,
+  Users,
+  Boxes,
 } from "lucide-react";
 import { Logo } from "../ui/Logo.jsx";
 import { Badge } from "../ui/primitives.jsx";
@@ -50,10 +57,18 @@ export const PRODUCTS = {
       { to: "/lms", icon: LayoutDashboard, label: "Dashboard", end: true, roles: STUDENT },
       { to: "/lms/learning", icon: BookOpen, label: "My Learning", roles: STUDENT },
       { to: "/lms/assessments", icon: ClipboardList, label: "Assessments", roles: STUDENT },
+      { to: "/lms/practice", icon: Code2, label: "Coding Practice", roles: STUDENT },
+      { to: "/lms/drill", icon: Gauge, label: "Adaptive Drill", roles: STUDENT },
+      { to: "/lms/worlds", icon: Boxes, label: "Practice Worlds", roles: STUDENT },
       { to: "/lms/skill-map", icon: Brain, label: "My Skill Map", roles: STUDENT },
+      { to: "/lms/careers", icon: Compass, label: "Career Readiness", roles: STUDENT },
+      { to: "/lms/keep-sharp", icon: Repeat, label: "Keep Sharp", roles: STUDENT },
+      { to: "/lms/mesh", icon: Users, label: "Peer Mesh", roles: STUDENT },
       { to: "/lms/achievements", icon: Trophy, label: "Achievements", roles: STUDENT },
+      { to: "/lms/lessons", icon: BookMarked, label: "Micro-Lessons", roles: STUDENT },
       { to: "/lms/tutor", icon: Sparkles, label: "AI Tutor", roles: STUDENT },
       { to: "/lms/certificates", icon: Award, label: "Certificates", roles: STUDENT },
+      { to: "/lms/wallet", icon: WalletIcon, label: "My Wallet", roles: STUDENT },
     ],
     sections: [
       {
@@ -82,6 +97,7 @@ export const PRODUCTS = {
     // Students only browse & take their drive tests here. No LMS anything.
     items: [
       { to: "/drive", icon: Briefcase, label: "My Drives", end: true, roles: STUDENT },
+      { to: "/drive/opportunities", icon: Target, label: "Matched Opportunities", roles: STUDENT },
     ],
     sections: [
       {
@@ -126,7 +142,7 @@ export function AppShell({ children, product = "lms" }) {
   return (
     <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[260px_1fr]">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[260px] bg-ink-900 text-slate-200 flex flex-col transition-transform lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[260px] bg-ink-900 text-slate-200 flex flex-col transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -138,7 +154,7 @@ export function AppShell({ children, product = "lms" }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto sidebar-scroll">
           {visibleItems(cfg.items, roles).map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setOpen(false)} className={linkClass}>
               <item.icon size={19} strokeWidth={1.75} />

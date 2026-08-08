@@ -50,6 +50,9 @@ class DriveRole(Base):
     ctc: Mapped[str | None] = mapped_column(String(64))
     positions: Mapped[int] = mapped_column(Integer, default=1)
     description: Mapped[str | None] = mapped_column(String(1024))
+    # Required skills for the Skills-to-Opportunity match: [{"name","weight"}].
+    # Recruiter-authored; drives the candidate's "Matched Opportunities" ranking.
+    skills: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class EligibilityRule(Base):

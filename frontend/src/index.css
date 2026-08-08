@@ -58,3 +58,43 @@
   background-image: radial-gradient(rgba(19, 41, 75, 0.06) 1px, transparent 1px);
   background-size: 22px 22px;
 }
+
+/* Living-lesson markdown (rendered by src/lib/markdown.js) */
+.lb-body { color: #1e293b; line-height: 1.7; }
+.lb-body .lb-h1, .lb-body .lb-h2, .lb-body .lb-h3, .lb-body .lb-h4 { font-weight: 700; color: #0f172a; line-height: 1.3; }
+.lb-body .lb-h1 { font-size: 1.5rem; margin: 0.6em 0 0.3em; }
+.lb-body .lb-h2 { font-size: 1.25rem; margin: 0.7em 0 0.3em; }
+.lb-body .lb-h3 { font-size: 1.1rem; margin: 0.7em 0 0.3em; }
+.lb-body .lb-h4 { font-size: 1rem; margin: 0.7em 0 0.3em; }
+.lb-body .lb-p { margin: 0.6em 0; }
+.lb-body .lb-ul, .lb-body .lb-ol { margin: 0.5em 0 0.5em 1.3em; }
+.lb-body .lb-ul { list-style: disc; }
+.lb-body .lb-ol { list-style: decimal; }
+.lb-body .lb-ul li, .lb-body .lb-ol li { margin: 0.2em 0; }
+.lb-body code { background: #f1f5f9; color: #0f172a; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+.lb-body .lb-pre { background: #0f172a; color: #e2e8f0; padding: 0.9em 1em; border-radius: 8px; overflow-x: auto; margin: 0.6em 0; }
+.lb-body .lb-pre code { background: transparent; color: inherit; padding: 0; }
+.lb-body a { color: #2563eb; text-decoration: underline; }
+.lb-body .lb-quote { border-left: 3px solid #cbd5e1; padding-left: 0.9em; color: #475569; margin: 0.6em 0; }
+.lb-body .lb-hr { border: none; border-top: 1px solid #e2e8f0; margin: 1em 0; }
+.lb-body .lb-img { max-width: 100%; border-radius: 8px; margin: 0.6em 0; }
+.lb-body .lb-tablewrap { overflow-x: auto; margin: 0.7em 0; }
+.lb-body .lb-table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+.lb-body .lb-table th, .lb-body .lb-table td { border: 1px solid #e2e8f0; padding: 0.5em 0.7em; text-align: left; }
+.lb-body .lb-table th { background: #f8fafc; font-weight: 600; color: #0f172a; }
+
+/* Visible scrollbar for the dark sidebar nav */
+.sidebar-scroll {
+  scrollbar-width: thin;                 /* Firefox */
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+  scrollbar-gutter: stable;
+}
+.sidebar-scroll::-webkit-scrollbar { width: 8px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);  /* slate-400 @ 50% — visible on dark */
+  border-radius: 999px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(203, 213, 225, 0.75); /* brighter on hover */
+}
