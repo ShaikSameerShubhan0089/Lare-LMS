@@ -117,31 +117,33 @@ export default function PeerMesh() {
             <p className="text-sm text-slate-400">No matches yet — take a few assessments and we'll find mentors for your weak spots.</p>
           ) : (
             <div className="space-y-4">
-              {getHelp.map((g) => {
-                const pending = outgoing.find((s) => s.topic === g.topic && s.status === "requested");
-                return (
+              {getHelp.map((g) => (
                   <div key={g.topic} className="rounded-lg border border-slate-100 p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-ink-900">{g.topic}</span>
                       <Badge tone="amber">you: {g.my_mastery}%</Badge>
                     </div>
                     <div className="space-y-1.5">
-                      {g.mentors.map((m) => (
-                        <div key={m.id} className="flex items-center justify-between text-sm">
-                          <span className="text-ink-900">{m.name} <span className="text-teal-600 tabular-nums">{m.mastery}%</span></span>
-                          {pending ? (
-                            <Badge tone="slate">requested</Badge>
-                          ) : (
-                            <Button size="sm" variant="secondary" disabled={busy === g.topic + m.id} onClick={() => requestHelp(g.topic, m.id)}>
-                              <HandHelping size={13} /> Ask
-                            </Button>
-                          )}
-                        </div>
-                      ))}
+                      {g.mentors.map((m) => {
+                        const pending = outgoing.find(
+                          (s) => s.topic === g.topic && s.teacher_id === m.id && s.status === "requested",
+                        );
+                        return (
+                          <div key={m.id} className="flex items-center justify-between text-sm">
+                            <span className="text-ink-900">{m.name} <span className="text-teal-600 tabular-nums">{m.mastery}%</span></span>
+                            {pending ? (
+                              <Badge tone="slate">requested</Badge>
+                            ) : (
+                              <Button size="sm" variant="secondary" disabled={busy === g.topic + m.id} onClick={() => requestHelp(g.topic, m.id)}>
+                                <HandHelping size={13} /> Ask
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
           )}
         </Card>
