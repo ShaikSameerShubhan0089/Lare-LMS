@@ -13,9 +13,14 @@
 -- ========================= schema: assessment ===============================
 SET search_path TO assessment;
 
--- new column on existing table
+-- new columns on existing tables
 ALTER TABLE assessment_items
     ADD COLUMN IF NOT EXISTS difficulty VARCHAR(8) NOT NULL DEFAULT 'medium';
+-- proctoring/shuffle (added in 7181293; include for DBs deployed before it)
+ALTER TABLE assessments
+    ADD COLUMN IF NOT EXISTS proctored BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE assessments
+    ADD COLUMN IF NOT EXISTS shuffle   BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- new tables
 CREATE TABLE IF NOT EXISTS study_plans (
