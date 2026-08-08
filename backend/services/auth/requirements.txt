@@ -8,4 +8,4 @@ python-dotenv==1.0.1
 gunicorn==23.0.0
 flask-cors==5.0.0
 # Postgres driver (Supabase) — SQLite needs no driver for local dev
-psycopg[binary]==3.2.3
+psycopg[binary]>=3.2,<4
