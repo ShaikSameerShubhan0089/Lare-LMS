@@ -5,18 +5,21 @@ import { Card, Badge, Button } from "../components/ui/primitives.jsx";
 import { PageHeader, Loading, DataSource } from "../components/ui/states.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { api, withFallback } from "../lib/api.js";
+import { useAuth } from "../lib/auth.jsx";
 import { demoCurriculum, demoPlaylist, DEMO_LEARNER_ID } from "../lib/demo.js";
 
 const TYPE_ICON = { video: PlayCircle, reading: FileText, interactive: Layers, pdf: FileText };
 
 export default function MyLearning() {
+  const { user } = useAuth();
+  const learnerId = user?.id || DEMO_LEARNER_ID;
   const curriculum = useAsync(
     () => withFallback(api.curricula().then((cs) => api.curriculumTree(cs[0].id)), demoCurriculum),
     [],
   );
   const playlist = useAsync(
-    () => withFallback(api.playlist(DEMO_LEARNER_ID), demoPlaylist),
-    [],
+    () => withFallback(api.playlist(learnerId), demoPlaylist),
+    [learnerId],
   );
 
   if (curriculum.loading) return <Loading />;

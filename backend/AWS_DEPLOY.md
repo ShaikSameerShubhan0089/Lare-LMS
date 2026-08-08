@@ -249,8 +249,17 @@ cd backend && source .venv/bin/activate
 pip install -r requirements-base.txt           # if deps changed
 # apply any new column migrations (see step 7), then:
 sudo systemctl restart 'lare@*'                # restart all services
-cd /opt/lare/frontend && npm ci && npm run build   # rebuild SPA
+cd /opt/lare/frontend && npm ci && npm run build   # rebuild SPA -> frontend/dist
+
+# IMPORTANT: `npm run build` only writes to frontend/dist. Nginx serves a
+# SEPARATE web root (see your `root` directive, e.g. /var/www/lare). You MUST
+# copy the fresh build into that root or the browser keeps getting the old app:
+sudo rsync -a --delete /opt/lare/frontend/dist/ /var/www/lare/   # <- set to your nginx `root`
+sudo systemctl reload nginx
+# verify the served index.html points at the new hashed bundle:
+grep -o 'assets/index-[^"]*\.js' /var/www/lare/index.html
 ```
+Then hard-refresh the browser (Ctrl+Shift+R) to drop the cached old bundle.
 
 **Backups / DR** — RDS automated backups + PITR (enabled in step 1). Keep
 `/etc/lare/*.env` and `jwt_*.pem` in AWS Secrets Manager, not only on the box.
