@@ -261,6 +261,19 @@ grep -o 'assets/index-[^"]*\.js' /var/www/lare/index.html
 ```
 Then hard-refresh the browser (Ctrl+Shift+R) to drop the cached old bundle.
 
+Or just use the one-shot script from the repo root (pulls, restarts backend,
+rebuilds + publishes the SPA): `./redeploy.sh` (flags: `NO_PULL`, `DEPS=1`,
+`BACKEND_ONLY=1`, `FRONTEND_ONLY=1`, `WEB_ROOT`).
+
+**Low-RAM box: `vite build` gets `Killed`.** The build needs ~1–2 GB free; with
+all 26 services running it can OOM. Add swap once:
+```bash
+sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+`redeploy.sh` also caps node's heap (`NODE_OPTIONS=--max-old-space-size=1024`).
+
 **Backups / DR** — RDS automated backups + PITR (enabled in step 1). Keep
 `/etc/lare/*.env` and `jwt_*.pem` in AWS Secrets Manager, not only on the box.
 

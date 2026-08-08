@@ -7,10 +7,15 @@
 #   chmod +x redeploy.sh      # once
 #   ./redeploy.sh             # full redeploy
 #
+# Deps are NOT installed by default (the venv/node_modules are stable and the
+# install step is slow + memory-hungry). Pass DEPS=1 only when requirements or
+# package-lock actually changed.
+#
 # Flags (env vars):
 #   WEB_ROOT=/var/www/lare   nginx `root` for the SPA (default shown)
 #   NO_PULL=1                skip `git pull` (already pulled)
-#   NO_DEPS=1                skip pip install + npm ci (deps unchanged -> faster)
+#   DEPS=1                   run pip install + npm ci (only when deps changed)
+#   NO_DEPS=1                (kept for compatibility; deps are already off by default)
 #   BACKEND_ONLY=1           restart services only, skip the frontend build
 #   FRONTEND_ONLY=1          build+publish SPA only, don't touch services
 set -euo pipefail
@@ -30,7 +35,7 @@ if [[ "${FRONTEND_ONLY:-0}" != "1" ]]; then
   elif [[ -f .venv/bin/activate ]]; then source .venv/bin/activate
   fi
 
-  if [[ "${NO_DEPS:-0}" != "1" ]]; then
+  if [[ "${DEPS:-0}" == "1" && "${NO_DEPS:-0}" != "1" ]]; then
     echo "==> pip install (base + per-service requirements)"
     pip install -q -r requirements-base.txt || true
     for d in services/*/; do
@@ -48,11 +53,14 @@ fi
 # --------------------------- frontend --------------------------------------
 if [[ "${BACKEND_ONLY:-0}" != "1" ]]; then
   cd "$ROOT/frontend"
-  if [[ "${NO_DEPS:-0}" != "1" ]]; then
+  if [[ "${DEPS:-0}" == "1" && "${NO_DEPS:-0}" != "1" ]]; then
     echo "==> npm ci"
     npm ci
   fi
   echo "==> build SPA"
+  # Cap node's heap so a low-RAM box is less likely to get OOM-killed mid-build.
+  # (Best fix is swap on the box: see backend/AWS_DEPLOY.md.)
+  export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1024}"
   npm run build
   echo "==> publish SPA to $WEB_ROOT"
   sudo rsync -a --delete "$ROOT/frontend/dist/" "$WEB_ROOT/"
