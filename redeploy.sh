@@ -53,8 +53,10 @@ fi
 # --------------------------- frontend --------------------------------------
 if [[ "${BACKEND_ONLY:-0}" != "1" ]]; then
   cd "$ROOT/frontend"
-  if [[ "${DEPS:-0}" == "1" && "${NO_DEPS:-0}" != "1" ]]; then
-    echo "==> npm ci"
+  # Install deps when explicitly asked, or whenever node_modules is missing
+  # (e.g. it was removed to reclaim disk) — otherwise `vite` won't be found.
+  if { [[ "${DEPS:-0}" == "1" && "${NO_DEPS:-0}" != "1" ]] || [[ ! -d node_modules ]]; }; then
+    echo "==> npm ci (installing frontend deps)"
     npm ci
   fi
   echo "==> build SPA"
