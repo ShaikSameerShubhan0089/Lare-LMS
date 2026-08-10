@@ -79,12 +79,12 @@ async function request(path, opts = {}) {
     cache: "no-store",
   });
 
-  if (raw) return res;
-
   // Access token expired mid-session: refresh once and replay the request, so a
-  // long session never dumps the user back to login. Only clear the session when
-  // the refresh token is genuinely invalid ("expired") — a transient network or
-  // server error keeps the session so the user can retry (critical mid-exam).
+  // long session never dumps the user back to login. This runs BEFORE the raw
+  // return so binary downloads (xlsx exports, PDFs) also recover — previously
+  // they 401'd mid-drive and showed "Session expired" despite a valid session.
+  // Only clear the session when the refresh token is genuinely invalid
+  // ("expired") — a transient network/server error keeps the session to retry.
   if (res.status === 401 && auth && !_retried && tokens.refresh) {
     const outcome = await refreshAccess();
     if (outcome === "ok") {
@@ -95,6 +95,8 @@ async function request(path, opts = {}) {
     }
     // outcome === "error": leave tokens in place; surface the 401 to the caller.
   }
+
+  if (raw) return res;
 
   let payload = null;
   try {
@@ -419,13 +421,32 @@ export const api = {
   setResume: (resume_file_id) => request("/drive/v1/candidate/resume", { method: "POST", body: { resume_file_id } }),
 };
 
-// Wrap a live call so a page still renders (with demo data) when the backend
-// isn't running — every screen has a real code path + a graceful fallback.
+// Keep the SHAPE of a fallback but blank every value, so a failed call yields an
+// honest empty state instead of fabricated data.
+function blankShape(v) {
+  if (Array.isArray(v)) return [];
+  if (v && typeof v === "object") {
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = blankShape(v[k]);
+    return out;
+  }
+  if (typeof v === "number") return 0;
+  if (typeof v === "boolean") return false;
+  if (typeof v === "string") return "";
+  return v; // null / undefined
+}
+
+// Wrap a live call so a page still renders when a call fails. In DEVELOPMENT we
+// return the demo data so screens render with the backend down. In PRODUCTION we
+// must NEVER surface fabricated/demo data — it can show one user the shape of
+// another's record (e.g. a demo profile for everyone). There we blank the
+// fallback to an empty state of the same shape.
+const IS_PROD = !!(import.meta && import.meta.env && import.meta.env.PROD);
 export async function withFallback(promise, fallback) {
   try {
     const data = await promise;
     return { data, live: true };
   } catch {
-    return { data: fallback, live: false };
+    return { data: IS_PROD ? blankShape(fallback) : fallback, live: false };
   }
 }

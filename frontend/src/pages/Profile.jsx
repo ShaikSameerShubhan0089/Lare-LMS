@@ -5,11 +5,20 @@ import { PageHeader, Loading, DataSource } from "../components/ui/states.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { useAuth } from "../lib/auth.jsx";
 import { api, withFallback } from "../lib/api.js";
-import { demoProfile } from "../lib/demo.js";
 
 export default function Profile() {
   const { user } = useAuth();
-  const loaded = useAsync(() => withFallback(api.candidateProfile(), demoProfile), []);
+  // If the profile call fails, seed an empty form from the logged-in user's OWN
+  // identity — never another person's data.
+  const loaded = useAsync(
+    () =>
+      withFallback(api.candidateProfile(), {
+        full_name: user?.full_name || "", email: user?.email || "",
+        phone: "", branch: "", cgpa: "", completeness: 0,
+        education: [], projects: [], skills: [],
+      }),
+    [user?.id],
+  );
   const [form, setForm] = useState(null);
   const [saved, setSaved] = useState(false);
 
@@ -27,11 +36,11 @@ export default function Profile() {
         full_name: form.full_name, email: form.email, phone: form.phone,
         branch: form.branch, cgpa: Number(form.cgpa),
       });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
     } catch {
-      /* demo */
+      alert("Couldn't save your profile. Please try again.");
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   }
 
   return (

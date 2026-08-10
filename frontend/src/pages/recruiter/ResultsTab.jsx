@@ -4,7 +4,6 @@ import { Card, Badge, Button, Input } from "../../components/ui/primitives.jsx";
 import { Loading, DataSource } from "../../components/ui/states.jsx";
 import { useAsync } from "../../hooks/useAsync.js";
 import { api, withFallback } from "../../lib/api.js";
-import { demoRegistrations, demoResults } from "../../lib/demo.js";
 
 const OUTCOME_TONE = { selected: "teal", shortlist: "brand", fail: "rose", pass: "brand" };
 
@@ -24,7 +23,7 @@ function Person({ info }) {
 }
 
 export default function ResultsTab({ id }) {
-  const regs = useAsync(() => withFallback(api.driveRegistrations(id), demoRegistrations), [id]);
+  const regs = useAsync(() => withFallback(api.driveRegistrations(id), []), [id]);
   const [scores, setScores] = useState({});
   const [cutoff, setCutoff] = useState(60);
   const [results, setResults] = useState(null);
@@ -47,35 +46,30 @@ export default function ResultsTab({ id }) {
       const live = await api.driveResults(id);
       setResults(live);
     } catch {
-      // demo compile
-      const ranked = [...rows].sort((a, b) => b.final_score - a.final_score).map((r, i) => ({
-        candidate_id: r.candidate_id,
-        final_score: r.final_score,
-        rank: i + 1,
-        outcome: r.interview_decision === "select" ? "selected" : r.final_score >= cutoff ? "shortlist" : "fail",
-        status: "draft",
-      }));
-      setResults(ranked.length ? ranked : demoResults);
+      alert("Couldn't compile results. Please check the scores and try again.");
     }
   }
 
   async function publish() {
-    try { await api.publishResults(id); } catch { /* demo */ }
-    setResults((rs) => (rs || []).map((r) => ({ ...r, status: "published" })));
-    setPublished(true);
+    try {
+      await api.publishResults(id);
+      setResults((rs) => (rs || []).map((r) => ({ ...r, status: "published" })));
+      setPublished(true);
+    } catch {
+      alert("Couldn't publish results. Please try again.");
+    }
   }
 
   async function makeOffer(cid, type) {
-    let out;
     try {
-      out = await api.generateOffer({
+      const out = await api.generateOffer({
         drive_id: id, candidate_id: cid, type,
         company_name: "Lare Consulting & Technologies Pvt. Ltd.", role_title: "Software Engineer", ctc: "6 LPA",
       });
+      setOffers((o) => ({ ...o, [cid]: out }));
     } catch {
-      out = { verify_id: "demo-" + Math.random().toString(36).slice(2, 8), type };
+      alert("Couldn't generate the offer. Please try again.");
     }
-    setOffers((o) => ({ ...o, [cid]: out }));
   }
 
   return (
