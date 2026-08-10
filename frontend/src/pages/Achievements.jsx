@@ -5,7 +5,7 @@ import { PageHeader, Loading, DataSource } from "../components/ui/states.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { api, withFallback } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
-import { demoGame, demoLeaderboard, demoScorecard, DEMO_LEARNER_ID } from "../lib/demo.js";
+import { emptyGame, emptyScorecard, DEMO_LEARNER_ID } from "../lib/demo.js";
 
 const BADGE_META = {
   streak_7: { icon: Flame, name: "7-Day Streak", tone: "amber" },
@@ -17,9 +17,9 @@ const SKILL_TONE = { coding: "teal", aptitude: "amber", communication: "brand", 
 export default function Achievements() {
   const { user } = useAuth();
   const learnerId = user?.id || DEMO_LEARNER_ID;
-  const game = useAsync(() => withFallback(api.game(learnerId), demoGame), [learnerId]);
-  const board = useAsync(() => withFallback(api.leaderboard(), demoLeaderboard), []);
-  const scores = useAsync(() => withFallback(api.scorecard(learnerId), demoScorecard), [learnerId]);
+  const game = useAsync(() => withFallback(api.game(learnerId), emptyGame), [learnerId]);
+  const board = useAsync(() => withFallback(api.leaderboard(), []), []);
+  const scores = useAsync(() => withFallback(api.scorecard(learnerId), emptyScorecard), [learnerId]);
 
   if (game.loading) return <Loading />;
   const g = game.data;

@@ -15,6 +15,15 @@ export const demoGame = {
   streak: { current: 12, longest: 21 },
 };
 
+// Real zero-state for a learner with no activity yet. Used as the fallback for
+// per-user gamification/scorecard so a NEW user (or a failed call) shows honest
+// zeros — never another user's or the demo's numbers.
+export const emptyGame = {
+  learner_id: "", total_xp: 0, level: 1, next_level_at: 1000, xp_to_next: 1000,
+  badges: [], streak: { current: 0, longest: 0 },
+};
+export const emptyScorecard = [];
+
 export const demoLeaderboard = [
   { rank: 1, display_name: "Ravi K.", total_xp: 6120, level: 5 },
   { rank: 2, display_name: "Sita M.", total_xp: 5340, level: 5 },
