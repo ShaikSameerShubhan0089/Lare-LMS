@@ -49,3 +49,5 @@ deploy/keys/
 .claude/
 .env
 *.json
+# Client deck contains the admin password — keep local only
+docs/overview.html

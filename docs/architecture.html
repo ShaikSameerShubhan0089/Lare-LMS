@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LARE Platform — Three-Tier Architecture</title>
+<style>
+  :root{
+    --bg:#eef1f7; --panel:#ffffff; --ink:#0f172a; --muted:#5b6779; --line:#dfe4ee;
+    --t1:#4f46e5; --t1-bg:#eef0fd; --t1-line:#c9cdf7;
+    --t2:#0d9488; --t2-bg:#e5f4f2; --t2-line:#bfe6df;
+    --t3:#b45309; --t3-bg:#fbf0e0; --t3-line:#eecfa6;
+    --chip:#f4f6fb; --chip-line:#e4e9f2; --flow:#8a95a8;
+    --shadow:0 1px 2px rgba(15,23,42,.05), 0 8px 24px rgba(15,23,42,.06);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0a0f1c; --panel:#121b2d; --ink:#e9eef8; --muted:#94a1b8; --line:#22304a;
+      --t1:#8b93ff; --t1-bg:#171f3f; --t1-line:#2c3768;
+      --t2:#34d0be; --t2-bg:#0f2a2a; --t2-line:#1d4a47;
+      --t3:#eab160; --t3-bg:#2a2011; --t3-line:#4d3a1c;
+      --chip:#182238; --chip-line:#26344f; --flow:#5c6c88;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+    min-height:100vh; padding:32px 20px 40px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .sheet{max-width:1080px; margin:0 auto}
+
+  .head{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:22px}
+  .brand{display:flex; align-items:center; gap:12px}
+  .logo{
+    width:42px;height:42px;border-radius:11px;flex:none;
+    background:linear-gradient(135deg,var(--t1),var(--t2));
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:19px;letter-spacing:.5px;
+    box-shadow:var(--shadow);
+  }
+  h1{font-size:22px;line-height:1.15;margin:0;font-weight:750;letter-spacing:-.01em}
+  .sub{margin:3px 0 0;color:var(--muted);font-size:13.5px}
+  .tag{
+    font-size:11.5px;font-weight:600;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--panel);
+    text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;
+  }
+
+  .tier{
+    position:relative; background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; box-shadow:var(--shadow); overflow:hidden;
+    display:grid; grid-template-columns:190px 1fr; margin-bottom:8px;
+  }
+  .spine{
+    padding:20px 18px; border-right:1px solid var(--line);
+    display:flex;flex-direction:column;gap:8px;justify-content:center;
+  }
+  .tier.p .spine{background:var(--t1-bg);border-right-color:var(--t1-line)}
+  .tier.a .spine{background:var(--t2-bg);border-right-color:var(--t2-line)}
+  .tier.d .spine{background:var(--t3-bg);border-right-color:var(--t3-line)}
+  .tno{font-size:12px;font-weight:800;letter-spacing:.14em}
+  .tier.p .tno{color:var(--t1)} .tier.a .tno{color:var(--t2)} .tier.d .tno{color:var(--t3)}
+  .tname{font-size:18px;font-weight:750;letter-spacing:-.01em;line-height:1.1}
+  .trole{font-size:12.5px;color:var(--muted);line-height:1.4}
+  .body{padding:18px}
+
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .card{
+    flex:1 1 200px; min-width:180px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:14px 15px;
+  }
+  .card.hero{border-width:1.5px}
+  .tier.p .card.accent{border-color:var(--t1-line);background:var(--t1-bg)}
+  .tier.a .card.accent{border-color:var(--t2-line);background:var(--t2-bg)}
+  .ctitle{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;margin:0 0 3px}
+  .cdesc{font-size:12px;color:var(--muted);line-height:1.45;margin:0}
+  .dot{width:9px;height:9px;border-radius:3px;flex:none}
+  .tier.p .dot{background:var(--t1)} .tier.a .dot{background:var(--t2)} .tier.d .dot{background:var(--t3)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .chip{
+    font-size:11.5px;font-weight:600;color:var(--ink);background:var(--chip);
+    border:1px solid var(--chip-line);border-radius:7px;padding:4px 9px;white-space:nowrap;
+  }
+  .grouphead{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+  .gateway{
+    display:flex;align-items:center;gap:12px;justify-content:center;
+    background:var(--ink);color:var(--panel);border-radius:11px;padding:12px 16px;margin-bottom:14px;
+    font-weight:700;font-size:14.5px;letter-spacing:.01em;
+  }
+  .gateway .sm{font-weight:500;font-size:12px;opacity:.75}
+  .gwdot{width:8px;height:8px;border-radius:50%;background:var(--t2);box-shadow:0 0 0 4px color-mix(in srgb,var(--t2) 30%,transparent)}
+
+  .aside{margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:stretch}
+  .ext{flex:1 1 240px;border:1px dashed var(--line);border-radius:12px;padding:12px 14px;background:transparent}
+  .ext .ctitle{font-size:13px}
+
+  .flow{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0 4px}
+  .flow .lbl{font-size:11px;font-weight:600;color:var(--flow);letter-spacing:.05em}
+  .arrow{width:2px;height:16px;background:var(--flow);position:relative;opacity:.7}
+  .arrow::after{content:"";position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+    border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--flow)}
+
+  .foot{
+    margin-top:20px;display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:center;
+    border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:12px;
+  }
+  .legend{display:flex;gap:16px;flex-wrap:wrap}
+  .lk{display:flex;align-items:center;gap:7px}
+  .sw{width:11px;height:11px;border-radius:3px}
+  .sw.p{background:var(--t1)} .sw.a{background:var(--t2)} .sw.d{background:var(--t3)}
+
+  @media (max-width:720px){
+    .tier{grid-template-columns:1fr}
+    .spine{border-right:none;border-bottom:1px solid var(--line);flex-direction:row;align-items:center;justify-content:flex-start;gap:12px}
+    .grid4{grid-template-columns:1fr 1fr}
+    h1{font-size:19px}
+  }
+  @media (max-width:460px){ .grid4{grid-template-columns:1fr} }
+  @media print{ .wrap{background:#fff;padding:0} .tier,.card,.gateway{box-shadow:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="sheet">
+
+    <div class="head">
+      <div class="brand">
+        <div class="logo">L</div>
+        <div>
+          <h1>LARE Platform — System Architecture</h1>
+          <p class="sub">Two products (LARE&nbsp;Learn · LARE&nbsp;Hire) on one shared, cloud-hosted backend.</p>
+        </div>
+      </div>
+      <span class="tag">Three-Tier Architecture</span>
+    </div>
+
+    <!-- TIER 1 -->
+    <section class="tier p">
+      <div class="spine">
+        <div class="tno">TIER 01</div>
+        <div class="tname">Presentation</div>
+        <div class="trole">What users see &amp; touch — in the browser.</div>
+      </div>
+      <div class="body">
+        <div class="row">
+          <div class="card accent hero">
+            <p class="ctitle"><span class="dot"></span>Web Application (SPA)</p>
+            <p class="cdesc">A single fast web app that adapts to each user. No install — just a browser.</p>
+            <div class="chips"><span class="chip">React</span><span class="chip">Vite</span><span class="chip">LARE Learn</span><span class="chip">LARE Hire</span></div>
+          </div>
+          <div class="card">
+            <p class="ctitle"><span class="dot"></span>Users &amp; Devices</p>
+            <p class="cdesc">Students, trainers, recruiters and admins on laptops, tablets and phones.</p>
+            <div class="chips"><span class="chip">Students</span><span class="chip">Recruiters</span><span class="chip">Admins</span></div>
+          </div>
+          <div class="card">
+            <p class="ctitle"><span class="dot"></span>Web Server &amp; Security</p>
+            <p class="cdesc">Delivers the app and encrypts every connection (HTTPS/TLS).</p>
+            <div class="chips"><span class="chip">Nginx</span><span class="chip">TLS / SSL</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="flow"><span class="lbl">HTTPS · secure API calls ▾</span><span class="arrow"></span></div>
+
+    <!-- TIER 2 -->
+    <section class="tier a">
+      <div class="spine">
+        <div class="tno">TIER 02</div>
+        <div class="tname">Application</div>
+        <div class="trole">The brains — business logic &amp; AI, split into focused services.</div>
+      </div>
+      <div class="body">
+        <div class="gateway">
+          <span class="gwdot"></span>API Gateway&nbsp;<span class="sm">— single secure entry point, routes every request &amp; checks identity</span>
+        </div>
+
+        <div class="grid4">
+          <div class="card">
+            <p class="grouphead">Identity &amp; Access</p>
+            <div class="chips"><span class="chip">Auth</span><span class="chip">Organizations</span><span class="chip">Institutions</span></div>
+          </div>
+          <div class="card">
+            <p class="grouphead">LARE Learn</p>
+            <div class="chips"><span class="chip">Learners</span><span class="chip">Curriculum</span><span class="chip">Assessments</span><span class="chip">Coding</span><span class="chip">Progress</span><span class="chip">Gamification</span><span class="chip">Certificates</span></div>
+          </div>
+          <div class="card">
+            <p class="grouphead">LARE Hire</p>
+            <div class="chips"><span class="chip">Candidates</span><span class="chip">Drive</span><span class="chip">Exams</span><span class="chip">Question Bank</span><span class="chip">Proctoring</span><span class="chip">Interviews</span><span class="chip">Results</span></div>
+          </div>
+          <div class="card">
+            <p class="grouphead">Platform Services</p>
+            <div class="chips"><span class="chip">Notifications / Email</span><span class="chip">Files</span><span class="chip">Analytics</span><span class="chip">Audit</span></div>
+          </div>
+        </div>
+
+        <div class="aside">
+          <div class="ext">
+            <p class="ctitle"><span class="dot"></span>AI Engine</p>
+            <p class="cdesc">Generates lessons, tutoring, coding questions &amp; evaluations — via leading AI models.</p>
+            <div class="chips"><span class="chip">AI Orchestration</span><span class="chip">Google Gemini</span><span class="chip">Mistral</span></div>
+          </div>
+          <div class="ext">
+            <p class="ctitle"><span class="dot"></span>Built to Scale</p>
+            <p class="cdesc">26 independent microservices — each can grow, update or recover on its own.</p>
+            <div class="chips"><span class="chip">Flask</span><span class="chip">Gunicorn</span><span class="chip">26 services</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="flow"><span class="lbl">Encrypted database &amp; storage access ▾</span><span class="arrow"></span></div>
+
+    <!-- TIER 3 -->
+    <section class="tier d">
+      <div class="spine">
+        <div class="tno">TIER 03</div>
+        <div class="tname">Data</div>
+        <div class="trole">Where everything is stored — safely &amp; backed up.</div>
+      </div>
+      <div class="body">
+        <div class="row">
+          <div class="card hero">
+            <p class="ctitle"><span class="dot"></span>Managed Database</p>
+            <p class="cdesc">One cloud PostgreSQL database with a private, isolated schema per service — automated daily backups &amp; point-in-time recovery.</p>
+            <div class="chips"><span class="chip">PostgreSQL</span><span class="chip">Amazon RDS</span><span class="chip">Schema per service</span><span class="chip">Auto-backup</span></div>
+          </div>
+          <div class="card">
+            <p class="ctitle"><span class="dot"></span>File &amp; Media Storage</p>
+            <p class="cdesc">Uploads, documents, certificates and exports.</p>
+            <div class="chips"><span class="chip">Object storage</span></div>
+          </div>
+          <div class="card">
+            <p class="ctitle"><span class="dot"></span>Event Stream</p>
+            <p class="cdesc">Lets services talk in real time so data stays in sync.</p>
+            <div class="chips"><span class="chip">Event bus</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="foot">
+      <div class="legend">
+        <span class="lk"><span class="sw p"></span>Presentation</span>
+        <span class="lk"><span class="sw a"></span>Application</span>
+        <span class="lk"><span class="sw d"></span>Data</span>
+      </div>
+      <div>Hosted on AWS · secured end-to-end with TLS · designed for growth.</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
