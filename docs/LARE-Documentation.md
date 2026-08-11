@@ -1099,6 +1099,214 @@ Further product directions: richer analytics, deeper AI evaluation, mobile-optim
 ## 15.4 Service/port/schema quick reference
 See section 5.2. Ports `8001..8026` for services, `8000` for the gateway; schema = service name (`auth` -> `lare_auth`).
 
+
+# 16. Data Dictionary — Identity & Learn Services
+
+This appendix documents the real tables and columns for the identity and LARE Learn services (source: each service's `models.py`). Every table uses a string primary key `id` (a generated uuid) unless noted. Timestamps are timezone-aware. `JSON` columns store structured payloads.
+
+## 16.1 auth (schema: `lare_auth`)
+
+**users**
+
+| Column | Type | Notes |
+|---|---|---|
+| id | String PK | uuid |
+| email | String(255) | unique, indexed |
+| password_hash | String(255) | bcrypt hash |
+| full_name | String(255) | nullable |
+| status | String(32) | active / locked / disabled |
+| email_verified | Boolean | default false |
+| mfa_enabled | Boolean | default false |
+| tenant_id | String(64) | default "lare", indexed |
+| failed_attempts | Integer | lockout counter |
+| locked_until | DateTime | nullable |
+| created_at | DateTime | default now |
+
+**roles** — id, name (unique), description. **permissions** — id, code (unique), description, domain. **role_permissions** — (role_id, permission_id) join. **user_roles** — id, user_id (FK), role_id (FK), college_id (nullable = global scope); unique (user_id, role_id, college_id).
+
+**refresh_tokens** — id, user_id (FK), family_id (rotation family), token_hash (unique), device, expires_at, revoked_at, created_at; `is_active` derived. **verification_tokens** — id, user_id (FK), purpose (otp / password_reset / email_verify), token_hash, expires_at, consumed_at (single-use), created_at. Only SHA-256 hashes are stored; secrets are delivered out-of-band.
+
+## 16.2 institution (schema: `lms_institution`)
+
+**colleges** — id, tenant_id, name, address, timezone (default Asia/Kolkata), mou_ref, status, coordinator_user_id, passing_threshold (default 60), min_cohort_size (default 30), created_at.
+**branches** — id, college_id (FK), name, code, category (cse_allied / core); unique (college_id, code).
+**academic_years** — id, college_id (FK), year_no (1..4), start, end.
+**semesters** — id, academic_year_id (FK), type (odd / even), start, end.
+**cohorts** — id, college_id (FK), branch_id (FK), academic_year_id, section, year_no, size.
+**schedule_slots** — id, semester_id (FK), branch_id (FK), week_no, module_ref, start, end, trainer_user_id.
+**assignments** — id, college_id (FK), user_id, role (trainer / mentor / coordinator), scope.
+
+## 16.3 learner (schema: `lms_learner`)
+
+**learners** — id, user_id, college_id, cohort_id, branch_id, roll_no, full_name, email, cgpa (Float), photo_file_id, status (active / paused / alumni), verified (Boolean), year_no, created_at; unique (college_id, roll_no).
+**enrollments** — id, learner_id (FK), academic_year_id, year_no, status, started_at.
+**stream_selection** — learner_id (PK/FK), stream (ai_ml / data_science / web / cybersecurity / cloud), rationale, mentor_user_id, decided_at.
+**skills** — id, learner_id (FK), skill, level, source.
+**projects** — id, learner_id (FK), title, description, repo_url.
+**imports** — id, college_id, status (previewed / committed), summary (JSON), created_at.
+
+## 16.4 curriculum (schema: `lms_curriculum`)
+
+**curricula** — id, name, version, status (draft / published), created_at.
+**year_tracks** — id, curriculum_id (FK), year_no (1..4), theme, goal; unique (curriculum_id, year_no).
+**modules** — id, year_track_id (FK), title, order, branch_scope (all / cse_allied / core / <branch>).
+**lessons** — id, module_id (FK), title, order, content_ref, **content (JSON)** — an ordered list of interactive blocks (`text`, `code`, `callout`, `check`), the "living lesson".
+**objectives** — id, lesson_id (FK), statement, skill_tag.
+**outcome_checks** — id, year_track_id (FK), statement, criteria.
+**cohort_curriculum** — id, cohort_id, curriculum_id (FK), effective_from.
+**item_objective_map** — id, objective_id (FK), item_type (content / assessment), item_id.
+
+## 16.5 content (schema: `lms_content`)
+
+**content_items** — id, lesson_id, title, type (video / pdf / slide / reading / interactive / link), file_id, url, duration_sec, difficulty, order, objectives (JSON), created_at.
+**gates** — id, content_item_id (FK), rule_type (default prereq_content), rule_config (JSON).
+**consumption** — id, learner_id, content_item_id, status (in_progress / completed), position_sec, updated_at; unique (learner_id, content_item_id).
+
+## 16.6 progress (schema: `lms_progress`)
+
+**attendance** — id, learner_id, schedule_slot_id, status (present / absent / late), ts.
+**module_progress** — id, learner_id, module_id, completion_pct; unique (learner_id, module_id).
+**scorecard** — id, learner_id, year_no, communication, coding, aptitude, project (all Float), updated_at; unique (learner_id, year_no). *This is the per-learner four-dimension skill scorecard the Dashboard reads.*
+**score_events** — id, learner_id, year_no, dimension, value, source, ref_id, ts.
+**year_status** — id, learner_id, year_no, criteria_met, attendance_pct, avg_score, computed_at; unique (learner_id, year_no).
+
+## 16.7 assessment (schema: `lms_assessment`) — the hub service
+
+**assessments** — id, title, year_no, type (quiz / aptitude / coding / rubric), time_limit_min, attempts_allowed, passing_pct, negative_marking, dimension, objectives (JSON), **proctored** (Boolean), **shuffle** (Boolean), created_at.
+**assessment_items** — id, assessment_id (FK), item_type (mcq / multi / subjective), prompt, options (JSON), correct (JSON), weight, rubric_hint, order, **difficulty** (easy / medium / hard — drives the adaptive drill).
+**attempts** — id, assessment_id, learner_id, status (in_progress / submitted / graded), score, max_score, percentage, passed, started_at, submitted_at.
+**answers** — id, attempt_id (FK), item_id, response (JSON), auto_score, final_score, needs_grade, grader_user_id, max_score.
+**review_items** (spaced review) — id, learner_id, skill, source (written / coding), interval_days, ease, review_count, last_mastery, last_reviewed_at, due_at (indexed), created_at; unique (learner_id, skill). SM-2-style forgetting curve.
+**drill_sessions** (Flow drill) — id, learner_id, topic, level (0/1/2), served (JSON), pending_item_id, pending_q (JSON, server-authoritative), pending_since, correct_count, total_count, fast_count, target, status (active / done), started_at.
+**practice_worlds** — id, title, role, skill, difficulty, summary, steps (JSON), pass_pct, created_at.
+**world_runs** — id, world_id, learner_id, step_index, answers (JSON), correct_count, score, status (in_progress / completed), started_at.
+**generated_lessons** — id, learner_id, topic, lesson (JSON blocks), generated (AI vs fallback), created_at; unique (learner_id, topic).
+**teach_sessions** (Peer Mesh) — id, topic, teacher_id, learner_id (seeker), requested_by, status (requested / accepted / declined / completed), note, created_at.
+**wallet_credentials** — id, learner_id (unique), verify_id (unique), subject_name, payload (JSON competence snapshot), signature (signed JWT), revoked, issued_at.
+**career_roles** — id, title, description, required_skills (JSON: name + weight), created_at.
+**study_plans** — learner_id (PK), plan (JSON), weakest, profile_sig (regenerate-on-change signature), completed_days (JSON), generated_at, last_nudged_at, nudge_count.
+
+## 16.8 gamification (schema: `lms_gamification`)
+
+**xp_ledger** — id, learner_id, action, points, source_event_id, ts; unique (learner_id, source_event_id) for idempotent awards.
+**levels** — learner_id (PK), total_xp, level, display_name, updated_at.
+**badges** — id, code (unique), name, description, icon.
+**learner_badges** — id, learner_id, badge_code, earned_at; unique (learner_id, badge_code).
+**streaks** — learner_id (PK), current, longest, last_active_day, freezes.
+
+## 16.9 certification (schema: `lms_certification`)
+
+**templates** — id, year_no (unique), name, signatories, version.
+**certificates** — id, learner_id, year_no, template_id, cert_no (unique), cert_name, **verify_id** (unique, readable e.g. `LARE-VER-####`), file_id, status (issued / revoked), ppo_tag, holder_name, issued_at; unique (learner_id, year_no).
+**revocations** — id, certificate_id (FK), reason, revoked_by, ts.
+
+## 16.10 coding (schema: `drive_coding`)
+
+**problems** — id, title, statement, languages (JSON), time_limit_sec, memory_limit_mb, sample_cases (JSON, visible), hidden_cases (JSON, hidden), max_score, **skill**, **difficulty**, **practice** (Boolean — only practice=true problems appear in the LARE Learn practice bank).
+**coding_sessions** — id, problem_id, candidate_id, exam_session_id, **kind** (exam / practice), language, draft_code, status (open / submitted), updated_at.
+**coding_submissions** — id, coding_session_id, code, score, cases_passed, total_cases, detail (JSON per-hidden-case pass/fail, no expected leaked), submitted_at.
+**coding_vivas** — id, coding_session_id, problem_id, candidate_id, question, answer, score (0..100), passed, verdict, ai_generated, status (asked / graded), created_at.
+
+
+
+# 17. Data Dictionary — Hire & Platform Services
+
+Source: each service's `models.py`. Conventions as in section 16.
+
+## 17.1 candidate (schema: `drive_candidate`)
+
+**candidates** — id, user_id (unique), learner_id, college_id, full_name, first_name, last_name, roll_number, student_id (unique — issued by the public Attend flow), email, phone, branch, cgpa, photo_file_id, resume_file_id, created_at.
+**education** — id, candidate_id (FK), degree, institution, year, score.
+**skills** — id, candidate_id (FK), skill, level.
+**projects** — id, candidate_id (FK), title, description, repo_url.
+**applications** — id, candidate_id (FK), drive_id, drive_role_id, status, eligibility_snapshot (JSON), applied_at; unique (candidate_id, drive_id).
+
+## 17.2 drive (schema: `drive_core`)
+
+**drives** — id, company_id, company_name, title, status (draft / open / closed), reporting_time, venue, contact_email (candidate mail From/Reply-To), schedule (JSON: registration_deadline, exam_date, interview_date, joining_date), created_by, created_at.
+**drive_roles** — id, drive_id (FK), title, ctc, positions, description, **skills** (JSON name+weight — drives Matched Opportunities).
+**eligibility_rules** — id, drive_id (FK), rule (JSON: min_cgpa, branches, max_backlogs, min_lms_score).
+**rounds** — id, drive_id (FK), order, type (aptitude / technical / verbal / coding / interview), label, optional (Boolean), config (JSON), service_ref.
+**registrations** — id, drive_id (FK), candidate_id, status (applied → shortlisted → in_round → selected/rejected), current_round, eligible (yes / no / unknown), joining_status (offer_accepted → docs_verified → joined); unique (drive_id, candidate_id).
+**round_scores** — id, drive_id (FK), round_order, candidate_id, marks, max_marks, remarks, cleared, referred (admin-added), entered_by, coding_attempted, coding_correct, coding_total, updated_at; unique (drive_id, round_order, candidate_id).
+**seat_allocations** — id, drive_id (FK), candidate_id, lab, system_no, seat_no; unique (drive_id, candidate_id).
+**application_forms** — drive_id (PK/FK), fields (JSON schema).
+**form_submissions** — id, drive_id (FK), candidate_id, answers (JSON), submitted_at; unique (drive_id, candidate_id).
+**ppo_config** — drive_id (PK/FK), eligibility (JSON), stages (JSON), conversion_criteria (JSON).
+
+## 17.3 questionbank (schema: `drive_questionbank`)
+
+**questions** — id, type (mcq / multi / fill_blank / match / true_false / coding / sql / output), category (aptitude / technical / verbal / programming), difficulty, tags (JSON), stem, options (JSON), answer_key (JSON — never exposed to clients), explanation, weight, version, status (draft / active / retired), author_id, created_at.
+**blueprints** — id, name, spec (JSON: category + difficulty + count rows for paper generation).
+
+## 17.4 exam (schema: `drive_exam`)
+
+**exams** — id, drive_id, round_id, title, total_time_min, negative_marking, nav_rule (free / linear), sections (JSON: sections → questions), window_start, window_end.
+**exam_sessions** — id, exam_id, candidate_id, status (in_progress / submitted / expired), started_at, submitted_at, section_state (JSON lock map), auto_submitted; unique (exam_id, candidate_id).
+**exam_answers** — id, session_id, question_id, response (JSON), updated_at; unique (session_id, question_id). Latest-answer-per-question for resume; durable history lives in Submission.
+
+## 17.5 submission (schema: `drive_submission`) — no accepted-answer loss
+
+**answers** (append-only) — id, session_id, question_id, response (JSON), source (autosave / final), client_seq, ts. Every write is a new row.
+**answer_latest** — id, session_id, question_id, response, client_seq, updated_at; unique (session_id, question_id). Materialized last-write-wins.
+**time_spent** — id, session_id, question_id, seconds; unique (session_id, question_id).
+**final_submissions** — id, session_id, snapshot (JSON), answer_count, submitted_at, finalized; unique (session_id). Immutable final snapshot.
+
+## 17.6 anticheat (schema: `drive_anticheat`)
+
+**proctor_sessions** — id, exam_session_id (unique), candidate_id, drive_id, fingerprint, ip, browser, violation_score, status (active / flagged / auto_submitted), started_at.
+**events** — id, proctor_session_id, type, weight, ip, browser, device, meta (JSON), ts. Focus/tab/visibility/copy-paste events; accumulated weight drives the violation score and auto-submit.
+
+## 17.7 evaluation (schema: `drive_evaluation`)
+
+**answer_keys** — exam_id (PK), items (JSON: question_id + type + correct + weight; correct never exposed), passing_pct, negative_marking.
+**evaluations** — id, exam_id, session_id, candidate_id, total, max_score, percentage, accuracy, passed, version, needs_review (system-error coding items held for manual review, never auto-zeroed), question_scores (JSON), created_at; unique (session_id).
+**ranks** — id, exam_id, candidate_id, rank, percentage, tie_break; unique (exam_id, candidate_id).
+
+## 17.8 interview (schema: `drive_interview`)
+
+**interviews** — id, drive_id, round_id, candidate_id, stage (technical / hr / ppo), mode (online / in_person), link, slot, interviewer_id, status (scheduled / completed), decision (select / reject / hold / next_round), decision_reason, avg_rating, created_at.
+**ratings** — id, interview_id (FK), interviewer_id, competency (technical / communication / problem_solving / culture), score (1..5), remark.
+
+## 17.9 result (schema: `drive_result`)
+
+**results** — id, drive_id, candidate_id, final_score, rank, outcome (pass / fail / shortlist / selected), status (draft / published), published_at; unique (drive_id, candidate_id).
+**offers** — id, drive_id, candidate_id, role_id, type (offer / ppo), company_name, role_title, ctc, letter_file_id, verify_id (unique — public offer verify), status (issued / accepted / declined), issued_at.
+
+## 17.10 notification (schema: `shared_notify`)
+
+**templates** — id, key, channel (email / inapp / sms / whatsapp), locale, subject, body, version, active, critical (bypasses channel prefs); unique (key, channel, locale).
+**notifications** — id, user_id, template_key, channel, payload (JSON), subject, body, status (queued / sent / suppressed / failed / not_configured), dedupe_key, read_at, created_at, sent_at.
+**preferences** — id, user_id, channel, enabled; unique (user_id, channel).
+
+## 17.11 files (schema: `shared_files`)
+
+**files** — id, owner_user_id, purpose, bucket, object_key (random uuid — no user-controlled paths), filename, mime, size, status (pending / ready / scan_failed / deleted), scan_result, entity_type, entity_id, created_at.
+
+## 17.12 analytics (schema: `shared_analytics`)
+
+**dashboard_layouts** — user_id (PK), widgets (JSON: id, type, w, h, x, y, config).
+**facts** — id, kind (learner / college / drive), college_id, cohort_id, learner_id, drive_id, metric, value, ts. Append-only fact store fed by domain events; read-side aggregations computed on demand.
+
+## 17.13 audit (schema: `shared_audit`) — tamper-evident
+
+**audit_logs** (append-only, hash-chained) — id, partition_key, seq, ts, actor_type (user / service), actor_id, action, entity_type, entity_id, meta (JSON), ip, device, correlation_id, prev_hash, hash; unique (partition_key, seq). Each row's `hash` chains from `prev_hash` — tampering breaks the chain.
+**activity_logs** — id, user_id, session_id, event, context (JSON), ts. Higher-volume UX/proctor stream (not chained).
+
+## 17.14 ai_tutor (schema: `shared_ai_tutor`)
+
+**tutor_sessions** — id, learner_id, title, created_at.
+**tutor_messages** — id, session_id (FK), role (user / assistant), content (Text), created_at.
+
+## 17.15 ai_orchestration (schema: `shared_ai_orchestration`)
+
+**ai_calls** (governed-AI audit) — id, prompt_key, purpose, actor_id, model, mode (live / stub), input_tokens, output_tokens, latency_ms, status, preview, created_at. Every AI call is logged for usage/latency/cost governance.
+
+## 17.16 organization (schema: `shared_organization`)
+
+**organizations** (soft-delete) — id, tenant_id (unique), name, slug (unique), custom_domain (unique), timezone, branding (JSON), smtp_config (JSON — secrets in vault), security_policy (JSON: password_min_len, mfa_required, session_timeout_min, allowed_login_attempts), feature_overrides (JSON), created_at. Companies and colleges reference an org via `tenant_id`.
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
