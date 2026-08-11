@@ -2009,6 +2009,196 @@ Every surface where a student submits an answer shows a **ProctorBanner**: LMS a
 - **No fabricated data in production**: `withFallback` blanks demo data in production builds, preventing one user's shape (e.g. a demo profile) from showing to another.
 
 
+
+# 31. Full Endpoint Schemas (Field Reference)
+
+This appendix types the request and response fields for each endpoint (grounded in the service models in sections 16–17). Types: `str`, `int`, `float`, `bool`, `datetime` (ISO‑8601), `json` (object), `[...]` (array). All responses are wrapped in the `{ data, meta, errors }` envelope; the fields below are the `data` payload. Authenticated calls send `Authorization: Bearer <access>`.
+
+## 31.1 Auth (`/auth/v1`)
+
+**POST /register** — Req `{ email:str, password:str, full_name:str }` · Res `{ id:str, email:str, full_name:str, email_verified:bool }`
+**POST /login** — Req `{ email:str, password:str, device:str }` · Res `{ access_token:str, refresh_token:str, token_type:str, expires_in:int }`
+**POST /refresh** — Req `{ refresh_token:str }` · Res `{ access_token:str, refresh_token:str }`
+**POST /password/forgot** — Req `{ email:str }` · Res `{ sent:bool }`
+**POST /password/reset** — Req `{ token:str, new_password:str }` · Res `{ reset:bool }`
+**POST /otp/request** — Req `{ email:str }` · Res `{ sent:bool }`
+**POST /otp/verify** — Req `{ email:str, code:str, device:str }` · Res `{ access_token:str, refresh_token:str }`
+**POST /email/verify/request** — Req `{}` · Res `{ sent:bool }`
+**POST /email/confirm** — Req `{ token:str }` · Res `{ verified:bool }`
+**POST /logout** — Req `{ refresh_token:str }` · Res `{ ok:bool }`
+**GET /me** — Res `{ id:str, email:str, full_name:str, roles:[str], tenant_id:str, email_verified:bool, status:str }`
+
+## 31.2 Gamification & progress (`/lms/v1`)
+
+**GET /gamification/{learnerId}** — Res `{ learner_id:str, total_xp:int, level:int, next_level_at:int, xp_to_next:int, badges:[str], streak:{ current:int, longest:int } }`
+**GET /gamification/leaderboard/global** — Res `[ { rank:int, display_name:str, learner_id:str, total_xp:int, level:int } ]`
+**GET /progress/{learnerId}/scorecard** — Res `[ { year_no:int, communication:float, coding:float, aptitude:float, project:float } ]`
+**GET /progress/{learnerId}** — Res `{ modules:[ { module_id:str, completion_pct:float } ], year_status:{ year_no:int, criteria_met:bool, attendance_pct:float, avg_score:float } }`
+**POST /attendance** — Req `{ learner_id:str, schedule_slot_id:str, status:str(present|absent|late) }` · Res `{ id:str, status:str, ts:datetime }`
+**POST /progress/compute-year** — Req `{ learner_id:str, year_no:int }` · Res `{ criteria_met:bool, avg_score:float, attendance_pct:float }`
+**POST /answers/{answerId}/grade** — Req `{ score:float }` · Res `{ id:str, final_score:float, needs_grade:bool }`
+
+## 31.3 Curriculum & content (`/lms/v1`)
+
+**GET /curricula** — Res `[ { id:str, name:str, version:int, status:str(draft|published) } ]`
+**GET /curricula/{id}/tree** — Res `{ id:str, name:str, status:str, years:[ { year_no:int, theme:str, goal:str, modules:[ { id:str, title:str, order:int, branch_scope:str, lessons:[ { id:str, title:str, order:int, objectives:[ { statement:str, skill_tag:str } ] } ] } ], outcome_checks:[ { statement:str, criteria:str } ] } ] }`
+**POST /curricula** — Req `{ name:str }` · Res `{ id:str, status:"draft" }`
+**POST /curricula/{cid}/years** — Req `{ year_no:int, theme:str, goal:str }` · Res `{ id:str }`
+**POST /years/{yid}/modules** — Req `{ title:str, order:int, branch_scope:str }` · Res `{ id:str }`
+**POST /modules/{mid}/lessons** — Req `{ title:str, order:int }` · Res `{ id:str }`
+**GET /lessons/{lid}** — Res `{ id:str, title:str, content:[ block ] }` where `block` = `{ type:"text", html:str } | { type:"code", language:str, code:str, note:str } | { type:"callout", tone:str(tip|info|warning), text:str } | { type:"check", skill:str, question:str, options:[ { id:str, text:str } ], answer:str, explain:str }`
+**PUT /lessons/{lid}/content** — Req `{ content:[ block ] }` · Res `{ id:str, content:[ block ] }`
+**POST /lessons/{lid}/check** — Req `{ block_id:str, choice:str }` · Res `{ correct:bool, explain:str }`
+**POST /curricula/{cid}/publish** — Res `{ id:str, status:"published" }`
+**GET /content/playlist?learner_id=** — Res `[ { id:str, title:str, type:str(video|reading|interactive|pdf|slide|link), duration_sec:int, difficulty:str, unlocked:bool, status:str(not_started|in_progress|completed) } ]`
+**POST /content/{id}/progress** — Req `{ learner_id:str, position_sec:int, completed:bool }` · Res `{ status:str, position_sec:int }`
+
+## 31.4 Assessments & take‑flow (`/lms/v1`)
+
+**GET /assessments** — Res `[ { id:str, title:str, type:str, passing_pct:int, time_limit_min:int, proctored:bool, shuffle:bool } ]`
+**POST /assessments** — Req `{ title:str, dimension:str, year_no:int, type:str, time_limit_min:int, passing_pct:int, attempts_allowed:int, objectives:[str], proctored:bool, shuffle:bool, items:[ { item_type:str, prompt:str, options:[ { id:str, text:str } ], correct:json, weight:float, order:int, difficulty:str } ] }` · Res `{ id:str, title:str }`
+**GET /assessments/{aid}** — Res `{ id:str, title:str, pass_pct:int, duration_min:int, items:[ { id:str, type:str, stem:str, weight:float, options:[ { id:str, text:str } ] } ] }` (no answer keys)
+**POST /assessments/{aid}/attempts** — Req `{ learner_id:str }` · Res `{ attempt_id:str, status:str, started_at:datetime }`
+**POST /attempts/{attemptId}/submit** — Req `{ answers:{ [itemId:str]:{ option:str } } }` · Res `{ score:float, max_score:float, percentage:float, passed:bool, pending_grading:[str] }`
+
+## 31.5 Twin, coach, reviews, careers, mesh, drill, worlds, lessons, wallet (`/lms/v1`)
+
+**GET /assessments/twin/{learnerId}** — Res `{ overall:{ attempted:int, correct:int, mastery:int }, by_category:[ { name:str, correct:int, attempted:int, mastery:int, band:str(strong|developing|weak) } ], topics:[ …bar ], strengths:[ { name:str, mastery:int } ], focus_areas:[ { name:str, mastery:int } ], languages:[ { name:str, solved:int, attempted:int, mastery:int, band:str } ], coding_solved:int, coding_attempted:int, coding_verified:int, exams_taken:int }`
+**GET /assessments/coach/{learnerId}?force=** — Res `{ weakest:str, generated:bool, plan:{ headline:str, explainer:str, quick_win:str, focus:[ { topic:str, why:str } ], plan:[ { day:str, activity:str } ], practice:[str] }, completed_days:[str] }`
+**POST /assessments/coach/{learnerId}/progress** — Req `{ day:str, done:bool }` · Res `{ completed_days:[str] }`
+**POST /assessments/nudge/{learnerId}** — Res `{ sent:bool, emailed:bool, weakest:str }`
+**GET /reviews/{learnerId}** — Res `{ due:[ { skill:str, source:str, retention:int, review_count:int } ], upcoming:[ { skill:str, source:str, days_to_due:float } ], due_count:int }`
+**POST /reviews/{learnerId}/review** — Req `{ skill:str, outcome:str(good|rusty) }` · Res `{ skill:str, next_due_in_days:int }`
+**POST /reviews/{learnerId}/activity** — Req `{ skill:str, good:bool, mastery:float, source:str }` · Res `{ ok:bool }`
+**GET /careers** — Res `[ { id:str, title:str, description:str, required_skills:[ { name:str, weight:float } ] } ]`
+**POST /careers** — Req `{ title:str, description:str, required_skills:[ { name:str, weight:float } ] }` · Res `{ id:str }`
+**DELETE /careers/{cid}** — Res `{ deleted:bool }`
+**GET /careers/readiness/{learnerId}** — Res `{ has_data:bool, readiness:[ { id:str, title:str, description:str, match_pct:int, matched:[ { name:str, mastery:int } ], learn_next:[ { name:str, weight:float, mastery:int } ] } ] }`
+**GET /practice/problems** — Res `[ { id:str, title:str, skill:str, difficulty:str, languages:[str] } ]`
+**POST /practice/session** — Req `{ problem_id:str, language:str }` · Res `{ session_id:str, problem:{ statement:str, sample_cases:[ { input:str, expected:str } ] } }`
+**POST /practice/{sid}/run** — Req `{ code:str }` · Res `{ passed:int, total:int, compile_failed:bool, cases:[ { input:str, passed:bool, stdout:str, stderr:str } ] }`
+**POST /practice/{sid}/submit** — Req `{ code:str }` · Res `{ score:float, cases_passed:int, total_cases:int }`
+**GET /practice/skills/{learnerId}** — Res `{ solved:int, attempted:int, verified:int, mastery:int, by_skill:[ { name:str, mastery:int, solved:int, attempted:int, band:str } ], by_language:[ { name:str, solved:int, attempted:int } ] }`
+**POST /practice/{sid}/viva** — Res `{ viva_id:str, question:str }`
+**POST /practice/viva/{vivaId}** — Req `{ answer:str }` · Res `{ score:float, passed:bool, verdict:str }`
+**POST /drill/start** — Req `{ topic:str|null, target:int }` · Res `{ drill_id:str, level:str, item:{ id:str, prompt:str, options:[ { id:str, text:str } ] }, progress:{ answered:int, target:int } }`
+**POST /drill/{drillId}/answer** — Req `{ item_id:str, option:str, elapsed_ms:int }` · Res `{ correct:bool, correct_option:str, explain:str, level:str, progress:json, next_item:json, done:bool, summary:{ accuracy:int, correct:int, answered:int, final_level:str, topic:str } }`
+**GET /worlds** — Res `[ { id:str, title:str, role:str, skill:str, difficulty:str, summary:str, steps:int } ]`
+**POST /worlds/{worldId}/start** — Res `{ run_id:str, step_index:int, total_steps:int, step:{ id:str, situation:str, artifact:{ type:str, content:str }, prompt:str, options:[ { id:str, text:str } ] } }`
+**POST /worlds/runs/{runId}/answer** — Req `{ step_id:str, choice:str }` · Res `{ correct:bool, correct_choice:str, feedback:str, progress:{ answered:int, total:int }, next_step:json, done:bool, summary:{ score:int, correct:int, total:int, passed:bool, role:str, skill:str } }`
+**GET /mesh/{learnerId}** — Res `{ get_help:[ { topic:str, my_mastery:int, mentors:[ { id:str, name:str, mastery:int } ] } ], can_teach:[ { topic:str, my_mastery:int, seekers:int } ] }`
+**GET /mesh/{learnerId}/sessions** — Res `{ as_mentor:[ session ], as_learner:[ session ] }` where `session` = `{ id:str, topic:str, teacher_id:str, teacher_name:str, learner_id:str, learner_name:str, status:str }`
+**POST /mesh/request** — Req `{ topic:str, mentor_id:str, note:str|null }` · Res `{ id:str, status:"requested" }`
+**POST /mesh/{sessionId}/respond** — Req `{ accept:bool }` · Res `{ id:str, status:str }`
+**POST /mesh/{sessionId}/complete** — Res `{ id:str, status:"completed" }`
+**POST /micro-lessons/{learnerId}/generate** — Req `{ topic:str, force:bool }` · Res `{ id:str, topic:str, generated:bool, lesson:{ title:str, blocks:[ block ] } }`
+**GET /micro-lessons/{learnerId}** — Res `[ { id:str, topic:str, title:str, created_at:datetime } ]`
+**POST /micro-lessons/author-blocks** — Req `{ topic:str }` · Res `{ blocks:[ block ] }`
+**GET /wallet/{learnerId}** — Res `{ credential:{ subject_name:str, issuer:str, overall_mastery:int, exams_taken:int, coding_solved:int, coding_verified:int, proven_strengths:[str], verified_coding_skills:[str], top_career:{ title:str, match_pct:int } }, verify_id:str, issued_at:datetime, revoked:bool }`
+**POST /wallet/{learnerId}/issue** — Res same as GET. **POST /wallet/{learnerId}/revoke** — Res `{ revoked:bool }`. **GET /verify/wallet/{verifyId}** — Res `{ valid:bool, subject_name:str, issued_at:datetime, claims:[str] }`
+
+## 31.6 Certification (`/lms/v1`, `/verify`)
+
+**GET /certificates/for/{learnerId}** — Res `[ { id:str, year_no:int, certificate:str, cert_no:str, verify_id:str, status:str(issued|revoked), ppo_tag:bool, holder_name:str, issued_at:datetime } ]`
+**GET /certificates/{id}/pdf** — Res `binary(application/pdf)`
+**GET /verify/{verifyId}** — Res `{ valid:bool, holder_name:str, certificate:str, cert_no:str, year_no:int, issued_at:datetime, ppo_eligible:bool }`
+
+## 31.7 Institution & roster (`/lms/v1`)
+
+**GET /colleges** — Res `[ { id:str, name:str, code:str, city:str, learners:int, verified:bool } ]`
+**POST /colleges** — Req `{ name:str, code:str, city:str }` · Res college
+**GET /colleges/{cid}/cohorts** — Res `[ { id:str, section:str, year_no:int, size:int } ]`
+**GET /learners** — Res `[ { id:str, roll_no:str, full_name:str, branch_id:str, year_no:int, cgpa:float, verified:bool, status:str } ]`
+**POST /learners/import** — Req `{ learners:[ { roll_no:str, full_name:str, branch_id:str, cgpa:float } ] }` · Res `{ imported:[ learner ], summary:json }`
+**POST /learners/{lid}/verify** — Res `{ id:str, verified:true }`
+**POST /learners/{lid}/promote** — Res `{ id:str, year_no:int }`
+
+## 31.8 Drive & candidate (`/drive/v1`)
+
+**GET /drives?status=** — Res `[ { id:str, company_name:str, title:str, status:str, venue:str, reporting_time:str } ]`
+**GET /drives/{id}** — Res `{ id:str, company_name:str, title:str, status:str, schedule:json, roles:[ { id:str, title:str, ctc:str, positions:int, skills:[ { name:str, weight:float } ] } ], rounds:[ { id:str, order:int, type:str, label:str, optional:bool } ] }`
+**POST /drives** — Req `{ company_id:str, company_name:str, title:str, venue:str, reporting_time:str }` · Res `{ id:str, status:"draft" }`
+**DELETE /drives/{id}** — Res `{ deleted:bool }`
+**POST /drives/{id}/roles** — Req `{ title:str, ctc:str, positions:int, description:str, skills:[ { name:str, weight:float } ] }` · Res role
+**POST /drives/{id}/eligibility** — Req `{ min_cgpa:float, branches:[str], max_backlogs:int, min_lms_score:int }` · Res `{ id:str }`
+**POST /drives/{id}/rounds** — Req `{ order:int, type:str, label:str, optional:bool }` · Res round
+**GET /drives/{id}/workflow** — Res `[ { order:int, type:str, label:str, optional:bool } ]`
+**PUT /drives/{id}/workflow** — Req `{ stages:[ … ] }` · Res `{ stages:[ … ] }`
+**POST /drives/{id}/register** — Req `{ candidate_id:str }` · Res registration
+**GET /drives/{id}/registrations** — Res `[ { candidate_id:str, candidate_name:str, candidate_email:str, candidate_roll:str, status:str, eligible:str, current_round:int } ]`
+**POST /drives/{id}/shortlist** — Req `{ candidate_ids:[str] }` · Res `{ shortlisted:int }`
+**POST /drives/{id}/advance** — Req `{ candidate_id:str }` · Res `{ candidate_id:str, current_round:int }`
+**GET /drives/{id}/funnel** — Res `{ total:int, by_status:{ [status:str]:int } }`
+**GET /drives/{id}/analytics** — Res `{ total_registered:int, written:{ attended:int, cleared:int, pass_rate:int, avg_percentage:int, score_distribution:[ { band:str, count:int } ] }, coding:{ students_with_coding:int, students_attempted:int, total_correct:int, total_attempted:int, accuracy:int } }`
+**GET /rounds/{order}/scores** (via `/drives/{id}/...`) — Res `{ round:{ label:str, type:str }, scores:[ { candidate_id:str, candidate_name:str, marks:float, max_marks:float, remarks:str, cleared:bool, referred:bool } ] }`
+**POST /rounds/{order}/scores** — Req `{ candidate_id:str, marks:float, max_marks:float, remarks:str, cleared:bool }` · Res score
+**POST /rounds/{order}/candidates** — Req `{ candidate_id:str }` · Res `{ added:bool }`
+**DELETE /rounds/{order}/candidates/{cid}** — Res `{ removed:bool }`
+**POST /rounds/{order}/publish** — Res `{ advanced:int, next_round:int, final_round:bool }`
+**GET /rounds/{order}/export?cleared=** — Res `binary(xlsx)`
+**GET /candidate/profile** — Res `{ full_name:str, email:str, phone:str, branch:str, cgpa:float, completeness:int, education:[ { degree:str, institution:str, year:int, score:str } ], skills:[ { skill:str } ], projects:[ { title:str, repo_url:str } ], resume_file_id:str, photo_file_id:str }`
+**PUT /candidate/profile** — Req `{ full_name:str, email:str, phone:str, branch:str, cgpa:float }` · Res profile
+**POST /candidate/apply** — Req `{ drive_id:str, drive_role_id:str }` · Res `{ application_id:str, status:"applied" }`
+**GET /opportunities?candidate_id=** — Res `{ has_skill_data:bool, matches:[ { drive_id:str, title:str, company_name:str, venue:str, reporting_time:str, match_pct:int, roles:[ { id:str, title:str, ctc:str } ], matched:[ { name:str, mastery:int } ], missing:[ { name:str, mastery:int } ] } ], unspecified:[ { drive_id:str, title:str, company_name:str } ] }`
+**POST /attend** (public) — Req `{ drive_code:str, first_name:str, last_name:str, roll_number:str, email:str, phone:str, branch:str, cgpa:float }` · Res `{ student_id:str, drive:json, access_token:str, refresh_token:str }`
+
+## 31.9 Exam, coding, proctoring (`/drive/v1`)
+
+**GET /exams?drive_id=** — Res `[ { id:str, title:str, sections:int, total_time_min:int } ]`
+**GET /exams/{examId}** — Res `{ id:str, title:str, total_time_min:int, nav_rule:str, sections:[ { id:str, title:str, time_limit_min:int } ] }`
+**GET /exams/{examId}/paper** — Res `{ title:str, total_time_min:int, sections:[ { title:str, questions:[ { id:str, type:str, stem:str, options:[ { id:str, text:str } ], weight:float } ] } ] }`
+**POST /exams/{examId}/start** — Req `{ candidate_id:str }` · Res `{ session_id:str, started_at:datetime, remaining_sec:int, answers:json, section_state:json }`
+**GET /exam-sessions/{sid}/state** — Res `{ status:str, answers:json, section_state:json, remaining_sec:int }`
+**POST /exam-sessions/{sid}/save** — Req `{ answers:{ [qid:str]:{ option:str }|{ code:str, language:str } } }` · Res `{ saved:bool, client_seq:int }`
+**POST /exam-sessions/{sid}/submit** — Res `{ status:"submitted", answer_count:int }`
+**POST /coding/run-adhoc** — Req `{ language:str, code:str, cases:[ { input:str, expected:str } ] }` · Res `{ passed:int, total:int, compile_failed:bool, compile_log:str, cases:[ { input:str, expected:str, passed:bool, stdout:str, timed_out:bool } ] }`
+**GET /coding/languages** — Res `{ languages:{ [lang:str]:bool } }`
+**POST /coding/session** — Req `{ problem_id:str }` · Res `{ session_id:str, language:str, draft_code:str }`
+**POST /coding/{sid}/submit** — Req `{ code:str }` · Res `{ score:float, cases_passed:int, total_cases:int }`
+**POST /proctor/start** — Req `{ exam_session_id:str, candidate_id:str, drive_id:str, fingerprint:str, browser:str }` · Res `{ proctor_session_id:str, status:"active" }`
+**POST /proctor/{examSessionId}/events** — Req `{ type:str, meta:json }` · Res `{ violation_score:int, status:str }`
+
+## 31.10 Question bank, evaluation, interview, result (`/drive/v1`)
+
+**POST /questions** — Req `{ type:str, category:str, difficulty:str, stem:str, options:[ { id:str, text:str } ], answer_key:json, weight:float }` · Res `{ id:str, status:"draft", version:int }`
+**GET /questions?status=** — Res `[ { id:str, type:str, category:str, difficulty:str, stem:str, status:str, version:int } ]`
+**POST /questions/{id}/activate** — Res `{ id:str, status:"active" }`
+**POST /questions/generate** — Req `{ topic:str, type:str, difficulty:str, count:int, category:str }` · Res `{ questions:[ question ] }`
+**POST /blueprints** — Req `{ name:str, spec:[ { category:str, difficulty:str, count:int } ] }` · Res `{ id:str }`
+**POST /blueprints/{id}/generate-paper** — Res `{ exam_id:str, question_count:int }`
+**POST /exams** — Req `{ title:str, drive_id:str, total_time_min:int, sections:[ … ] }` · Res `{ id:str, title:str }`
+**POST /evaluations/keys** — Req `{ exam_id:str, items:[ { question_id:str, type:str, correct:json, weight:float, cases:[…], language:str } ], passing_pct:int }` · Res `{ exam_id:str }`
+**POST /evaluations/rank** — Req `{ exam_id:str }` · Res `[ { candidate_id:str, rank:int, percentage:float } ]`
+**GET /evaluations/exam/{examId}/ranks** — Res `[ { candidate_id:str, rank:int, percentage:float, tie_break:str } ]`
+**GET /evaluations/exam/{examId}/difficulty** — Res `{ items:[ { question_id:str, correct_pct:float, discrimination:float } ] }`
+**GET /evaluations/twin/{candidateId}** — Res `{ candidate_id:str, verified_skills:[ { skill:str, level:str, evidence:str } ] }`
+**POST /interviews/schedule** — Req `{ drive_id:str, candidate_id:str, stage:str, mode:str, link:str, slot:str }` · Res interview
+**POST /interviews/{id}/allocate** — Req `{ interviewer_id:str }` · Res `{ id:str, interviewer_id:str }`
+**POST /interviews/{id}/rate** — Req `{ competency:str, score:float }` · Res `{ avg_rating:float }`
+**POST /interviews/{id}/decision** — Req `{ decision:str, decision_reason:str }` · Res `{ id:str, status:"completed", decision:str }`
+**GET /interviews/drive/{driveId}** — Res `[ { id:str, candidate_id:str, stage:str, mode:str, status:str, decision:str, avg_rating:float } ]`
+**POST /results/compile** — Req `{ drive_id:str, cutoff:int, rows:[ { candidate_id:str, final_score:float, interview_decision:str } ] }` · Res `[ { candidate_id:str, final_score:float, rank:int, outcome:str, status:"draft" } ]`
+**GET /results/{driveId}** — Res `[ result ]`
+**POST /results/{driveId}/publish** — Res `[ { …, status:"published", published_at:datetime } ]`
+**POST /offers/generate** — Req `{ drive_id:str, candidate_id:str, type:str(offer|ppo), company_name:str, role_title:str, ctc:str }` · Res `{ offer_id:str, verify_id:str, type:str, status:"issued" }`
+**POST /offers/{offerId}/status** — Req `{ status:str(accepted|declined) }` · Res `{ id:str, status:str }`
+
+## 31.11 Platform (`/analytics`, `/notify`, `/files`, `/ai`)
+
+**GET /analytics/v1/dashboard/{role}** — Res `{ role:str, colleges:int, learners:int, drives:int, top_colleges:[ { rank:int, college_id:str, readiness_index:float } ] }`
+**GET /analytics/v1/colleges/ranking** — Res `[ { rank:int, college_id:str, readiness_index:float } ]`
+**GET /notify/v1/inbox** — Res `[ { id:str, template_key:str, channel:str, subject:str, body:str, read:bool, created_at:datetime } ]`
+**POST /notify/v1/inbox/{id}/read** — Res `{ id:str, read:true }`
+**PUT /notify/v1/preferences** — Req `{ channel:str, enabled:bool }` · Res `{ channel:str, enabled:bool }`
+**POST /files/v1/upload-url** — Req `{ purpose:str, filename:str, mime:str, size:int }` · Res `{ file_id:str, upload_token:str, upload_url:str }`
+**PUT /files/v1/upload/{token}** — Req `binary` · Res `{ received:int }`
+**POST /files/v1/{fileId}/complete** — Res `{ file_id:str, status:"ready" }`
+**POST /ai/v1/tutor/chat** — Req `{ message:str, session_id:str, context:str }` · Res `{ session_id:str, reply:str, mode:str(live|stub|offline) }`
+**GET /ai/v1/tutor/sessions** — Res `[ { id:str, title:str, created_at:datetime } ]`
+**GET /ai/v1/tutor/sessions/{sid}/messages** — Res `[ { role:str, content:str, created_at:datetime } ]`
+**POST /ai/v1/tutor/study-plan** — Req `{ variables:{ year_no:int, scorecard:json, weak_areas:[str], goal:str, hours:int } }` · Res `{ plan:{ summary:str, weeks:[ { week:int, focus:str, tasks:[str] } ] }, mode:str }`
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
