@@ -1674,6 +1674,86 @@ Written-test (Round 1) analytics with Excel export.
 - **Buttons: Create question** (`POST /drive/v1/questions`), **Activate** (`POST .../questions/{id}/activate`), **AI-generate questions** (`POST /drive/v1/questions/generate`), **Create blueprint** (`POST /drive/v1/blueprints`), **Generate paper** (`POST .../blueprints/{id}/generate-paper`), **Create exam** (`POST /drive/v1/exams`), **Upsert eval key** (`POST /drive/v1/evaluations/keys`).
 
 
+
+# 22. Detailed Screen Reference — Staff Consoles, Generative Lessons & Shared Components
+
+## 22.1 Micro-Lessons (`/lms/lessons`)
+
+The **Generative Learning Fabric** — name a concept and the AI writes a complete lesson (rich text with tables/examples, runnable code, callouts, and checks) in the same block format as curriculum lessons.
+
+- On mount, loads the twin's `focus_areas` (as suggested topics) and the learner's saved lesson **library** (`GET /lms/v1/micro-lessons/{id}`).
+- **Generate bar** — a topic input (Enter to submit) + **Generate** → `POST /lms/v1/micro-lessons/{id}/generate { topic, force:false }`. **Focus-area chips** generate on click.
+- **Lesson panel** — the lesson title, an **AI-generated / Smart lesson** badge, a **Regenerate** button (`force:true`), and the rendered **LessonBlocks**. A backward-compat shim converts older `{intro, key_points, worked_example, misconception, practice}` lessons into blocks.
+- **"Your lessons" sidebar** — the saved library; clicking a title re-opens it.
+- Empty state: "Pick a concept to learn".
+
+## 22.2 Lesson Viewer (`/lms/lesson/:lid`)
+
+Student view of a curriculum "living lesson".
+- Loads `GET /lms/v1/lessons/{lid}`; renders `content` via **LessonBlocks**.
+- If any block is a **check**, a **ProctorBanner** is shown and each check is graded via `POST /lms/v1/lessons/{lid}/check { block_id, choice }` — which also records practice into the learner's review schedule (feeding the twin).
+- Empty state when no material has been added; **Back** button; a closing note that "your skill map updates from the checks above."
+
+## 22.3 Institution / Admin Console (`/lms/admin`)
+
+Super-Admin / College-Admin / TPO console. Two tabs: **overview** and **learners**.
+- **Stat tiles** — Colleges, Learners, Active drives (`GET /analytics/v1/dashboard/college_admin`).
+- **Overview → Colleges** — a college list (code avatar, name, city, learner count, verified/pending badge) and an **Add college** form (name, code, city) → `POST /lms/v1/colleges`.
+- **Learners → Roster** — a table (roll no, name, branch, year, CGPA, status). Unverified rows have a **Verify** button → `POST /lms/v1/learners/{id}/verify`. A **Bulk import** panel accepts CSV lines (`roll_no, name, branch, cgpa`) → `POST /lms/v1/learners/import`.
+
+## 22.4 Curriculum Studio (`/lms/curriculum`)
+
+Authoring for real curriculum + AI-assisted lesson material.
+- Loads the real curriculum tree (`GET /lms/v1/curricula` + `/tree`). Editors add **years/modules/lessons** (`POST .../years|modules|lessons`).
+- **Lesson content editor** (see Lesson Editor) builds the block list; **AI-generate blocks** → `POST /lms/v1/micro-lessons/author-blocks { topic }` returns reviewable blocks to insert; **Save** → `PUT /lms/v1/lessons/{lid}/content { content }`.
+- **Publish curriculum** → `POST /lms/v1/curricula/{cid}/publish`.
+
+## 22.5 Lesson Editor (component)
+
+The block editor used by Curriculum Studio: add/reorder/remove blocks of type **text** (markdown + tables), **code** (language + snippet + note), **callout** (tip/info/warning), and **check** (question + options + answer + explanation); an AI-generate action fills a comprehensive lesson; a live preview renders via LessonBlocks; save persists to the lesson's JSON `content`.
+
+## 22.6 Trainer Console (`/lms/trainer`)
+
+Roster, attendance, grading, progress.
+- **Roster** (`GET /lms/v1/learners`) with verify/promote (`POST .../verify|promote`).
+- **Attendance** — `POST /lms/v1/attendance`.
+- **Grading queue** — subjective answers awaiting a score → `POST /lms/v1/answers/{answerId}/grade { score }`.
+- **Compute year** — `POST /lms/v1/progress/compute-year` recomputes year status from attendance + scores.
+
+## 22.7 Certificates (`/lms/certificates`)
+
+- Loads `GET /lms/v1/certificates/for/{id}`. Each issued certificate shows year, name, cert no, status, and a PPO tag.
+- **View** — opens a **modal** rendering the certificate (holder name, credential, issued date, verify id `LARE-VER-####`).
+- **Print** — the browser print dialog for the certificate.
+- **Download PDF** — `GET /lms/v1/certificates/{id}/pdf`.
+- **Verify certificate** — opens the public verify page (`/verify/{verifyId}`) which asks for / accepts the readable id and renders the verified certificate.
+
+## 22.8 AI Tutor (`/lms/tutor`)
+
+- A chat thread with a message composer; **Send** → `POST /ai/v1/tutor/chat { message, session_id, context }`. Sessions are listed (`GET /ai/v1/tutor/sessions`) and re-openable (`GET .../sessions/{sid}/messages`).
+- **Generate study plan** → `POST /ai/v1/tutor/study-plan { variables }` produces a structured plan (year, scorecard, weak areas, goal, hours). Markdown replies render via `lib/markdown.js`.
+
+## 22.9 Drives (candidate) & Matched Opportunities
+
+- **Drives** (`/drive`) — open-drive cards (`GET /drive/v1/drives?status=open`); **View** and **Apply** (`POST /drive/v1/candidate/apply`).
+- **Matched Opportunities** (`/drive/opportunities`) — `GET /drive/v1/opportunities?candidate_id=…`; open drives ranked by skill match (match %, matched skills).
+
+## 22.10 Authentication & public pages
+
+- **Landing** (`/`), **Login** (`/login`), **Register** (`/register`), **Forgot Password** (`/forgot-password`) — see section 9.A. **AuthLayout** frames them (brand panel + form).
+- **App Chooser** (`/apps`) — choose LARE Learn or LARE Hire (role-filtered).
+- **Attend Drive** (`/drive/attend`) — public, no-login attend + resume.
+- **Wallet Verify** (`/verify/wallet/:verifyId`) and **Certificate Verify** (`/verify/:verifyId`) — public verification (no auth).
+
+## 22.11 Shared components
+
+- **AppShell** (`components/layout/AppShell.jsx`) — the authenticated shell: top bar, a product/role-scoped sidebar (internally scrollable via `.sidebar-scroll`, `lg:sticky lg:top-0 lg:h-screen`), and the routed page area.
+- **ProctorBanner** (`components/ProctorBanner.jsx`) — the integrity banner shown on every answer-submission surface (assessments, coding practice, adaptive drill, practice worlds, lesson checks, exam). It surfaces monitoring status and, where wired, reports proctor events.
+- **LessonBlocks** (`components/LessonBlocks.jsx`) — renders the lesson block list: `text` (markdown + tables), `code` (syntax-styled with an optional note), `callout` (tip/info/warning), and `check` (an inline question graded via the provided `grade` callback, with correct/explanation feedback).
+- **Proctoring signals** (`lib/proctor.js`) — `attachProctoring({ onViolation })` listens for tab-switch / window-blur / visibility-change / fullscreen-exit / copy-paste / right-click / dev-tools signals; `SIGNAL_LABEL` maps each to a human label. Consumers accumulate flags toward the 5-flag auto-submit; the exam also posts each event to the anticheat service.
+- **UI primitives** (`components/ui/primitives.jsx`) — `Card`, `Button` (primary/secondary/ghost/amber; `as` polymorphism for links), `Badge` (brand/teal/amber/rose/slate), `Input`, `Field`, `XPBar`, `StatTile`. **States** (`states.jsx`) — `PageHeader`, `Loading`, `EmptyState`, `DataSource` (live/offline indicator).
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
