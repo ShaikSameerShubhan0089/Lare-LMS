@@ -1609,6 +1609,71 @@ The Sovereign Learning Wallet — a signed, publicly verifiable competence recor
 - **Header action: Skill Map**.
 
 
+
+# 21. Detailed Screen Reference — LARE Hire
+
+## 21.1 Exam Portal (`/drive/test/:examId`)
+
+The proctored, timed exam experience. Two phases: **Instructions gate → Runner**. `VIOLATION_LIMIT = 5` (the client counts flags; the backend also decides via a weighted score).
+
+**Instructions gate**
+- A back link ("Back to my drives"), a **Do** list (stable connection, photo ID, stay fullscreen, revisit within a section) and a **Don't** list (no tab-switch/minimise/leave-fullscreen, no copy/paste/right-click, no dev tools/screenshots, no refresh/close).
+- **Consent checkbox** — must be ticked to enable **Start test** → `POST /drive/v1/exams/{examId}/start` (returns the session + paper). Errors surface inline.
+
+**Runner**
+- **Header** — exam title, "Section X of N", a **Calculator** toggle, a **flags** indicator (`violations/5`, teal→rose), and a **server-driven countdown** (`mm:ss`, turns rose under 30s).
+- **Timer** — decrements each second; at 0 it **auto-submits** (`reason: timeout`).
+- **Proctoring** — on mount, `POST /drive/v1/proctor/start` registers the session; `attachProctoring` captures focus/tab/visibility/copy events. Each violation: increments the counter, shows a toast + a **Proctor log** entry, and posts `POST /drive/v1/proctor/{sid}/events`. At 5 it auto-submits (`reason: proctor`). A one-shot guard prevents double submits and overshooting.
+- **Question card** — index, stem, and a type badge (MCQ / Multi-select / True-False / Coding / SQL / Verbal / etc.).
+  - **MCQ options** — clicking selects and writes the answer; each choice triggers a durable autosave `POST /drive/v1/exam-sessions/{sid}/save`.
+  - **Coding answer** (`CodeAnswer`) — a language `<select>` (filtered to languages the server can actually run via `GET /drive/v1/coding/languages`), a code editor seeded from the question's starter, a **Run sample tests** button (`POST /drive/v1/coding/run-adhoc`) with per-case pass/fail (hidden cases are graded server-side on submit), and autosave on blur/change.
+- **Scientific calculator** — an in-exam, safe expression evaluator (shunting-yard; no `eval`) supporting + − × ÷, powers, √, brackets, π, e; fixed bottom-right, toggled from the header.
+- **Navigation** — **Previous / Next section** buttons; a sticky **question palette** (answered = teal) with an answered count; **Submit exam** (amber) available from the palette and the last section.
+- **Submit** — `POST /drive/v1/exam-sessions/{sid}/submit`; the confirmation shows answered/total and the integrity-flag count, with a distinct rose treatment if auto-submitted for violations.
+
+## 21.2 Recruiter Drives (`/drive/recruiter/drives`)
+
+- Loads `GET /drive/v1/drives`. **Search box** (title/company/venue) + **status filter** (all/draft/open/closed) + an "N of M" count.
+- **Drive card** — building icon, status badge (open=teal / draft=slate / closed=amber), title, company, venue, reporting time. **Buttons: Manage** (→ `/drive/recruiter/drives/:id`) and **Delete** (confirm → `DELETE /drive/v1/drives/{id}`, cascades rounds/marks/registrations/results; hidden locally on success).
+- **Button: New drive** — opens the **CreateDrive** modal (company name, drive title, venue, reporting time) → `POST /drive/v1/drives`. The new drive is added to the list.
+- Empty states for "no drives yet" and "no match".
+
+## 21.3 Drive Console (`/drive/recruiter/drives/:id`)
+
+The per-drive command centre — a tabbed container over the drive header. It loads `GET /drive/v1/drives/{id}` and `GET /drive/v1/drives/{id}/funnel`, and composes the **Rounds**, **Results**, **Interviews**, and **Analytics** tabs (below), plus drive setup (roles, eligibility, rounds, workflow, PPO config) and the **Open drive** control (`POST /drive/v1/drives/{id}/open`). The funnel header shows counts by status.
+
+## 21.4 Rounds Tab
+
+Round-by-round marks and progression (Round 1 auto-seeded from applicants; later rounds panel-scored).
+- **Round selector** + an editable **marks table** with candidate search/filter and a skills popover.
+- **Buttons: Save score** (`POST .../rounds/{order}/scores`), **Add candidate** (`POST .../rounds/{order}/candidates`), **Remove candidate** (`DELETE .../candidates/{cid}`), **Publish round** (`POST .../rounds/{order}/publish` — cleared candidates advance), **Delete round** (`DELETE .../rounds/{order}` — later rounds shift up), **Download all / Download cleared** (`GET .../rounds/{order}/export` → `.xlsx`).
+
+## 21.5 Results Tab
+
+Compile → publish → offer.
+- **Compile controls** — a **cutoff %** input and per-candidate **final-score** inputs (eligible candidates only). **Button: Compile** → `POST /drive/v1/results/compile` then `GET /drive/v1/results/{id}`. On error a clear message is shown (no fabricated results).
+- **Results table** — rank, candidate (name/email/roll via a registration lookup), score, outcome badge (selected/shortlist/fail), and an **Offer** column.
+- **Button: Publish results** → `POST .../results/{id}/publish`. **PPO offer / Offer** → `POST /drive/v1/offers/generate`; issued offers link to the public `/verify/offer/:id`.
+
+## 21.6 Interviews Tab
+
+- **Schedule form** — candidate, stage (technical/hr/ppo), mode (online/in_person), meeting link/slot → `POST /drive/v1/interviews/schedule`.
+- **Interview card** — candidate, stage · mode, a status/decision badge, and (when undecided) inline controls: **Rate 3/4/5** (`POST .../interviews/{id}/rate`), **Reject** / **Select** (`POST .../interviews/{id}/decision`). A "Recommended for offer" line appears on select; avg rating shows when rated.
+
+## 21.7 Analytics Tab
+
+Written-test (Round 1) analytics with Excel export.
+- **Tiles** — Registered, Attended written test, Cleared, Pass rate. Data from `GET /drive/v1/drives/{id}/analytics`.
+- **Score distribution** — banded bar chart with the average percentage.
+- **Coding questions** — students with coding, attempted, total correct/attempted, and coding accuracy.
+- **Buttons: Attendees (Excel) / Cleared (Excel)** → `GET .../rounds/1/export[?cleared=true]` (binary `.xlsx`).
+
+## 21.8 Question Bank (`/drive/recruiter/questions`)
+
+- Loads `GET /drive/v1/questions`. Question list shows type, category, difficulty, status (draft/active/retired), and version.
+- **Buttons: Create question** (`POST /drive/v1/questions`), **Activate** (`POST .../questions/{id}/activate`), **AI-generate questions** (`POST /drive/v1/questions/generate`), **Create blueprint** (`POST /drive/v1/blueprints`), **Generate paper** (`POST .../blueprints/{id}/generate-paper`), **Create exam** (`POST /drive/v1/exams`), **Upsert eval key** (`POST /drive/v1/evaluations/keys`).
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
