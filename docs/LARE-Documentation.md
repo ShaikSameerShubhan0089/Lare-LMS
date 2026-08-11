@@ -1754,6 +1754,68 @@ Roster, attendance, grading, progress.
 - **UI primitives** (`components/ui/primitives.jsx`) — `Card`, `Button` (primary/secondary/ghost/amber; `as` polymorphism for links), `Badge` (brand/teal/amber/rose/slate), `Input`, `Field`, `XPBar`, `StatTile`. **States** (`states.jsx`) — `PageHeader`, `Loading`, `EmptyState`, `DataSource` (live/offline indicator).
 
 
+
+# 23. Detailed Screen Reference — Recruiter Rounds, Question Bank, Tutor, Certificates
+
+## 23.1 Rounds Tab — every control
+
+Loads the pipeline (`GET .../workflow`) and the selected round's scores (`GET .../rounds/{order}/scores`).
+- **Round selector buttons** — one per pipeline round ("1. Round 1", "(opt)" for optional); clicking sets the active round.
+- **Marks sheet header** — round label; helper text differs for written (auto-analysed) vs. panel rounds.
+- **Button: Export all** → `downloadRoundXlsx(id, order, false)` (`.xlsx`; disabled while preparing or if empty).
+- **Button: Export cleared** → `downloadRoundXlsx(id, order, true)`.
+- **Button: Delete round** (ghost, rose; disabled if only one round) → confirm → `DELETE .../rounds/{order}`; later rounds shift up; refreshes workflow.
+- **Button: Publish round** (amber) → confirm dialog stating how many cleared advance and that the rest are rejected → `POST .../rounds/{order}/publish`; flash reports "advanced to round N" or "Final round — N selected".
+- **Search box** (name/email/roll) and a **filter select** (All / Cleared only / not-cleared).
+- **Per-row inline controls** — editable **marks** and **remarks** (saved via `POST .../scores { candidate_id, marks, remarks, cleared }`, optimistic), a **cleared** toggle, **remove** (`DELETE .../candidates/{cid}`).
+- **Add referred candidate** — an id input + **Add** (`POST .../rounds/{order}/candidates`).
+
+## 23.2 Question Bank — every control
+
+Three panes: **Author question**, **Build exam**, **Questions list**, plus **Paper viewer**.
+
+**Author question (left)**
+- **Selects**: type (mcq/multi/coding/sql), category (aptitude/technical/verbal/programming), difficulty (easy/medium/hard).
+- **Question stem** textarea.
+- **Options** (MCQ) — a **correct-answer radio** per option, an option text input, a **remove** (trash) per option when >2, and **Add option** (up to 4).
+- **Button: Add question** → `POST /drive/v1/questions` (falls back to a local draft on error); prepends to the list.
+
+**Build exam (direct authoring → exam + eval key)**
+- **Inputs**: Exam title, Time (min), Pass %.
+- **Attach to drive** select (`DriveSelect`) — applicants only see the test once attached.
+- Per **section**: an editable **section title**, a **remove-section** trash (when >1), and per-question editing:
+  - **Button: MCQ** (adds a blank MCQ) and **Button: Coding** (adds a blank coding question).
+  - MCQ question — stem, options with a **correct radio**, **Add option**, per-option remove.
+  - Coding question — stem, **Sample cases** (input/expected, shown to students) with **Add sample**; **Hidden cases** (grading-only, never shown) with **Add hidden**.
+  - **Remove question** trash per question.
+- **Button: Generate with AI** (`AIGenerate`, per section) — opens a panel: topic input, type (MCQ/Coding), difficulty, count → **Generate** (`POST /drive/v1/questions/generate`) appends editable rows; **Cancel**. Errors show the server's exact reason (quota/provider/not configured).
+- **Button: Add section**.
+- **Button: Create exam (N questions)** — runs client-side **validation** (drive selected, ≥1 question, no empty stems, MCQ ≥2 options + a marked correct, coding ≥1 case + ≥1 language) and, if valid, `POST /drive/v1/exams` then `POST /drive/v1/evaluations/keys` (answer key → Evaluation service). Validation errors list every problem; success confirms the exam is attached.
+
+**Questions list (right)** — each item shows stem + type/category/difficulty badges; **Activate** button (`POST .../questions/{id}/activate`) for drafts; active items show a badge.
+
+**Paper viewer** — a **DriveSelect**, then a button per exam (`GET .../exams?drive_id=…`); **clicking an exam** loads the full paper (`GET .../exams/{id}/paper`) with **correct MCQ options highlighted** and coding **test cases** shown — an admin answer-key review.
+
+## 23.3 AI Tutor — every control
+
+- **Chat thread** — user/assistant bubbles; a typing indicator while busy; auto-scroll.
+- **Quick action: Study plan** → `POST /ai/v1/tutor/study-plan` (renders a week-by-week plan; offline fallback text).
+- **Quick action: Stream advice** → sends "Which specialisation stream fits me?" via `POST /ai/v1/tutor/chat`.
+- **Message input** + **Send** → `POST /ai/v1/tutor/chat { message, session_id, context }`; the returned `session_id` threads the conversation; a **live AI / offline** badge reflects `mode`.
+
+## 23.4 Certificates — every control
+
+Loads `GET /lms/v1/certificates/for/{id}`.
+- **Certificate card** (clickable) — series-coloured award icon, name, optional **PPO eligible** badge, "Year N · cert_no", a status badge, and a "View certificate" affordance. Clicking opens the **modal**.
+- **Certificate modal** — renders the certificate artwork (`certificateHtml`). Buttons:
+  - **Print** → `printCertificate(cert)` (browser print of the certificate).
+  - **Download PDF** (when the cert has an id) → `GET /lms/v1/certificates/{id}/pdf`.
+  - **Public verify** → opens `/verify/{verify_id}` in a new tab.
+  - **Close** (X).
+- **Verify a certificate widget** (side panel, also public-capable) — a **verify-id input** (e.g. `LARE-VER-4821`) + **Verify** → `GET /verify/{verifyId}`. On success it opens the **same certificate modal with an "Authentic — verified by LARE Learn" banner**; on failure it shows "not valid / not found".
+- Empty state when no certificates ("auto-issues on completing a year").
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
