@@ -1545,6 +1545,70 @@ The **Cognitive Twin** visualised. Reusable: a student sees their own; a recruit
 - A badge marks the plan **AI-generated** vs. **Smart plan** (deterministic fallback).
 
 
+
+# 20. Detailed Screen Reference — LARE Learn (Part 2)
+
+## 20.1 Coding Practice (`/lms/practice`)
+
+A real, graded coding surface on the live sandbox (no demo fallback). Two views: the **bank** and the **solve view**.
+
+**Bank view**
+- On mount, `GET /lms/v1/practice/problems` (all practice problems) and, if signed in, `GET /lms/v1/practice/skills/{id}` run in parallel.
+- **Stats strip** (when the learner has attempted) — Problems solved (`solved/attempted`), Verified skills, Coding mastery %, and per-language solved counts.
+- Problems are **grouped by skill**; each group header shows a mastery badge. **Problem card** — title, a difficulty badge (easy=teal / medium=amber / hard=rose), and up to five language chips. Clicking opens the solve view.
+- **Empty state** — "No practice problems yet" when the trainer hasn't published any.
+- **Header action: My Skill Map**.
+
+**Solve view**
+- On open, `POST /lms/v1/practice/session { problem_id, language }` starts a session; the statement and sample cases render on the left.
+- **Language tabs** — switching language resets the editor to that language's starter template and lazily opens a new session on the next Run/Submit.
+- **Editor** — a monospace `stdin → stdout` textarea seeded from `STARTERS` (python/javascript/cpp/java/c).
+- **Button: Run samples** → `POST /lms/v1/practice/{sid}/run` → a "Sample results" card with `passed/total`, compile errors if any, and per-case pass/fail (showing your output on failures — expected is never leaked for hidden cases).
+- **Button: Submit** → `POST /lms/v1/practice/{sid}/submit` → a result card: **Solved! 🎉** or **Partial**, with `cases_passed/total_cases` and score; "Your Skill Map has been updated."
+- **Adversarial viva** (only after a full solve) — the cheat-resistant proof of understanding:
+  - **Button: Start viva** → `POST /lms/v1/practice/{sid}/viva` returns an examiner's question about *your* solution.
+  - **Explanation textarea** + **Submit explanation** → `POST /lms/v1/practice/viva/{vivaId} { answer }` → **Verified ✓** (with verdict) or "Not verified yet (score/100)" with a **Try explaining again** option. Passing earns a *Verified* mark on the Skill Map.
+- **ProctorBanner** is active throughout.
+
+## 20.2 Practice Worlds (`/lms/worlds`)
+
+Embodied practice — a stepped, on-the-job scenario scored from decisions.
+
+**Catalogue**
+- `GET /lms/v1/worlds` → world cards: icon, difficulty badge, title, a 2-line summary, role, step count, and mapped skill. Empty state when none published.
+
+**Player**
+- On open, `POST /lms/v1/worlds/{worldId}/start` returns the first step and progress.
+- **Step card** — the **situation** text, an optional **Artifact** panel (logs / code / data table, terminal-styled), the **prompt**, and option buttons.
+- Choosing an option → `POST /lms/v1/worlds/runs/{runId}/answer { step_id, choice }` → highlights the correct choice (teal) / wrong pick (rose), shows **feedback**, and updates the progress bar.
+- **Button: Continue / See results** — advances to the next step or the summary.
+- **Summary** — **score %** and "handled well / keep practising", `correct/total` good calls as the role, and a note that the skill + review schedule updated. **Buttons: Back to worlds**, **Skill Map**.
+- **ProctorBanner** active while answering.
+
+## 20.3 Career Readiness (`/lms/careers`)
+
+Skills-to-Opportunity for the Learn domain (independent of live Hire drives).
+
+- `GET /lms/v1/careers/readiness/{id}` → `{ readiness:[roles], has_data }`.
+- **Empty states** — "Let's find your direction" (no data) or "No career roles yet" (trainer hasn't set targets).
+- **Role card** — title, description, a large **ready %** (teal ≥80 / amber ≥50 / rose below) and a progress bar; badges for **N skills ready** and **N to learn**.
+  - **Toggle: See what to learn / Hide details** — expands two columns: **Skills you have** (name + mastery %) and **Learn next (biggest impact first)** (name + weight + current mastery).
+  - **Buttons (in details): Practice** (→ `/lms/practice`) and **Plan** (→ `/lms/skill-map`).
+- **Header action: My Skill Map**.
+
+## 20.4 My Learning Wallet (`/lms/wallet`)
+
+The Sovereign Learning Wallet — a signed, publicly verifiable competence record.
+
+- `GET /lms/v1/wallet/{id}` loads the credential (or the empty state).
+- **Empty state** — "Create your verified wallet" with an **Issue my wallet** button → `POST /lms/v1/wallet/{id}/issue`.
+- **Credential card** — "LARE Verified Competence", subject name, issued date + issuer, and a big **overall mastery %**. Metrics: Assessments, Problems solved, **Verified (viva)**. Chips for **Proven strengths** and **Viva-verified coding**. A "Closest career fit" line.
+- **Share & verify card** — the public **verify URL** (`/verify/wallet/{verify_id}`) with:
+  - **Copy** (copies the link), **Open** (opens the public page).
+  - **Download PDF** → `GET /lms/v1/wallet/{id}/export.pdf`. **Download JSON** (client-side blob). **Refresh** → re-issue in place (a shared verify link keeps working). **Revoke** → `POST /lms/v1/wallet/{id}/revoke`.
+- **Header action: Skill Map**.
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
