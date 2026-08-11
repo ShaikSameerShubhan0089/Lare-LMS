@@ -1463,6 +1463,88 @@ Response: { "learner_id":"lrn_1","total_xp":1840,"level":3,"next_level_at":2000,
 **POST /ai/v1/tutor/study-plan** — `{ "variables":{ "year_no":2,"scorecard":{...},"weak_areas":[...],"goal":"TCS NQT","hours":10 } }` → `{ "plan":{...} }`.
 
 
+
+# 19. Detailed Screen Reference — LARE Learn (Part 1)
+
+This section documents selected screens at element level (source: the page components). Each screen lists its phases/states, every interactive control, and the exact API calls and side effects.
+
+## 19.1 Assessments (`/lms/assessments`)
+
+A three-phase take-flow: **intro → taking → done**. Proctored assessments enforce fullscreen + anti-cheat with a **5-warning auto-submit** (the same engine as LARE Hire exams; `VIOLATION_LIMIT = 5`).
+
+**Phase `intro`**
+- On mount, `GET /lms/v1/assessments` populates the card grid; if empty, a sample card is shown with the note *"your trainer's published assessments will appear here."*
+- **Assessment card** — icon, title, `item_count` + `passing_pct`, optional time limit (`Timer`), a "+XP on pass" hint, and a **Proctored** badge (`ShieldAlert`) when `proctored=true`.
+- **Button: Start assessment** → `start(a)`: `GET /lms/v1/assessments/{id}` then `POST .../attempts { learner_id }`. If the assessment is proctored, the app requests **fullscreen**. If the fetch fails or returns no items, it never enters the take-flow with an empty paper.
+
+**Phase `taking`**
+- **PageHeader** shows the title and a live `answered/total` counter; **DataSource** shows live vs. offline.
+- **Proctor banner** (proctored only) — shows `violations/5` warnings; turns rose at ≥3; explains that tab-switch, copy, or exiting fullscreen is flagged, and that reaching 5 auto-submits. Displays the **last flag** label.
+- **Question card** — index, prompt/stem, and radio options; selecting an option writes `answers[itemId]=optionId` and highlights the choice.
+- **Anti-cheat** — while taking a proctored assessment, `attachProctoring` listens for violations; each increments the counter and, at 5, calls `submit("proctor")`.
+- **Button: Submit assessment** — disabled until ≥1 answered → `submit()`: exits fullscreen, maps answers to `{ [qid]: { option } }`, and calls `POST /lms/v1/attempts/{attemptId}/submit`.
+
+**Phase `done`**
+- Result card — pass/fail icon, big **percentage**, a Passed/Keep-practising badge, `score/max_score`, optional "pending manual grade" note, and an **auto-submitted** warning if the proctor limit was hit.
+- **Buttons: Back** (→ intro) and **Retake** (re-runs `start`).
+
+## 19.2 Adaptive Drill (`/lms/drill`)
+
+The **Flow layer**: one question at a time whose difficulty rises when you're correct and confident and eases when you struggle. Phases **pick → play → done**.
+
+**Phase `pick`**
+- On mount, `GET /lms/v1/assessments/twin/{id}` yields `focus_areas`; each becomes a topic button.
+- **Buttons: <topic>** (start a focused drill) and **Mixed set** → `POST /lms/v1/drill/start { topic, target: 8 }`. If no questions are available, an inline message explains to take an assessment first.
+- **Header action: Skill Map** (→ `/lms/skill-map`).
+
+**Phase `play`**
+- **ProctorBanner** is active.
+- **Level badge** (`easy`/`medium`/`hard`, colour-coded) + a `answered/target` counter + a progress bar.
+- **Question card** — topic eyebrow, prompt, and option buttons. Clicking an option (disabled once chosen) calls `POST /lms/v1/drill/{drillId}/answer { item_id, option, elapsed_ms }`. The elapsed time is measured from when the question rendered (speed feeds the difficulty tuning).
+- **Feedback** — the correct option turns teal; a wrong pick turns rose; an explanation shows; the status line reads *"Nice — leveling up"* or *"Not quite — easing off"*.
+- **Button: Next / See results** — advances to the next server-provided item or ends the drill.
+
+**Phase `done`**
+- Summary card — **accuracy %**, `correct/answered`, the **final level** reached, and the topic; a note that *"your skill map and review schedule have been updated."*
+- **Buttons: Drill again** and **Keep Sharp** (→ `/lms/keep-sharp`).
+
+## 19.3 Keep Sharp (`/lms/keep-sharp`)
+
+**Lifelong Reinforcement (Sustain).** Surfaces skills whose retention is decaying and lets the learner do a 20-second self-check that reschedules them on a forgetting curve.
+
+- On mount, `GET /lms/v1/reviews/{id}` returns `{ due, upcoming, due_count }`.
+- **Empty state** — a "You're all caught up" card when nothing is due.
+- **Due list** — sorted weakest-memory-first; header shows the due count.
+- **Review row** (per skill) — source icon (coding vs. written), skill name, a **recall %** badge (teal ≥70 / amber ≥45 / rose below), a "reviewed N×" note, a retention bar, and the honesty prompt.
+  - **Button: Rusty** → `POST /lms/v1/reviews/{id}/review { skill, outcome:"rusty" }` (resurfaces tomorrow).
+  - **Button: Got it** → same endpoint with `outcome:"good"` (pushes the next due out by the new interval; flash shows *"won't resurface for ~N day(s)"*).
+  - **Button: Practise** → deep-links to `/lms/practice` (coding) or `/lms/assessments` (written).
+  - The reviewed row is optimistically removed and `due_count` decremented.
+- **Coming up** — upcoming reviews with a "in N days" ETA.
+- **Header action: My Skill Map**.
+
+## 19.4 My Skill Map (`/lms/skill-map`) + embedded AI Coach
+
+The **Cognitive Twin** visualised. Reusable: a student sees their own; a recruiter/admin can pass a `candidateId` to view any learner's.
+
+- Loads `GET /lms/v1/assessments/twin/{id}` → `{ overall, by_category, topics, strengths, focus_areas, languages, coding_solved/attempted/verified, exams_taken }`. Also fetches the review due-count.
+- **Empty state** — "Your skill map is waking up" with CTAs to start coding practice or take an assessment.
+- **Overall tiles** — Overall mastery %, Questions correct (`correct/attempted`), Tests taken, Topics mapped.
+- **Reviews-due banner** — if reviews are due, an amber card links to Keep Sharp.
+- **Strengths** and **Focus next on** — skill chips with mastery %.
+- **Mastery by area** — per-category bars (strong/developing/weak bands).
+- **Coding by language** — per-language solved/attempted bars, with `solved/attempted` and `verified ✓` badges (verified = passed the adversarial viva).
+- **Every topic, ranked** — a full ranked bar list.
+
+**Embedded AI Study Coach (the `Coach` component)**
+- Auto-loads the **persistent plan** via `GET /lms/v1/assessments/coach/{id}` on mount (reuses the stored plan; first-time users have none).
+- **Button: Get my plan** (when no plan) → same endpoint; **Refresh plan** → `?force=1` regenerates.
+- Renders `headline`, a **2-minute explainer** for the #1 gap, a **quick win**, the **why-these-topics** list, and the **week plan** — each day is a tickable button that calls `POST .../coach/{id}/progress { day, done }` (optimistic, reverts on failure). Shows `done/total`.
+- **Practice problems** list.
+- **Button: Email me my plan** → `POST /lms/v1/assessments/nudge/{id}` (sends via in-app + email; confirms "Sent to your inbox + notifications ✓").
+- A badge marks the plan **AI-generated** vs. **Smart plan** (deterministic fallback).
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
