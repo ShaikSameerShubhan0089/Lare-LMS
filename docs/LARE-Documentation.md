@@ -1307,6 +1307,162 @@ Source: each service's `models.py`. Conventions as in section 16.
 **organizations** (soft-delete) — id, tenant_id (unique), name, slug (unique), custom_domain (unique), timezone, branding (JSON), smtp_config (JSON — secrets in vault), security_policy (JSON: password_min_len, mfa_required, session_timeout_min, allowed_login_attempts), feature_overrides (JSON), created_at. Companies and colleges reference an org via `tenant_id`.
 
 
+
+# 18. API Request / Response Reference
+
+Every response is the envelope `{ "data": ..., "meta": {...}, "errors": [...] }`. The client returns `data` on success and throws `ApiError(code, status, details)` on a non-2xx (the first `errors[]` entry). Below, **Request** shows the JSON body (for POST/PUT); **Response** shows a representative `data` payload (field names are taken from the service models). All authenticated calls send `Authorization: Bearer <access>`.
+
+Error example (any endpoint):
+```json
+{ "data": null, "meta": {}, "errors": [ { "code": "forbidden", "message": "Not allowed", "details": {} } ] }
+```
+
+## 18.1 Auth
+
+**POST /auth/v1/register**
+```json
+Request:  { "email": "asha@aditya.edu", "password": "StrongP@ss1", "full_name": "Asha Rao" }
+Response: { "id": "usr_...", "email": "asha@aditya.edu", "full_name": "Asha Rao", "email_verified": false }
+```
+
+**POST /auth/v1/login**
+```json
+Request:  { "email": "asha@aditya.edu", "password": "StrongP@ss1", "device": "web" }
+Response: { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "Bearer", "expires_in": 900 }
+```
+
+**POST /auth/v1/refresh** — `{ "refresh_token": "eyJ..." }` → `{ "access_token": "eyJ...", "refresh_token": "eyJ..." }`.
+**POST /auth/v1/otp/request** — `{ "email": "..." }` → `{ "sent": true }`. **POST /auth/v1/otp/verify** — `{ "email","code","device" }` → tokens.
+**GET /auth/v1/me** → `{ "id","email","full_name","roles":["student"],"tenant_id":"lare","email_verified":true }`.
+
+## 18.2 LARE Learn — dashboard data
+
+**GET /lms/v1/gamification/{learnerId}**
+```json
+Response: { "learner_id":"lrn_1","total_xp":1840,"level":3,"next_level_at":2000,
+            "xp_to_next":160,"badges":["streak_7","dsa_i"],"streak":{"current":6,"longest":11} }
+```
+**GET /lms/v1/gamification/leaderboard/global** → `[ { "rank":1,"display_name":"Ravi K.","total_xp":6120,"level":5 }, ... ]`.
+**GET /lms/v1/progress/{learnerId}/scorecard** → `[ { "year_no":2,"communication":72,"coding":84,"aptitude":78,"project":65 } ]`.
+**GET /lms/v1/progress/{learnerId}** → `{ "modules":[{ "module_id":"...","completion_pct":80 }],"year_status":{...} }`.
+
+## 18.3 LARE Learn — curriculum & content
+
+**GET /lms/v1/curricula** → `[ { "id":"cur_1","name":"LARE 4-Year Programme","version":1,"status":"published" } ]`.
+**GET /lms/v1/curricula/{id}/tree** → nested `{ "name","status","years":[ { "year_no","theme","modules":[ { "title","branch_scope","lessons":[ { "id","title","objectives":[...] } ] } ] } ] }`.
+**GET /lms/v1/content/playlist?learner_id=…** → `[ { "id","title","type":"video","duration_sec":600,"difficulty":"easy","unlocked":true,"status":"in_progress" } ]`.
+**POST /lms/v1/content/{id}/progress** — `{ "learner_id","position_sec":320,"completed":false }` → `{ "status":"in_progress","position_sec":320 }`.
+
+## 18.4 LARE Learn — assessments & take-flow
+
+**GET /lms/v1/assessments** → `[ { "id","title","type":"quiz","passing_pct":60,"time_limit_min":20,"proctored":true,"shuffle":true } ]`.
+**GET /lms/v1/assessments/{aid}** → `{ "id","title","pass_pct":60,"duration_min":20,"items":[ { "id","type":"mcq","stem","weight":1,"options":[{"id":"a","text":"O(n)"}] } ] }` (answer keys never included).
+**POST /lms/v1/assessments/{aid}/attempts** — `{ "learner_id":"lrn_1" }` → `{ "attempt_id":"att_1","status":"in_progress","started_at":"..." }`.
+**POST /lms/v1/attempts/{attemptId}/submit** — `{ "answers":{ "item_1":{"option":"b"} } }` → `{ "score":8,"max_score":10,"percentage":80,"passed":true }`.
+
+## 18.5 LARE Learn — Cognitive Twin, coach, reviews, careers
+
+**GET /lms/v1/assessments/twin/{learnerId}** → `{ "learner_id","dimensions":{"coding":72,"aptitude":61,"communication":55,"project":48},"weakest":"project","sources":{"written":..,"coding":..} }`.
+**GET /lms/v1/assessments/coach/{learnerId}?force=1** → `{ "weakest":"aptitude","plan":{"days":[{"day":"Day 1","focus":"...","tasks":[...]}]},"completed_days":["Day 1"] }`.
+**POST /lms/v1/assessments/coach/{learnerId}/progress** — `{ "day":"Day 1","done":true }` → `{ "completed_days":["Day 1"] }`.
+**POST /lms/v1/assessments/nudge/{learnerId}** → `{ "sent":true,"channel":["inapp","email"],"weakest":"aptitude" }`.
+**GET /lms/v1/reviews/{learnerId}** → `[ { "id","skill":"SQL Joins","source":"written","due_at":"...","interval_days":3,"last_mastery":40 } ]`.
+**POST /lms/v1/reviews/{learnerId}/review** — `{ "skill":"SQL Joins","outcome":"good" }` → `{ "skill":"SQL Joins","interval_days":7,"ease":2.2,"due_at":"..." }`.
+**GET /lms/v1/careers** → `[ { "id","title":"Data Analyst","required_skills":[{"name":"SQL","weight":2}] } ]`.
+**GET /lms/v1/careers/readiness/{learnerId}** → `[ { "role":"Data Analyst","readiness":68,"gaps":["Statistics"] } ]`.
+
+## 18.6 LARE Learn — practice, drill, worlds, mesh, lessons, wallet
+
+**GET /lms/v1/practice/problems?skill=Arrays** → `[ { "id","title","skill":"Arrays","difficulty":"easy","languages":["python","java"] } ]`.
+**POST /lms/v1/practice/session** — `{ "problem_id","language":"python" }` → `{ "session_id","starter":"...","sample_cases":[{"input","expected"}] }`.
+**POST /lms/v1/practice/{sid}/run** — `{ "code":"..." }` → `{ "results":[{"input","expected","got","passed":true}] }`.
+**POST /lms/v1/practice/{sid}/submit** — `{ "code":"..." }` → `{ "score":100,"cases_passed":8,"total_cases":8 }`.
+**GET /lms/v1/practice/skills/{learnerId}** → `[ { "skill":"Arrays","mastery":74,"solved":6 } ]`.
+**POST /lms/v1/practice/{sid}/viva** → `{ "viva_id","question":"Why does your two-pointer stop when l>=r?" }`.
+**POST /lms/v1/practice/viva/{vivaId}** — `{ "answer":"..." }` → `{ "score":85,"passed":true,"verdict":"Solid understanding of the invariant." }`.
+**POST /lms/v1/drill/start** — `{ "topic":"aptitude","target":8 }` → `{ "drill_id","level":1,"question":{"id","prompt","options":[...]} }`.
+**POST /lms/v1/drill/{drillId}/answer** — `{ "item_id","option":"b","elapsed_ms":4200 }` → `{ "correct":true,"level":2,"progress":{"correct":3,"total":4},"next":{...}|null }`.
+**GET /lms/v1/worlds** → `[ { "id","title":"Backend On-Call","role","skill","difficulty","pass_pct":60 } ]`.
+**POST /lms/v1/worlds/{worldId}/start** → `{ "run_id","step_index":0,"step":{"id","situation","prompt","options":[...]} }`.
+**POST /lms/v1/worlds/runs/{runId}/answer** — `{ "step_id","choice":"b" }` → `{ "correct":true,"score":50,"status":"in_progress","next":{...}|null }`.
+**GET /lms/v1/mesh/{learnerId}** → `{ "get_help":[{"topic":"Recursion","my_mastery":40,"mentors":[{"id","name","mastery":100}]}],"can_teach":[{"topic","my_mastery","seekers":2}] }`.
+**GET /lms/v1/mesh/{learnerId}/sessions** → `{ "as_mentor":[...],"as_learner":[{"id","topic","teacher_id","teacher_name","status":"requested"}] }`.
+**POST /lms/v1/mesh/request** — `{ "topic","mentor_id","note":null }` → `{ "id","status":"requested" }`.
+**POST /lms/v1/micro-lessons/{learnerId}/generate** — `{ "topic":"SQL Joins","force":false }` → `{ "id","topic","lesson":{"blocks":[{"type":"text","html":"..."},{"type":"code","language":"sql","code":"..."}]},"generated":true }`.
+**GET /lms/v1/micro-lessons/{learnerId}** → `[ { "id","topic","created_at" } ]`.
+**POST /lms/v1/micro-lessons/author-blocks** — `{ "topic":"SQL Joins" }` → `{ "blocks":[ ... ] }` (for Curriculum Studio insert).
+**GET /lms/v1/wallet/{learnerId}** → `{ "verify_id":"LARE-W-8F2A","subject_name":"Asha Rao","payload":{"claims":[...]},"revoked":false,"issued_at":"..." }`.
+**POST /lms/v1/wallet/{learnerId}/issue** → the wallet object above (re-issue refreshes in place).
+**GET /verify/wallet/{verifyId}** (public) → `{ "valid":true,"subject_name","issued_at","claims":[...] }`.
+
+## 18.7 LARE Learn — certification & authoring
+
+**GET /lms/v1/certificates/for/{learnerId}** → `[ { "id","year_no":1,"cert_name":"Foundation","cert_no":"LARE-Y1-000042","status":"issued","verify_id":"LARE-VER-0042","ppo_tag":false,"holder_name":"Asha Rao","issued_at":"..." } ]`.
+**GET /lms/v1/certificates/{id}/pdf** → binary PDF (Content-Disposition attachment).
+**GET /verify/{verifyId}** (public) → `{ "valid":true,"holder_name","cert_name","issued_at","cert_no" }`.
+**POST /lms/v1/lessons/{lid}/content** — `{ "content":[ {"type":"text","html":"..."}, {"type":"check","question":"...","options":[...],"answer":"a"} ] }` → `{ "id","content":[...] }`.
+**POST /lms/v1/lessons/{lid}/check** — `{ "block_id","choice":"a" }` → `{ "correct":true,"explain":"..." }` (also records practice into the review schedule).
+**POST /lms/v1/learners/import** — `{ "college_id","rows":[{"roll_no","full_name","email","branch"}] }` → `{ "import_id","status":"previewed","summary":{"new":30,"dupes":0} }`.
+
+## 18.8 LARE Hire — candidate & drives
+
+**GET /drive/v1/drives?status=open** → `[ { "id","company_name","title","status":"open","venue","reporting_time" } ]`.
+**GET /drive/v1/drives/{id}** → `{ "id","company_name","title","status","roles":[{"id","title","ctc","positions"}],"rounds":[{"id","order","type"}] }`.
+**POST /drive/v1/attend** (public) — `{ "drive_code","first_name","last_name","roll_number","email","phone","branch","cgpa" }` → `{ "student_id":"S-4821","drive":{...},"access_token","refresh_token" }`.
+**POST /drive/v1/candidate/apply** — `{ "drive_id","drive_role_id" }` → `{ "application_id","status":"applied" }`.
+**GET /drive/v1/candidate/profile** → `{ "full_name","email","phone","branch","cgpa","completeness":100,"education":[...],"skills":[...],"projects":[...] }`.
+**PUT /drive/v1/candidate/profile** — `{ "full_name","email","phone","branch","cgpa" }` → updated profile.
+**GET /drive/v1/opportunities?candidate_id=…** → `[ { "drive_id","title","company_name","role":"SWE","match_pct":82,"matched_skills":["Python","SQL"] } ]`.
+**GET /drive/v1/evaluations/twin/{candidateId}** → `{ "candidate_id","verified_skills":[{"skill":"DSA","level":"strong","evidence":"drive-exam"}] }`.
+
+## 18.9 LARE Hire — exam take-flow, coding, proctoring
+
+**GET /drive/v1/exams/{examId}** → `{ "id","title","total_time_min":60,"nav_rule":"free","sections":[{"id","title","time_limit_min"}] }`.
+**GET /drive/v1/exams/{examId}/paper** → `{ "sections":[{ "id","title","questions":[{"id","type","stem","options":[{"id","text"}],"weight"}] }] }` (no answer keys).
+**POST /drive/v1/exams/{examId}/start** — `{ "candidate_id" }` → `{ "session_id","started_at","section_state":{} }`.
+**GET /drive/v1/exam-sessions/{sid}/state** → `{ "status":"in_progress","answers":{"q1":{"option":"b"}},"section_state":{...},"remaining_sec":2400 }`.
+**POST /drive/v1/exam-sessions/{sid}/save** — `{ "answers":{ "q1":{"option":"b"} } }` → `{ "saved":true,"client_seq":12 }`.
+**POST /drive/v1/exam-sessions/{sid}/submit** → `{ "status":"submitted","answer_count":40 }`.
+**POST /drive/v1/coding/run-adhoc** — `{ "language":"python","code":"...","cases":[{"input","expected"}] }` → `{ "results":[{"passed":true,"got"}] }`.
+**GET /drive/v1/coding/languages** → `[ "python","java","cpp","javascript" ]`.
+**POST /drive/v1/coding/session** — `{ "problem_id" }` → `{ "session_id","language","draft_code" }`.
+**POST /drive/v1/coding/{sid}/submit** — `{ "code":"..." }` → `{ "score":100,"cases_passed":8,"total_cases":8 }`.
+**POST /drive/v1/proctor/start** — `{ "exam_session_id","candidate_id","drive_id","fingerprint","browser" }` → `{ "proctor_session_id","status":"active" }`.
+**POST /drive/v1/proctor/{examSessionId}/events** — `{ "type":"tab_switch","meta":{"count":1} }` → `{ "violation_score":1,"status":"active" }` (auto_submitted at threshold).
+
+## 18.10 LARE Hire — recruiter management
+
+**POST /drive/v1/drives** — `{ "company_name","title","venue","reporting_time" }` → `{ "id","status":"draft" }`.
+**POST /drive/v1/drives/{id}/roles** — `{ "title","ctc","positions","skills":[{"name","weight"}] }` → role.
+**POST /drive/v1/drives/{id}/eligibility** — `{ "min_cgpa":7,"branches":["CSE"],"max_backlogs":0 }` → rule.
+**POST /drive/v1/drives/{id}/rounds** — `{ "order":2,"type":"coding","label":"Coding round" }` → round.
+**GET /drive/v1/drives/{id}/registrations** → `[ { "candidate_id","candidate_name","candidate_email","status","eligible","current_round" } ]`.
+**GET /drive/v1/drives/{id}/funnel** → `{ "total":42,"by_status":{"applied":20,"shortlisted":12,"in_round":8,"selected":2} }`.
+**POST /drive/v1/drives/{id}/rounds/{order}/scores** — `{ "candidate_id","marks":78,"max_marks":100,"remarks":"" }` → score row.
+**POST /drive/v1/drives/{id}/rounds/{order}/publish** → `{ "advanced":9,"cleared_only":true }` (cleared candidates advance).
+**GET /drive/v1/drives/{id}/rounds/{order}/export?cleared=true** → binary `.xlsx` (Content-Disposition attachment).
+**POST /drive/v1/results/compile** — `{ "drive_id","cutoff":60,"rows":[{"candidate_id","final_score":82,"interview_decision":"select"}] }` → `[ { "candidate_id","final_score","rank","outcome":"selected","status":"draft" } ]`.
+**POST /drive/v1/results/{driveId}/publish** → `[ { ... , "status":"published" } ]`.
+**POST /drive/v1/offers/generate** — `{ "drive_id","candidate_id","type":"ppo","company_name","role_title","ctc" }` → `{ "offer_id","verify_id","type":"ppo","status":"issued" }`.
+**POST /drive/v1/interviews/schedule** — `{ "drive_id","candidate_id","stage":"technical","mode":"online","slot" }` → interview.
+**POST /drive/v1/interviews/{id}/rate** — `{ "competency":"technical","score":4,"remark":"" }` → `{ "avg_rating":4.2 }`.
+**POST /drive/v1/interviews/{id}/decision** — `{ "decision":"select","decision_reason":"" }` → `{ "status":"completed","decision":"select" }`.
+**POST /drive/v1/questions** — `{ "type":"mcq","category":"aptitude","difficulty":"easy","stem","options":[{"id","text"}],"answer_key":{"option":"b"} }` → `{ "id","status":"draft","version":1 }`.
+**POST /drive/v1/questions/generate** — `{ "category","difficulty","count":5,"topic" }` → `[ { question objects (draft) } ]`.
+**POST /drive/v1/blueprints/{id}/generate-paper** → `{ "exam_id","question_count":30 }`.
+**POST /drive/v1/evaluations/rank** — `{ "exam_id" }` → `[ { "candidate_id","rank","percentage" } ]`.
+
+## 18.11 Platform
+
+**GET /analytics/v1/dashboard/{role}** → `{ "role":"college_admin","colleges":2,"learners":1880,"drives":6,"top_colleges":[{"rank":1,"college_id","readiness_index":81.6}] }`.
+**GET /analytics/v1/colleges/ranking** → `[ { "rank":1,"college_id","readiness_index":81.6 } ]`.
+**GET /notify/v1/inbox** → `[ { "id","template_key":"badge_earned","subject","body","read":false,"created_at" } ]`.
+**POST /notify/v1/inbox/{id}/read** → `{ "id","read":true }`.
+**POST /files/v1/upload-url** — `{ "purpose":"resume","filename","mime","size" }` → `{ "file_id","upload_token","upload_url" }`. Then **PUT /files/v1/upload/{token}** (raw bytes) and **POST /files/v1/{fileId}/complete** → `{ "file_id","status":"ready" }`.
+**POST /ai/v1/tutor/chat** — `{ "message","session_id","context" }` → `{ "session_id","reply":"...","messages":[...] }`.
+**POST /ai/v1/tutor/study-plan** — `{ "variables":{ "year_no":2,"scorecard":{...},"weak_areas":[...],"goal":"TCS NQT","hours":10 } }` → `{ "plan":{...} }`.
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
