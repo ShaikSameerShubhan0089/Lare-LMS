@@ -1870,6 +1870,53 @@ Two cards: **Notification preferences** and **Account**.
 - **Roles** — the user's role badges.
 
 
+
+# 25. Detailed Screen Reference — Authentication, App Chooser, Opportunities & Public Verify
+
+## 25.1 Login (`/login`)
+- Framed by **AuthLayout** (brand panel + form). Fields: **Email**, **Password** (with `autoComplete`).
+- **Link: Forgot password?** → `/forgot-password`. **Link: Create an account** → `/register`.
+- **Button: Sign in** → `useAuth().login(email, password)` (`POST /auth/v1/login`), then navigates to `/apps`. Errors render inline.
+
+## 25.2 Register (`/register`)
+- Fields: **Full name**, **Email**, **Password** (client-side validation: ≥8 chars).
+- **Button: Create account** → `useAuth().register(email, password, full_name)` (`POST /auth/v1/register`), then `/apps`.
+- **Link: Sign in** → `/login`.
+
+## 25.3 Forgot Password (`/forgot-password`)
+- **Send reset link** → `POST /auth/v1/password/forgot { email }`. With a token, **Reset password** → `POST /auth/v1/password/reset { token, new_password }`. Link back to **Sign in**.
+
+## 25.4 App Chooser (`/apps`)
+- **Header** — the LARE **Logo**, the user's name/email, and a **Sign out** button → `useAuth().logout()` then `/login`.
+- **Two app cards** (the products never mix on screen):
+  - **LARE Learn** → navigates to `/lms` ("Four years. One platform. Career-ready.").
+  - **LARE Hire** → navigates to `/drive` ("Find the right talent, faster.").
+
+## 25.5 Attend Drive (`/drive/attend`) — public
+- A public, no-login form for walk-in campus drives: drive code + the student's own details.
+- **Button: Attend** → `POST /drive/v1/attend` (issues a Student ID + a scoped session, returns access/refresh tokens). **Button/flow: Resume** → `POST /drive/v1/attend/resume { student_id }`.
+
+## 25.6 Matched Opportunities (`/drive/opportunities`)
+LARE Hire Skills-to-Opportunity — ranks **open drives** by how well the candidate's drive-exam skills fit each role (Hire data only).
+- `GET /drive/v1/opportunities` → `{ matches, unspecified, has_skill_data }`.
+- A hint card shows when there's no skill data yet ("take part in a drive's tests…").
+- **Match card** (per drive) — title, company · reporting time · venue, a large **match %** (teal ≥75 / amber ≥45 / rose below) with a bar, role chips (title · CTC), and two columns: **Your matching skills** (name + mastery) and **Skills to build** (name + mastery). "You meet every required skill!" when none missing.
+- **Other open drives** — drives with no skills specified for matching.
+- **Header button: My Drives** → `/drive`.
+- Empty state: "No open drives right now".
+
+## 25.7 Certificate Verify (`/verify/:verifyId`) — public
+- Loads `GET /verify/{verifyId}` (no auth). States: **Verifying…**, **Authentic** (a teal banner + a **Print** button + the rendered certificate artwork via `certificateHtml`), or **Could not verify** (not found / invalid / revoked).
+- Header shows the LARE **Logo**; footer links back to `/`.
+
+## 25.8 Wallet Verify (`/verify/wallet/:verifyId`) — public
+- Loads `GET /verify/wallet/{verifyId}` (no auth). Shows the signature-verified status, subject name, issued date, and the competence claims. No login required — an employer can confirm authenticity directly.
+
+## 25.9 Landing (`/`)
+- Public marketing entry: hero + product highlights for LARE Learn and LARE Hire.
+- **Buttons: Log in** (→ `/login`) and **Get started / Register** (→ `/register`).
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
