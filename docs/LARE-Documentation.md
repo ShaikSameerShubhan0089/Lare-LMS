@@ -1917,6 +1917,98 @@ LARE Hire Skills-to-Opportunity — ranks **open drives** by how well the candid
 - **Buttons: Log in** (→ `/login`) and **Get started / Register** (→ `/register`).
 
 
+
+# 26. Non-Functional Requirements
+
+| Attribute | Approach in LARE |
+|---|---|
+| **Performance** | Stateless services behind a gateway; per-service schemas keep queries local; the SPA loads a single hashed bundle and calls `/api` with `cache: no-store` for per-user safety. AI/code-exec routes are marked **slow** so the gateway grants extended timeouts. |
+| **Scalability** | Horizontal: services are stateless (session state is in signed tokens), so app boxes scale behind a load balancer. The event bus moves to Redis Streams/ElastiCache; hot paths (exam, coding) get more workers. Data scales via the managed RDS instance class + read replicas. |
+| **Availability** | No single service is a hard dependency for unrelated features; the SPA degrades gracefully (empty states in production, demo data only in dev). RDS provides automated backups + PITR. |
+| **Reliability (exam integrity)** | The Submission service is **append-only** with a materialized latest view and an immutable final snapshot — no accepted answer is ever lost. The exam timer is server-anchored; auto-submit is idempotent (one-shot guard). |
+| **Security** | RS256 JWT, per-request auth at the gateway, subject-ownership checks, TLS end-to-end, schema isolation, tamper-evident hash-chained audit, sandboxed code execution. |
+| **Maintainability** | One shared `lare_common` library; identical service shape (`manage.py`, `app/`); schema-per-service so changes stay local; a single design system on the frontend. |
+| **Observability** | Health endpoints per service (`/health`); an append-only analytics fact store; the AI-calls audit table (usage/latency/mode); service logs under `.run/`. |
+| **Accessibility** | Semantic controls, labelled inputs/toggles, keyboard-focus states, and colour choices with text/badge redundancy (not colour alone). |
+| **Portability** | No Docker requirement; runs as processes/systemd units on one box, or scales out. Postgres + Redis are the only infra dependencies. |
+
+# 27. AI Integration Specification
+
+## 27.1 Providers & routing
+- **LARE Learn** uses **Google Gemini** (`AI_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL`); **LARE Hire** uses **Mistral** (`DRIVE_AI_PROVIDER=mistral`, `MISTRAL_API_KEY`). A common client (`lare_common.ai.build_client_from_env`) selects the provider and returns a **stub** when no key is configured (so features degrade to deterministic fallbacks instead of failing).
+
+## 27.2 Governance (AI Orchestration)
+- Every governed AI call is **audited** in `ai_calls` (prompt key, purpose, actor, model, mode live/stub, input/output tokens, latency, status, preview). This gives per-call usage, latency, and cost visibility and enforces a token budget (`AI_MAX_TOKENS`).
+
+## 27.3 Where AI is used
+- **Micro-lessons & Curriculum Studio blocks** — generate a full lesson as blocks.
+- **AI study coach** — a persistent, weak-area-focused plan.
+- **Adaptive drill** — AI-generated questions with server-held keys.
+- **Adversarial viva** — generate a question about the learner's own solution and grade the explanation.
+- **AI Tutor** — grounded chat + study-plan generation.
+- **Question Bank** — generate exam-ready MCQ/coding questions.
+- **Practice Worlds** — scenario content.
+
+## 27.4 Robust generation (the marker format)
+LLMs frequently break strict JSON when a lesson contains code blocks and tables. LARE therefore generates lessons in a **`@@`-marker format** parsed by a deterministic parser into blocks (`text`, `code`, `callout`, `check`). Transient provider errors (e.g. 503 "high demand") **retry**, and a `transient` flag ensures a generic fallback template is **never persisted** as if it were a real lesson. The same block format powers author-side generation (`author-blocks`).
+
+## 27.5 Failure behaviour
+- On provider quota/error, the server returns the **specific reason** (surfaced verbatim in the UI, e.g. Question Bank AI generation). Where a deterministic fallback exists (coach "smart plan", tutor offline reply), it is clearly badged as non-AI so it is never mistaken for live output.
+
+# 28. Proctoring & Anti-Cheat Specification
+
+## 28.1 Where it applies
+Every surface where a student submits an answer shows a **ProctorBanner**: LMS assessments, coding practice, adaptive drill, practice worlds, lesson checks, and the Drive exam portal.
+
+## 28.2 Signals (client)
+`lib/proctor.js#attachProctoring` captures: tab-switch / window blur, visibility change, fullscreen exit, copy/paste, right-click/context-menu, and dev-tools signals. `SIGNAL_LABEL` maps each to a human label shown in a toast and the proctor log.
+
+## 28.3 Thresholds
+- The client counts flags toward **`VIOLATION_LIMIT = 5`**; at 5 it **auto-submits** (assessment or exam). A one-shot guard prevents overshoot and double submission.
+- The **backend** is authoritative: the anticheat service records each event with a **weight** and maintains a **violation_score** on the proctor session; it can flag/auto-submit via the weighted score independently of the client count.
+
+## 28.4 Data captured
+`proctor_sessions` (exam_session_id, candidate, drive, fingerprint, ip, browser, violation_score, status active/flagged/auto_submitted) and append-only `events` (type, weight, ip, browser, device, meta, ts). The exam confirmation reports the final flag count; auto-submitted-for-violation is visually distinct.
+
+## 28.5 Integrity beyond proctoring
+- **Shuffle** — assessments can shuffle question + option order per student.
+- **Adversarial viva** — coding "verified" status requires explaining your own solution, defeating paste-only cheating.
+- **Hidden test cases** — never exposed to students; grading happens server-side.
+
+# 29. Testing & Quality Strategy
+
+| Layer | Strategy |
+|---|---|
+| **Unit** | Pure functions (scoring, spaced-repetition scheduling, the marker parser, the exam calculator's shunting-yard evaluator) are deterministic and unit-testable. |
+| **Service/API** | Each service exposes a versioned REST surface with the standard envelope; contract tests assert status + envelope + auth/ownership (e.g. cross-user 403). |
+| **Integration** | Take-flows (assessment attempt → submit → score → twin update; exam start → save → submit → evaluate → rank → result → offer) validated end-to-end against a seeded dataset. |
+| **Seed-based E2E** | A 30-student demo dataset spanning every feature enables realistic click-throughs and admin analytics validation; a `clean` mode wipes it. |
+| **Resilience** | Per-student seed commits with try/except so one bad row can't abort a run; the frontend renders empty states on failure (never fabricated data in production). |
+| **Regression focus** | The known-risk areas — token refresh on binary downloads, proctor auto-submit idempotency, no-answer-loss in Submission, per-user data isolation — have explicit guards described in this document. |
+
+# 30. Operations Runbook
+
+## 30.1 Deploy / redeploy
+- First-time: provision RDS + EC2, install packages, clone, venv + `pip install` (base + per-service + editable `libs/`), RS256 keys, `.env`, `init-db` per service + column migrations, build SPA → nginx root, configure nginx + TLS, start services.
+- Redeploy: `./redeploy.sh` (pull → restart backend → rebuild + publish SPA). Flags: `FRONTEND_ONLY`, `BACKEND_ONLY`, `DEPS`, `WEB_ROOT`. `npm ci` auto-runs if `node_modules` is missing. **Publishing must copy `dist` into the nginx root** — building alone doesn't update what nginx serves.
+
+## 30.2 Start / stop / health
+- `./run-all.sh` starts the gateway + 26 services (loads `.env`, sets `DB_SCHEMA` per service, runs `init-db`, serves). `./stop-all.sh` (or `pkill -f "manage.py serve"`) stops them.
+- Health: `curl http://127.0.0.1:8000/health`; scan all ports 8000–8026; each `/health` returns `{status:"ok"}`.
+
+## 30.3 Backups & DR
+- RDS automated backups + PITR. Keep `.env` and the JWT PEMs in a secrets store, not only on the box. The wallet/certificate verify ids are stable so shared links survive re-issue.
+
+## 30.4 Scaling
+- Grow the EBS disk before it fills (venv + node build need headroom). Add swap on low-RAM boxes so the Vite build isn't OOM-killed; build the SPA before starting the 26 services when RAM is tight. Move Redis to ElastiCache; put multiple app boxes behind a load balancer; give exam + coding more workers.
+
+## 30.5 Known operational lessons (captured in production)
+- **Python 3.14**: relax pins for `psycopg`, `pydantic` (≥2.13.4), and `SQLAlchemy` (≥2.0.43) to versions shipping 3.14 wheels.
+- **`lare_common`** must be `pip install -e libs` — a fresh venv without it fails every service on import.
+- **Binary downloads** refresh the token like any call, so exports survive an access-token expiry mid-session.
+- **No fabricated data in production**: `withFallback` blanks demo data in production builds, preventing one user's shape (e.g. a demo profile) from showing to another.
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
