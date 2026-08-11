@@ -1816,6 +1816,60 @@ Loads `GET /lms/v1/certificates/for/{id}`.
 - Empty state when no certificates ("auto-issues on completing a year").
 
 
+
+# 24. Detailed Screen Reference — Trainer Console, Candidate Drives, Notifications, Settings
+
+## 24.1 Trainer Console (`/lms/trainer`) — every control
+
+Four panels: **My learners**, **Career targets**, **Create an assessment**, **Grade subjective answer**.
+
+**My learners** (`GET /lms/v1/learners`)
+- Per learner row (name, roll · year):
+  - **Present** → `POST /lms/v1/attendance { learner_id, schedule_slot_id:"today", status:"present" }`.
+  - **Absent** → same with `status:"absent"`.
+  - **Year check** → `POST /lms/v1/progress/compute-year { learner_id, year_no }`; flash reports eligibility (avg score + attendance %); on pass, the certificate auto-issues.
+
+**Career targets** (`CareerManager`) — defines the roles Career Readiness matches against.
+- Lists existing roles (title, description, weighted skill chips) with a **Remove** link (`DELETE /lms/v1/careers/{id}`).
+- **Add form** — Role title, Description, and **Required skills** (comma-separated with optional `:weight`, e.g. `SQL:2, Arrays, Python`). **Add career target** → `POST /lms/v1/careers { title, description, required_skills }`.
+
+**Create an assessment** (`CreateAssessment`) — builds a real quiz for students.
+- **Meta**: Title, Dimension (aptitude/coding/communication/project), Passing %, Time limit (0 = none), Attempts allowed, Topics (comma-separated).
+- **Toggles**: **Proctored** (fullscreen + anti-cheat, 5-flag auto-submit) and **Shuffle questions & options per student**.
+- **Questions** — per question: number badge, prompt input, a **difficulty select** (easy/medium/hard — drives the Adaptive Drill), a **remove** trash (when >1), and 4 option inputs each with a **correct-answer radio**.
+- **Buttons: Add question** and **Create assessment** → `POST /lms/v1/assessments { …, proctored, shuffle, items }`. Validation requires a title + ≥1 question with options.
+
+**Grade subjective answer** (`SubjectiveGrading`)
+- **Answer id** input + **Score** input + **Grade** → `POST /lms/v1/answers/{answerId}/grade { score }`.
+
+## 24.2 Candidate Drives (`/drive`) — every control
+
+Student view of LARE Hire (students register via the public Attend flow, so there's no per-drive apply here).
+- Loads `GET /drive/v1/drives?status=open`; for each drive, loads its exams (`GET /drive/v1/exams?drive_id=…`).
+- **Drive card** — building icon, status badge, title, company, venue, reporting time.
+- **Assessment rows** — title + "N sections · M min" and a **Start** button (amber) → navigates to `/drive/test/{examId}` (the Exam Portal). If no exam is scheduled, a "check back soon" note shows.
+- Empty state: "No open drives".
+
+## 24.3 Notifications (`/lms/notifications`, `/drive/notifications`) — every control
+
+- Loads `GET /notify/v1/inbox`; the header shows the unread count.
+- **Notification card** — template icon (badge/exam/certificate/bell), subject, a **new** badge for unread (with a tinted border), body, and a relative timestamp.
+- **Button: Read** (unread only) → optimistically marks read + `POST /notify/v1/inbox/{id}/read`.
+- Empty state: "No notifications".
+
+## 24.4 Settings (`/lms/settings`, `/drive/settings`) — every control
+
+Two cards: **Notification preferences** and **Account**.
+
+**Notification preferences**
+- Toggle switches for **In-app inbox**, **Email**, **SMS** → each `PUT /notify/v1/preferences { channel, enabled }` (optimistic; flash confirms).
+
+**Account**
+- Read-only **Name** and **Email** rows.
+- **Email verified** — a "verified" badge, or a **Verify now** button → `POST /auth/v1/email/verify/request` (becomes "Sent").
+- **Roles** — the user's role badges.
+
+
 ---
 
 *End of document. Prepared for LARE Cloud Solutions - a unit of LARE Consulting & Technology Pvt. Ltd.*
