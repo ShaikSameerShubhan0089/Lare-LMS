@@ -877,14 +877,14 @@ sequenceDiagram
   participant AS as Assessment
   participant AIO as AI Orchestration
   participant G as Gemini
-  S->>GW: POST /lms/v1/micro-lessons/{id}/generate {topic}
+  S->>GW: POST micro-lessons generate (topic)
   GW->>AS: generate lesson
   AS->>AIO: request lesson blocks (marker format)
   AIO->>G: prompt
   G-->>AIO: lesson text (blocks)
   AIO-->>AS: parsed blocks
-  AS-->>S: { lesson: [blocks] }  (persisted)
-  Note over AS: transient 503 -> retry; never persist a generic template
+  AS-->>S: lesson blocks (persisted)
+  Note over AS: transient 503 retries, never a generic template
 ```
 
 ## 10.6 Sequence - Drive round to result to offer
