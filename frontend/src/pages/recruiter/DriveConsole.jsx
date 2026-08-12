@@ -15,6 +15,7 @@ import InterviewsTab from "./InterviewsTab.jsx";
 import RoundsTab from "./RoundsTab.jsx";
 import AnalyticsTab from "./AnalyticsTab.jsx";
 import { ReadOut, Ribbon, Attention, AIObservation, SignalCard, band, bandHex, initials, hueFor } from "../../components/drive/grammar.jsx";
+import CommandPalette from "../../components/drive/CommandPalette.jsx";
 
 /* The Drive as the operating unit. Surfaces are framed around
    State → Context → Evidence → Action, all on the existing real APIs. */
@@ -57,6 +58,7 @@ export default function DriveConsole() {
 
   return (
     <div>
+      <CommandPalette />
       <Link to="/drive/recruiter/drives" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-ink-900 mb-3">
         <ArrowLeft size={16} /> All drives
       </Link>

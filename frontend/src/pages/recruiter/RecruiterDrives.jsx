@@ -6,6 +6,7 @@ import { PageHeader, Loading } from "../../components/ui/states.jsx";
 import { useAsync } from "../../hooks/useAsync.js";
 import { api, withFallback } from "../../lib/api.js";
 import { ReadOut, Attention, bandHex } from "../../components/drive/grammar.jsx";
+import CommandPalette from "../../components/drive/CommandPalette.jsx";
 
 /* Cross-drive Command Center — the operating console across every drive.
    Real data: api.drives() + api.funnel(id) per drive. */
@@ -63,6 +64,7 @@ export default function RecruiterDrives() {
 
   return (
     <div>
+      <CommandPalette />
       <PageHeader
         title="Recruitment Command Center"
         subtitle="Every hiring mission at a glance — state, movement, and what needs attention."
