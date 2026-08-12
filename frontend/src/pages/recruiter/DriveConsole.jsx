@@ -4,7 +4,7 @@ import {
   ArrowLeft, Briefcase, Users, SlidersHorizontal, Rocket,
   Plus, Check, ChevronRight, Award, BarChart3, Trophy, MessagesSquare,
   ChevronUp, ChevronDown, Trash2, CheckCircle2, Search, Command, GitBranch,
-  Gauge, Calendar, ShieldAlert, X, Compass, Target,
+  Gauge, Calendar, ShieldAlert, X, Compass, Target, Eye, ClipboardList, Star, Send, Scale,
 } from "lucide-react";
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { Loading } from "../../components/ui/states.jsx";
@@ -18,26 +18,42 @@ import { ReadOut, Ribbon, Attention, AIObservation, SignalCard, band, bandHex, i
 
 /* The Drive as the operating unit. Surfaces are framed around
    State → Context → Evidence → Action, all on the existing real APIs. */
-const TABS = [
-  { id: "command", label: "Command Center", icon: Command },
-  { id: "pipeline", label: "Pipeline", icon: GitBranch },
-  { id: "candidates", label: "Candidates", icon: Users },
-  { id: "interviews", label: "Interviews", icon: MessagesSquare },
-  { id: "rounds", label: "Rounds & Marks", icon: CheckCircle2 },
-  { id: "decisions", label: "Decisions", icon: Trophy },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "configure", label: "Configure", icon: SlidersHorizontal },
-];
+const TAB_DEFS = {
+  command: { label: "Command Center", icon: Command },
+  workspace: { label: "Workspace", icon: ClipboardList },
+  pipeline: { label: "Pipeline", icon: GitBranch },
+  candidates: { label: "Candidates", icon: Users },
+  interviews: { label: "Interviews", icon: MessagesSquare },
+  rounds: { label: "Rounds & Marks", icon: CheckCircle2 },
+  decisions: { label: "Decisions", icon: Trophy },
+  analytics: { label: "Analytics", icon: BarChart3 },
+  configure: { label: "Configure", icon: SlidersHorizontal },
+};
+
+// The backend's real Drive roles are recruiter / company_admin / super_admin.
+// Hiring-Manager / Interviewer / Leadership are honest PERSPECTIVE LENSES over
+// the same real data — they reshape the operating surface, not permissions.
+const LENSES = {
+  recruiter: { label: "Recruiter", home: "command", tabs: ["command", "pipeline", "candidates", "interviews", "rounds", "decisions", "analytics", "configure"] },
+  manager: { label: "Hiring Manager", home: "candidates", tabs: ["candidates", "decisions", "analytics", "command"] },
+  interviewer: { label: "Interviewer", home: "workspace", tabs: ["workspace", "candidates", "interviews"] },
+  leadership: { label: "Leadership", home: "analytics", tabs: ["analytics", "command", "pipeline"] },
+};
 
 export default function DriveConsole() {
   const { id } = useParams();
   const detail = useAsync(() => withFallback(api.drive(id), {}), [id]);
   const [tab, setTab] = useState("command");
   const [drive, setDrive] = useState(null);
+  const [lens, setLens] = useState("recruiter");
 
   if (detail.loading) return <Loading />;
   const d = drive || detail.data || {};
   const rounds = (d.rounds || []).length;
+  const lensDef = LENSES[lens] || LENSES.recruiter;
+  const visibleTabs = lensDef.tabs;
+  const activeTab = visibleTabs.includes(tab) ? tab : lensDef.home;
+  const pickLens = (l) => { setLens(l); setTab(LENSES[l].home); };
 
   return (
     <div>
@@ -60,6 +76,13 @@ export default function DriveConsole() {
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            <label className="flex items-center gap-2 h-9 px-3 rounded-lg border border-slate-200 bg-white text-[12.5px]" title="Reshape the console for a persona (a view lens, not a permission change)">
+              <Eye size={14} className="text-slate-400" />
+              <span className="text-slate-400">View as</span>
+              <select value={lens} onChange={(e) => pickLens(e.target.value)} className="bg-transparent font-semibold text-ink-900 outline-none">
+                {Object.entries(LENSES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </label>
             <Badge tone={d.status === "open" ? "teal" : "slate"}>{d.status || "draft"}</Badge>
             {d.status !== "open" && (
               <Button onClick={async () => { try { await api.openDrive(id); } catch { /* keep */ } setDrive({ ...d, status: "open" }); }}>
@@ -70,24 +93,28 @@ export default function DriveConsole() {
         </div>
       </div>
 
-      {/* Operating tabs */}
+      {/* Operating tabs — shaped by the active lens */}
       <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto">
-        {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${tab === t.id ? "border-brand-500 text-brand-600" : "border-transparent text-slate-500 hover:text-ink-900"}`}>
-            <t.icon size={16} /> {t.label}
-          </button>
-        ))}
+        {visibleTabs.map((tid) => {
+          const t = TAB_DEFS[tid]; const Ic = t.icon;
+          return (
+            <button key={tid} onClick={() => setTab(tid)}
+              className={`flex items-center gap-2 px-4 h-11 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${activeTab === tid ? "border-brand-500 text-brand-600" : "border-transparent text-slate-500 hover:text-ink-900"}`}>
+              <Ic size={16} /> {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      {tab === "command" && <CommandCenter d={d} id={id} rounds={rounds} go={setTab} />}
-      {tab === "pipeline" && <PipelineView d={d} id={id} rounds={rounds} go={setTab} />}
-      {tab === "candidates" && <CandidateIntelligence d={d} id={id} rounds={rounds} />}
-      {tab === "interviews" && <InterviewsTab id={id} />}
-      {tab === "rounds" && <RoundsTab id={id} />}
-      {tab === "decisions" && <ResultsTab id={id} />}
-      {tab === "analytics" && <AnalyticsTab id={id} />}
-      {tab === "configure" && <ConfigureView d={d} id={id} onChange={setDrive} />}
+      {activeTab === "command" && <CommandCenter d={d} id={id} rounds={rounds} go={setTab} />}
+      {activeTab === "workspace" && <InterviewerWorkspace d={d} id={id} rounds={rounds} />}
+      {activeTab === "pipeline" && <PipelineView d={d} id={id} rounds={rounds} go={setTab} />}
+      {activeTab === "candidates" && <CandidateIntelligence d={d} id={id} rounds={rounds} />}
+      {activeTab === "interviews" && <InterviewsTab id={id} />}
+      {activeTab === "rounds" && <RoundsTab id={id} />}
+      {activeTab === "decisions" && <ResultsTab id={id} />}
+      {activeTab === "analytics" && <AnalyticsTab id={id} />}
+      {activeTab === "configure" && <ConfigureView d={d} id={id} onChange={setDrive} />}
     </div>
   );
 }
@@ -279,14 +306,25 @@ function CandidateIntelligence({ d, id, rounds }) {
   async function shortlist(cid) { try { await api.shortlist(id, [cid]); } catch { /* keep */ } update(cid, { status: "shortlisted", current_round: 1 }); }
   async function advance(cid, cur) { try { await api.advance(id, cid); } catch { /* keep */ } const n = (cur || 0) + 1; update(cid, n > rounds ? { status: "selected" } : { status: "in_round", current_round: n }); }
 
+  const [compareMode, setCompareMode] = useState(false);
+  const [compare, setCompare] = useState([]);
+  const [showCmp, setShowCmp] = useState(false);
+  const toggleCmp = (cid) => setCompare((c) => (c.includes(cid) ? c.filter((x) => x !== cid) : c.length >= 3 ? c : [...c, cid]));
+  const cardClick = (r) => (compareMode ? toggleCmp(r.candidate_id) : setOpen(r));
+  const selectedCands = list.filter((r) => compare.includes(r.candidate_id));
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold text-ink-900">Candidate Intelligence</h2>
-          <p className="text-[12.5px] text-slate-500">Ranked by decision‑readiness derived from eligibility, progression and status — not by raw score.</p>
+          <p className="text-[12.5px] text-slate-500">Ranked by decision‑readiness derived from eligibility, progression and status — not by raw score.{compareMode ? " Select up to 3 to compare." : ""}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => { setCompareMode((m) => !m); if (compareMode) setCompare([]); }}
+            className={`h-9 px-3 rounded-lg border text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${compareMode ? "border-brand-500 text-brand-600 bg-brand-500/5" : "border-slate-200 text-slate-600 hover:text-ink-900"}`}>
+            <Scale size={14} /> {compareMode ? "Comparing" : "Compare"}
+          </button>
           <div className="relative"><Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, roll…" className="h-9 pl-8 w-56" /></div>
           <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white capitalize">{STATUSES.map((s) => <option key={s} value={s}>{s === "all" ? "All statuses" : s.replace("_", " ")}</option>)}</select>
         </div>
@@ -303,13 +341,22 @@ function CandidateIntelligence({ d, id, rounds }) {
               ? <span className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-600"><ShieldAlert size={12} />Ineligible</span>
               : r.status === "selected" ? <span className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-600"><Check size={12} />Selected</span>
                 : <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 capitalize">{(r.status || "").replace("_", " ")}</span>;
-            const next = r.eligible === "no" ? "" : r.status === "applied" ? "Shortlist" : r.status === "selected" ? "" : "Advance";
-            return <SignalCard key={r.candidate_id} name={nm} sub={(r.candidate_roll ? `Roll ${r.candidate_roll} · ` : "") + (r.current_round ? `round ${r.current_round}/${rounds}` : "not started")} confidence={ready} comps={[]} riskTag={riskTag} next={next} onClick={() => setOpen(r)} />;
+            const next = compareMode ? (compare.includes(r.candidate_id) ? "Selected" : "Add to compare") : r.eligible === "no" ? "" : r.status === "applied" ? "Shortlist" : r.status === "selected" ? "" : "Advance";
+            return <SignalCard key={r.candidate_id} name={nm} sub={(r.candidate_roll ? `Roll ${r.candidate_roll} · ` : "") + (r.current_round ? `round ${r.current_round}/${rounds}` : "not started")} confidence={ready} comps={[]} riskTag={riskTag} next={next} picked={compareMode && compare.includes(r.candidate_id)} onClick={() => cardClick(r)} />;
           })}
         </div>
       )}
 
-      {open && <CandidateDrawer r={open} rounds={rounds} onClose={() => setOpen(null)} onShortlist={shortlist} onAdvance={advance} />}
+      {open && !compareMode && <CandidateDrawer r={open} rounds={rounds} onClose={() => setOpen(null)} onShortlist={shortlist} onAdvance={advance} />}
+
+      {compareMode && compare.length > 0 && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-ink-900 text-white px-4 py-2.5 shadow-xl">
+          <span className="text-[12.5px]">{compare.length} selected</span>
+          <button onClick={() => setShowCmp(true)} disabled={compare.length < 2} className="h-8 px-3 rounded-full bg-white text-ink-900 text-[12px] font-semibold disabled:opacity-40">Compare {compare.length}</button>
+          <button onClick={() => setCompare([])} className="text-white/70 hover:text-white"><X size={16} /></button>
+        </div>
+      )}
+      {showCmp && <ComparePanel cands={selectedCands} rounds={rounds} onClose={() => setShowCmp(false)} />}
     </div>
   );
 }
@@ -384,6 +431,135 @@ function CandidateDrawer({ r, rounds, onClose, onShortlist, onAdvance }) {
         </div>
       </div>
     </>
+  );
+}
+
+/* ---------- Candidate Comparison (derived from live data) ---------- */
+function CmpRow({ l, v, tone }) {
+  return <div className="flex items-center justify-between text-[12px]"><span className="text-slate-500">{l}</span><span className="font-medium" style={{ color: tone ? bandHex(tone) : "#0f172a" }}>{v}</span></div>;
+}
+function ComparePanel({ cands, rounds, onClose }) {
+  const [ev, setEv] = useState({});
+  useEffect(() => {
+    let a = true;
+    Promise.all(cands.map(async (c) => [c.candidate_id, await api.candidateSkills(c.candidate_id).catch(() => ({ verified_skills: [] }))]))
+      .then((e) => { if (a) setEv(Object.fromEntries(e)); });
+    return () => { a = false; };
+  }, [cands.map((c) => c.candidate_id).join(",")]);
+  return (
+    <div className="fixed inset-0 z-50 bg-ink-900/50 grid place-items-center p-4" onClick={onClose}>
+      <Card className="w-full max-w-4xl max-h-[86vh] overflow-y-auto p-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+          <h2 className="font-display font-semibold text-ink-900 flex items-center gap-2"><Scale size={18} className="text-brand-500" /> Candidate comparison</h2>
+          <button onClick={onClose} className="grid place-items-center h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-ink-900"><X size={18} /></button>
+        </div>
+        <div className="p-5 grid gap-4" style={{ gridTemplateColumns: `repeat(${cands.length},minmax(0,1fr))` }}>
+          {cands.map((c) => {
+            const nm = c.candidate_name || c.candidate_email || c.candidate_id;
+            const ready = readiness(c, rounds);
+            const sk = ev[c.candidate_id]?.verified_skills || [];
+            return (
+              <div key={c.candidate_id} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid place-items-center h-10 w-10 rounded-xl text-white font-bold" style={{ background: hueFor(nm) }}>{initials(nm)}</span>
+                  <div className="min-w-0"><div className="font-semibold text-ink-900 truncate">{nm}</div><div className="text-[11px] text-slate-400 capitalize">{(c.status || "").replace("_", " ")}</div></div>
+                </div>
+                <div className="mt-3 text-center rounded-lg bg-slate-50 p-3"><div className="font-display text-2xl font-bold tabular-nums" style={{ color: bandHex(band(ready)) }}>{ready}</div><div className="text-[9.5px] uppercase tracking-wider text-slate-400">readiness</div></div>
+                <div className="mt-3 space-y-1.5">
+                  <CmpRow l="Eligibility" v={c.eligible === "yes" ? "Eligible" : c.eligible === "no" ? "Ineligible" : "—"} tone={c.eligible === "yes" ? "good" : c.eligible === "no" ? "risk" : "neutral"} />
+                  <CmpRow l="Progress" v={c.current_round ? `Round ${c.current_round}/${rounds}` : "Not started"} />
+                  <CmpRow l="Verified skills" v={String(sk.length)} tone={sk.length ? "good" : "neutral"} />
+                </div>
+                {sk.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{sk.slice(0, 6).map((s, i) => <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-700">{s.skill}</span>)}</div>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="p-4 border-t border-slate-100 text-[11.5px] text-slate-400">Comparison uses live registration + evaluation‑twin data. Deeper per‑competency evidence needs the evidence service (Phase 4).</div>
+      </Card>
+    </div>
+  );
+}
+
+/* ---------- Interviewer Workspace (real interviews + evaluation twin) ---------- */
+function InterviewerWorkspace({ id }) {
+  const ivA = useAsync(() => withFallback(api.driveInterviews(id), []), [id]);
+  const [rows, setRows] = useState(null);
+  const [sel, setSel] = useState(null);
+  const list = rows ?? ivA.data ?? [];
+  if (ivA.loading) return <Loading />;
+
+  const upsert = (iv) => setRows((prev) => { const base = prev ?? ivA.data ?? []; return base.some((x) => x.id === iv.id) ? base.map((x) => (x.id === iv.id ? { ...x, ...iv } : x)) : [...base, iv]; });
+  async function rate(ivId, score) { try { await api.rateInterview(ivId, { competency: "technical", score }); } catch { /* keep */ } upsert({ id: ivId, avg_rating: score }); }
+  async function decide(ivId, decision) { try { await api.decideInterview(ivId, { decision }); } catch { /* keep */ } upsert({ id: ivId, decision, status: "completed" }); }
+
+  const pending = list.filter((v) => v.status !== "completed");
+  const active = sel ? list.find((x) => x.id === sel) : pending[0] || list[0];
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="font-display text-lg font-semibold text-ink-900">Interviewer Workspace</h2>
+        <p className="text-[12.5px] text-slate-500">Everything you need to evaluate — candidate context, prior evidence, and structured capture. Live interview data.</p>
+      </div>
+      {list.length === 0 ? <Card className="p-10 text-center text-slate-400">No interviews scheduled for this drive yet.</Card> : (
+        <div className="grid lg:grid-cols-[300px_1fr] gap-4">
+          <div className="grid gap-2 h-fit">
+            {list.map((iv) => {
+              const nm = iv.candidate_id; const on = active && active.id === iv.id;
+              return (
+                <button key={iv.id} onClick={() => setSel(iv.id)} className={`text-left rounded-xl border p-3 ${on ? "border-brand-500 ring-1 ring-brand-500 bg-white" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold" style={{ background: hueFor(nm) }}>{initials(nm)}</span>
+                    <div className="min-w-0 flex-1"><div className="text-[12.5px] font-medium text-ink-900 truncate">{nm}</div><div className="text-[11px] text-slate-400 capitalize">{iv.stage} · {iv.mode}</div></div>
+                    {iv.decision ? <Badge tone={iv.decision === "select" ? "teal" : iv.decision === "reject" ? "rose" : "amber"}>{iv.decision}</Badge> : <Badge tone="slate">{iv.status}</Badge>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div>{active ? <WorkspacePanel iv={active} onRate={rate} onDecide={decide} /> : <Card className="p-10 text-center text-slate-400">Select an interview.</Card>}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+function WorkspacePanel({ iv, onRate, onDecide }) {
+  const nm = iv.candidate_id;
+  const [ev, setEv] = useState({ loading: true, skills: [] });
+  useEffect(() => {
+    let a = true;
+    api.candidateSkills(iv.candidate_id).then((r) => { if (a) setEv({ loading: false, skills: r?.verified_skills || [] }); }).catch(() => { if (a) setEv({ loading: false, skills: [] }); });
+    return () => { a = false; };
+  }, [iv.candidate_id]);
+  return (
+    <div className="grid gap-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid place-items-center h-11 w-11 rounded-xl text-white font-bold" style={{ background: hueFor(nm) }}>{initials(nm)}</span>
+          <div className="flex-1"><div className="font-semibold text-ink-900">{nm}</div><div className="text-[12px] text-slate-500 capitalize">{iv.stage} interview · {iv.mode}</div></div>
+          {iv.avg_rating != null && <span className="inline-flex items-center gap-1 text-[12px] text-slate-600"><Star size={14} className="text-amber-500" />{iv.avg_rating}/5</span>}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h3 className="text-[13px] font-semibold text-ink-900 mb-2 flex items-center gap-2"><ShieldAlert size={15} className="text-slate-400" /> Prior evidence</h3>
+        {ev.loading ? <div className="text-sm text-slate-400">Loading…</div> : ev.skills.length ? (
+          <div className="space-y-2">{ev.skills.map((s, i) => <div key={i} className="flex items-center gap-3 rounded-lg border border-slate-100 p-2.5"><span className="h-2 w-2 rounded-full" style={{ background: bandHex(s.level === "strong" ? "good" : s.level === "weak" ? "risk" : "warn") }} /><div className="flex-1"><div className="text-[12.5px] font-semibold text-ink-900">{s.skill}</div><div className="text-[11px] text-slate-400">{s.evidence || "drive evaluation"}</div></div><Badge tone={s.level === "strong" ? "teal" : s.level === "weak" ? "rose" : "amber"}>{s.level || "—"}</Badge></div>)}</div>
+        ) : <div className="text-[12.5px] text-slate-400">No prior evidence yet — this is the first structured signal for this candidate.</div>}
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h3 className="text-[13px] font-semibold text-ink-900 mb-3 flex items-center gap-2"><ClipboardList size={15} className="text-slate-400" /> Capture evaluation</h3>
+        {iv.decision ? <div className="text-sm text-teal-600 flex items-center gap-2"><Check size={16} /> Decision recorded: <b className="capitalize">{iv.decision}</b></div> : (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-slate-400 mr-1">Rate</span>
+            {[3, 4, 5].map((s) => <button key={s} onClick={() => onRate(iv.id, s)} className="grid place-items-center h-8 w-8 rounded-md bg-slate-100 hover:bg-amber-500/15 text-slate-600 text-sm font-semibold">{s}</button>)}
+            <div className="flex-1" />
+            <Button size="sm" variant="secondary" onClick={() => onDecide(iv.id, "reject")}><X size={14} /> Reject</Button>
+            <Button size="sm" onClick={() => onDecide(iv.id, "select")}><Send size={14} /> Recommend</Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
