@@ -14,6 +14,41 @@ const MASTERY_BANDS = {
   weak:       { c1: "#fda4af", c2: "#e11d48", text: "#be123c", glow: "rgba(225,29,72,.52)" },
 };
 const bandFor = (p) => (p >= 80 ? "strong" : p >= 50 ? "developing" : "weak");
+const rgba = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+};
+
+/* ---------- Heat tile (compact heat-map cell) ----------
+   A color-graded tile whose fill intensity scales with mastery (green→amber→red).
+   Big % headline, name + fraction, optional rank chip. Grid these for a heat-map. */
+export function HeatTile({ label, pct = 0, sub, band, rank }) {
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  const b = MASTERY_BANDS[band] || MASTERY_BANDS[bandFor(p)];
+  const a = 0.12 + (p / 100) * 0.34; // heat intensity 0.12 → 0.46
+  return (
+    <motion.div
+      className="relative rounded-xl p-3.5 overflow-hidden shadow-card"
+      style={{ background: `linear-gradient(140deg, ${rgba(b.c1, a * 0.85)}, ${rgba(b.c2, a)})`, border: `1px solid ${rgba(b.c2, 0.22)}` }}
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-30px" }}
+      transition={{ duration: 0.4 }}
+      whileHover={{ y: -3 }}
+    >
+      {/* top gloss */}
+      <span aria-hidden className="absolute inset-x-0 top-0 h-8 pointer-events-none"
+            style={{ background: "linear-gradient(180deg, rgba(255,255,255,.35), transparent)" }} />
+      {rank != null && (
+        <span className="absolute top-2.5 right-2.5 grid place-items-center h-5 min-w-5 px-1 rounded-md text-[10px] font-bold tabular-nums"
+              style={{ background: rgba(b.c2, 0.18), color: b.text }}>{rank}</span>
+      )}
+      <div className="font-display text-2xl font-bold tabular-nums leading-none" style={{ color: b.text }}>{p}%</div>
+      <p className="mt-2 text-sm font-medium text-ink-900 capitalize truncate">{label}</p>
+      {sub != null && <p className="text-[11px] text-slate-500 tabular-nums">{sub}</p>}
+    </motion.div>
+  );
+}
 
 export function MasteryBar({ label, pct = 0, sub, band, small, rank }) {
   const p = Math.max(0, Math.min(100, Math.round(pct)));

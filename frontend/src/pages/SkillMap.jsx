@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Brain, Target, TrendingUp, Sparkles, AlertCircle, CalendarDays, Lightbulb, WandSparkles, Code2, Repeat } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
-import { RadialGauge, MasteryBar } from "../components/drive/charts.jsx";
+import { RadialGauge, HeatTile } from "../components/drive/charts.jsx";
 import { PageHeader, Loading } from "../components/ui/states.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -140,9 +140,9 @@ export default function SkillMap({ candidateId }) {
           {cats.length > 0 && (
             <Card className="p-6">
               <h3 className="font-display font-semibold text-ink-900 mb-4">Mastery by area</h3>
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {cats.map((c) => (
-                  <MasteryBar key={c.name} label={c.name} pct={c.mastery} band={c.band} sub={`${c.correct}/${c.attempted}`} />
+                  <HeatTile key={c.name} label={c.name} pct={c.mastery} band={c.band} sub={`${c.correct}/${c.attempted}`} />
                 ))}
               </div>
             </Card>
@@ -160,9 +160,9 @@ export default function SkillMap({ candidateId }) {
                   {codingVerified > 0 && <Badge tone="teal">{codingVerified} verified ✓</Badge>}
                 </div>
               </div>
-              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {languages.map((l) => (
-                  <MasteryBar key={l.name} label={l.name} pct={l.mastery} band={l.band} sub={`${l.solved}/${l.attempted}`} />
+                  <HeatTile key={l.name} label={l.name} pct={l.mastery} band={l.band} sub={`${l.solved}/${l.attempted}`} />
                 ))}
               </div>
             </Card>
@@ -172,9 +172,9 @@ export default function SkillMap({ candidateId }) {
           {topics.length > 0 && (
             <Card className="p-6">
               <h3 className="font-display font-semibold text-ink-900 mb-4">Every topic, ranked</h3>
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {topics.map((t, i) => (
-                  <MasteryBar key={t.name} label={t.name} pct={t.mastery} band={t.band} sub={`${t.correct}/${t.attempted}`} small rank={i + 1} />
+                  <HeatTile key={t.name} label={t.name} pct={t.mastery} band={t.band} sub={`${t.correct}/${t.attempted}`} rank={i + 1} />
                 ))}
               </div>
             </Card>
