@@ -57,6 +57,22 @@ export function useTilt(strength = 14) {
   return { rotX, rotY, onTilt, resetTilt };
 }
 
+// Drop-in card that tilts toward the cursor. Keeps children fully interactive.
+export function TiltCard({ children, className = "", strength = 8, ...rest }) {
+  const { rotX, rotY, onTilt, resetTilt } = useTilt(strength);
+  return (
+    <motion.div
+      onMouseMove={onTilt}
+      onMouseLeave={resetTilt}
+      style={{ rotateX: rotX, rotateY: rotY, transformPerspective: 1000 }}
+      className={`will-change-transform ${className}`}
+      {...rest}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 // Premium gradient brand-logo tile (monogram mark + wordmark).
 export function LogoTile({ name, from, to }) {
   return (

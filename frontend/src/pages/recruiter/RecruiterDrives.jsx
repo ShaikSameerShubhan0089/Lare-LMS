@@ -7,6 +7,7 @@ import { useAsync } from "../../hooks/useAsync.js";
 import { api, withFallback } from "../../lib/api.js";
 import { ReadOut, Attention, bandHex } from "../../components/drive/grammar.jsx";
 import CommandPalette from "../../components/drive/CommandPalette.jsx";
+import { TiltCard } from "../../components/ui/Decor.jsx";
 
 /* Cross-drive Command Center — the operating console across every drive.
    Real data: api.drives() + api.funnel(id) per drive. */
@@ -105,9 +106,9 @@ export default function RecruiterDrives() {
         {list.map((d) => {
           const f = stat(d); const health = healthOf(d); const fl = flightOf(f); const sel = f.by_status?.selected || 0;
           return (
-            <div key={d.id} className="rounded-2xl border border-slate-200 bg-surface p-5">
+            <TiltCard key={d.id} strength={6} className="rounded-2xl border border-slate-200 bg-surface p-5 hover:shadow-lift transition-shadow">
               <div className="flex items-start justify-between">
-                <span className="grid place-items-center h-11 w-11 rounded-xl bg-invert-900 text-white"><Building2 size={22} /></span>
+                <span className="grid place-items-center h-11 w-11 rounded-xl bg-gradient-to-br from-invert-800 to-invert-950 text-white shadow-sm"><Building2 size={22} /></span>
                 <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold px-2 py-1 rounded" style={{ background: health === "good" ? "rgba(13,148,136,.1)" : health === "warn" ? "rgba(217,119,6,.12)" : "rgba(100,116,139,.1)", color: bandHex(health) }}>
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: bandHex(health) }} />
                   {d.status === "draft" ? "Draft" : health === "good" ? "On track" : health === "warn" ? "Needs attention" : "Idle"}
@@ -131,7 +132,7 @@ export default function RecruiterDrives() {
                 <Button as={Link} to={`/drive/recruiter/drives/${d.id}`} variant="secondary" className="flex-1">Open console <ChevronRight size={18} /></Button>
                 <button onClick={() => del(d)} aria-label="Delete drive" className="grid place-items-center h-11 w-11 rounded-md border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-300"><Trash2 size={17} /></button>
               </div>
-            </div>
+            </TiltCard>
           );
         })}
       </div>

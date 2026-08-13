@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Flame, Trophy, Award, Target, Code2, Star, Medal } from "lucide-react";
 import { Card, Badge, XPBar, StatTile } from "../components/ui/primitives.jsx";
+import { Orbs } from "../components/ui/Decor.jsx";
 import { PageHeader, Loading, DataSource } from "../components/ui/states.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { api, withFallback } from "../lib/api.js";
@@ -13,6 +14,13 @@ const BADGE_META = {
   aptitude_ace: { icon: Target, name: "Aptitude Ace", tone: "brand" },
 };
 const SKILL_TONE = { coding: "teal", aptitude: "amber", communication: "brand", project: "brand" };
+// 3D coin gradients per tone (medallion look).
+const COIN = {
+  amber: { g: "linear-gradient(145deg,#fcd34d,#d97706)", s: "245,158,11" },
+  teal: { g: "linear-gradient(145deg,#5eead4,#0d9488)", s: "13,148,136" },
+  brand: { g: "linear-gradient(145deg,#93c5fd,#1d4ed8)", s: "37,99,235" },
+  slate: { g: "linear-gradient(145deg,#cbd5e1,#475569)", s: "100,116,139" },
+};
 
 export default function Achievements() {
   const { user } = useAuth();
@@ -37,6 +45,7 @@ export default function Achievements() {
       {/* Level hero */}
       <Card className="p-6 bg-invert-900 text-white border-0 relative overflow-hidden mb-6">
         <div className="bg-grid absolute inset-0 opacity-[0.12]" />
+        <Orbs tone="warm" className="opacity-70" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>
             <Badge tone="amber">
@@ -98,27 +107,24 @@ export default function Achievements() {
             ))}
           </div>
 
-          <h3 className="font-display font-semibold text-ink-900 mt-7 mb-3">Badges</h3>
-          <div className="flex flex-wrap gap-3">
+          <h3 className="font-display font-semibold text-ink-900 mt-7 mb-4">Badges</h3>
+          <div className="flex flex-wrap gap-5">
             {g.badges.map((code) => {
               const meta = BADGE_META[code] || { icon: Award, name: code, tone: "slate" };
+              const c = COIN[meta.tone] || COIN.slate;
               return (
-                <div key={code} className="flex items-center gap-2 rounded-md border border-slate-100 px-3 py-2">
-                  <span
-                    className={`grid place-items-center h-8 w-8 rounded-md ${
-                      meta.tone === "teal"
-                        ? "bg-teal-500/12 text-teal-600"
-                        : meta.tone === "amber"
-                          ? "bg-amber-500/15 text-amber-600"
-                          : "bg-brand-500/10 text-brand-600"
-                    }`}
-                  >
-                    <meta.icon size={18} />
+                <motion.div key={code} whileHover={{ y: -3, scale: 1.05 }} transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                  className="flex flex-col items-center gap-2 w-[78px]">
+                  <span className="relative grid place-items-center h-14 w-14 rounded-full text-white"
+                    style={{ background: c.g, boxShadow: `0 10px 22px -6px rgba(${c.s},.55), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 6px rgba(0,0,0,.28)` }}>
+                    <meta.icon size={22} strokeWidth={1.9} />
+                    <span aria-hidden className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 34% 24%, rgba(255,255,255,.55), transparent 46%)" }} />
                   </span>
-                  <span className="text-sm font-medium text-ink-900">{meta.name}</span>
-                </div>
+                  <span className="text-[11px] font-medium text-ink-900 text-center leading-tight">{meta.name}</span>
+                </motion.div>
               );
             })}
+            {g.badges.length === 0 && <p className="text-sm text-slate-400">No badges yet — complete lessons and assessments to earn them.</p>}
           </div>
         </Card>
 
