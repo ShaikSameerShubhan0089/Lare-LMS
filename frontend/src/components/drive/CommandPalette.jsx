@@ -50,7 +50,7 @@ export default function CommandPalette() {
       <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
           <Search size={18} className="text-slate-400" />
-          <input autoFocus value={q} onChange={(e) => { setQ(e.target.value); setCur(0); }} placeholder="Jump to a drive, or run a command…" className="flex-1 outline-none text-[15px] text-ink-900 bg-transparent" />
+          <input autoFocus value={q} onChange={(e) => { setQ(e.target.value); setCur(0); }} aria-label="Command palette — jump to a drive or run a command" placeholder="Jump to a drive, or run a command…" className="flex-1 outline-none text-[15px] text-ink-900 bg-transparent" />
           <kbd className="text-[10px] text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">ESC</kbd>
         </div>
         <div className="max-h-[50vh] overflow-y-auto p-2">

@@ -398,7 +398,7 @@ function CandidateIntelligence({ d, id, rounds }) {
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-ink-900 text-white px-4 py-2.5 shadow-xl">
           <span className="text-[12.5px]">{compare.length} selected</span>
           <button onClick={() => setShowCmp(true)} disabled={compare.length < 2} className="h-8 px-3 rounded-full bg-white text-ink-900 text-[12px] font-semibold disabled:opacity-40">Compare {compare.length}</button>
-          <button onClick={() => setCompare([])} className="text-white/70 hover:text-white"><X size={16} /></button>
+          <button onClick={() => setCompare([])} aria-label="Clear comparison selection" className="text-white/70 hover:text-white"><X size={16} /></button>
         </div>
       )}
       {showCmp && <ComparePanel cands={selectedCands} rounds={rounds} onClose={() => setShowCmp(false)} />}
@@ -429,7 +429,7 @@ function CandidateDrawer({ r, rounds, onClose, onShortlist, onAdvance }) {
             <div className="text-[12px] text-slate-500 truncate">{r.candidate_email || ""}{r.candidate_roll ? ` · ${r.candidate_roll}` : ""}</div>
           </div>
           <div className="text-right mr-1"><div className="font-display text-[26px] font-bold leading-none tabular-nums" style={{ color: bandHex(band(ready)) }}>{ready}</div><div className="text-[9px] uppercase tracking-wider text-slate-400">readiness</div></div>
-          <button onClick={onClose} className="grid place-items-center h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-ink-900"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Close" className="grid place-items-center h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-ink-900"><X size={18} /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           <div className="mb-5">
@@ -496,7 +496,7 @@ function ComparePanel({ cands, rounds, onClose }) {
       <Card className="w-full max-w-4xl max-h-[86vh] overflow-y-auto p-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-slate-100">
           <h2 className="font-display font-semibold text-ink-900 flex items-center gap-2"><Scale size={18} className="text-brand-500" /> Candidate comparison</h2>
-          <button onClick={onClose} className="grid place-items-center h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-ink-900"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Close" className="grid place-items-center h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-ink-900"><X size={18} /></button>
         </div>
         <div className="p-5 grid gap-4" style={{ gridTemplateColumns: `repeat(${cands.length},minmax(0,1fr))` }}>
           {cands.map((c) => {

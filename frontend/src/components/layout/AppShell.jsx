@@ -141,6 +141,7 @@ export function AppShell({ children, product = "lms" }) {
 
   return (
     <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[260px_1fr]">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-ink-900 focus:text-white focus:text-sm">Skip to content</a>
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-[260px] bg-ink-900 text-slate-200 flex flex-col transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
@@ -259,7 +260,7 @@ export function AppShell({ children, product = "lms" }) {
             </button>
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-8">{children}</main>
+        <main id="main" tabIndex={-1} className="flex-1 p-4 lg:p-8 outline-none">{children}</main>
       </div>
     </div>
   );
