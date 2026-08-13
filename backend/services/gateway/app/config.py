@@ -34,6 +34,7 @@ class GatewayConfig(BaseConfig):
         "lms-ai": os.getenv("AI_ORCH_URL", "http://127.0.0.1:8024"),
         "lms-tutor": os.getenv("AI_TUTOR_URL", "http://127.0.0.1:8025"),
         "platform-org": os.getenv("ORG_URL", "http://127.0.0.1:8026"),
+        "drive-evidence": os.getenv("EVIDENCE_URL", "http://127.0.0.1:8027"),
     }
 
     # Longest-prefix routing table: request path prefix -> upstream key.
@@ -76,6 +77,7 @@ class GatewayConfig(BaseConfig):
         "/drive/v1/attend": "drive-candidate",
         "/drive/v1/drives": "drive-core",
         "/drive/v1/opportunities": "drive-core",
+        "/drive/v1/evidence": "drive-evidence",
         "/drive/v1/questions": "drive-questionbank",
         "/drive/v1/blueprints": "drive-questionbank",
         "/drive/v1/exams": "drive-exam",

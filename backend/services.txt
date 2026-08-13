@@ -27,4 +27,5 @@ audit	audit	8023
 ai_orchestration	ai_orchestration	8024
 ai_tutor	ai_tutor	8025
 organization	organization	8026
+evidence	evidence	8027
 gateway	gateway	8000
