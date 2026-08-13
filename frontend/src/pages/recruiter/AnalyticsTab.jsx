@@ -4,7 +4,7 @@ import { Card, Button } from "../../components/ui/primitives.jsx";
 import { Loading } from "../../components/ui/states.jsx";
 import { api, withFallback } from "../../lib/api.js";
 import { band, bandHex, initials, hueFor } from "../../components/drive/grammar.jsx";
-import { RadialGauge, Funnel, ColumnChart, Donut } from "../../components/drive/charts.jsx";
+import { RadialGauge, Funnel, AreaChart, Donut } from "../../components/drive/charts.jsx";
 
 // World-class drive analytics — a real recruitment intelligence dashboard.
 // Everything derives from live data (analytics + funnel + registrations); no mocks.
@@ -129,12 +129,12 @@ export default function AnalyticsTab({ id }) {
         <Card className="p-6">
           <h3 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2"><BarChart3 size={18} className="text-brand-500" /> Score distribution</h3>
           <p className="text-xs text-slate-400 mb-3">Written test · average {w.avg_percentage ?? 0}%</p>
-          {w.attended ? <ColumnChart data={dist} color="#2563EB" /> : <p className="text-sm text-slate-400 py-8 text-center">No written-test results yet.</p>}
+          {w.attended ? <AreaChart data={dist} color="#2563EB" /> : <p className="text-sm text-slate-400 py-8 text-center">No written-test results yet.</p>}
         </Card>
         <Card className="p-6">
           <h3 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2"><GitBranch size={18} className="text-teal-500" /> Pipeline occupancy</h3>
           <p className="text-xs text-slate-400 mb-3">Where candidates sit right now</p>
-          {rounds.length ? <ColumnChart data={rounds} color="#0D9488" /> : <p className="text-sm text-slate-400 py-8 text-center">No candidates yet.</p>}
+          {rounds.length ? <AreaChart data={rounds} color="#0D9488" /> : <p className="text-sm text-slate-400 py-8 text-center">No candidates yet.</p>}
         </Card>
       </div>
 

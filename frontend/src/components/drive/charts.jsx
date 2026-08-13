@@ -158,120 +158,75 @@ export function Funnel({ stages = [] }) {
   );
 }
 
-/* ---------- Smooth area chart (distribution / density) ---------- */
-export function AreaChart({ data = [], color = "#2563EB", height = 180 }) {
+/* ---------- Smooth area chart (distribution / density) ----------
+   Premium line form: deep gradient fill, a glowing gradient stroke that draws
+   in on view, soft-glowing data points, an emphasized peak with a value cap. */
+export function AreaChart({ data = [], color = "#2563EB", height = 190 }) {
   const id = useId();
-  const W = 520, H = height, padX = 14, padT = 16, padB = 28;
+  const W = 520, H = height, padX = 16, padT = 22, padB = 30;
   const max = Math.max(1, ...data.map((d) => d.value));
   const n = data.length;
-  const xAt = (i) => padX + (n <= 1 ? 0 : (i / (n - 1)) * (W - padX * 2));
+  const xAt = (i) => padX + (n <= 1 ? (W - padX * 2) / 2 : (i / (n - 1)) * (W - padX * 2));
   const yAt = (v) => padT + (1 - v / max) * (H - padT - padB);
   const pts = data.map((d, i) => [xAt(i), yAt(d.value)]);
   const line = smoothPath(pts);
   const area = pts.length ? `${line} L ${xAt(n - 1)},${H - padB} L ${xAt(0)},${H - padB} Z` : "";
+  const peak = data.length ? data.reduce((m, d, i) => (d.value > data[m].value ? i : m), 0) : 0;
   return (
     <div className="w-full overflow-x-auto">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 320 }}>
         <defs>
           <linearGradient id={`a${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.42" />
+            <stop offset="55%" stopColor={color} stopOpacity="0.14" />
             <stop offset="100%" stopColor={color} stopOpacity="0.02" />
           </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75].map((g) => <line key={g} x1={padX} x2={W - padX} y1={padT + g * (H - padT - padB)} y2={padT + g * (H - padT - padB)} stroke="rgb(var(--c-slate-100))" strokeWidth="1" />)}
-        {area && <path d={area} fill={`url(#a${id})`} />}
-        {line && <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
-        {pts.map((p, i) => (
-          <g key={i}>
-            <circle cx={p[0]} cy={p[1]} r="3.5" fill="rgb(var(--c-surface))" stroke={color} strokeWidth="2">
-              <title>{data[i].label}: {data[i].value}</title>
-            </circle>
-            <text x={p[0]} y={H - padB + 16} textAnchor="middle" fill="rgb(var(--c-slate-400))" fontSize="10.5">{data[i].label}</text>
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-/* ---------- Column chart (categorical magnitude / histogram) ----------
-   Replaces a smooth line for binned/staged data, where interpolating between
-   categories would be misleading. Lit gradient columns with a gloss face, soft
-   drop-shadow, value caps, quarter gridlines and an animated grow-from-baseline.
-   Height maps exactly to value — depth is cosmetic. */
-export function ColumnChart({ data = [], color = "#2563EB", height = 190 }) {
-  const id = useId();
-  const W = 520, H = height, padX = 16, padT = 24, padB = 30;
-  const plotH = H - padT - padB;
-  const baseY = padT + plotH;
-  const max = Math.max(1, ...data.map((d) => d.value));
-  const n = data.length || 1;
-  const slot = (W - padX * 2) / n;
-  const bw = Math.min(64, slot * 0.62);
-  const xAt = (i) => padX + slot * i + (slot - bw) / 2;
-  const hAt = (v) => (v / max) * plotH;
-  return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 320 }}>
-        <defs>
-          <linearGradient id={`col${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.78" />
-            <stop offset="100%" stopColor={color} stopOpacity="1" />
+          <linearGradient id={`s${id}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={color} stopOpacity="0.7" />
+            <stop offset="100%" stopColor={color} />
           </linearGradient>
-          <linearGradient id={`gloss${id}`} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#fff" stopOpacity="0.45" />
-            <stop offset="42%" stopColor="#fff" stopOpacity="0.06" />
-            <stop offset="100%" stopColor="#000" stopOpacity="0.10" />
-          </linearGradient>
-          <filter id={`sh${id}`} x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor={color} floodOpacity="0.28" />
+          <filter id={`glow${id}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3.2" floodColor={color} floodOpacity="0.5" />
           </filter>
         </defs>
 
-        {/* quarter gridlines + baseline */}
-        {[0.25, 0.5, 0.75, 1].map((g) => (
-          <line key={g} x1={padX} x2={W - padX} y1={baseY - g * plotH} y2={baseY - g * plotH}
+        {[0.25, 0.5, 0.75].map((g) => (
+          <line key={g} x1={padX} x2={W - padX} y1={padT + g * (H - padT - padB)} y2={padT + g * (H - padT - padB)}
                 stroke="rgb(var(--c-slate-100))" strokeWidth="1" />
         ))}
-        <line x1={padX} x2={W - padX} y1={baseY} y2={baseY} stroke="rgb(var(--c-slate-200))" strokeWidth="1.5" />
+        <line x1={padX} x2={W - padX} y1={H - padB} y2={H - padB} stroke="rgb(var(--c-slate-200))" strokeWidth="1.25" />
 
-        {data.map((d, i) => {
-          const bh = hAt(d.value);
-          const yTop = baseY - bh;
-          const r = Math.min(7, bw / 2, bh);
+        {area && (
+          <motion.path d={area} fill={`url(#a${id})`}
+            initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+            viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.9, delay: 0.25 }} />
+        )}
+        {line && (
+          <motion.path d={line} fill="none" stroke={`url(#s${id})`} strokeWidth="3"
+            strokeLinecap="round" strokeLinejoin="round" filter={`url(#glow${id})`}
+            initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }}
+            viewport={{ once: true, margin: "-40px" }} transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }} />
+        )}
+        {pts.map((p, i) => {
+          const isPeak = i === peak && data[i].value > 0;
           return (
-            <g key={d.label}>
-              <motion.rect
-                x={xAt(i)} width={bw} rx={r} fill={`url(#col${id})`} filter={`url(#sh${id})`}
-                initial={{ height: 0, y: baseY }}
-                whileInView={{ height: Math.max(bh, 0.001), y: yTop }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.05 }}
-              >
-                <title>{d.label}: {d.value}</title>
-              </motion.rect>
-              {/* gloss face */}
-              <motion.rect
-                x={xAt(i)} width={bw} rx={r} fill={`url(#gloss${id})`} pointerEvents="none"
-                initial={{ height: 0, y: baseY }}
-                whileInView={{ height: Math.max(bh, 0.001), y: yTop }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.05 }}
-              />
-              {/* value cap */}
-              {d.value > 0 && (
-                <motion.text
-                  x={xAt(i) + bw / 2} y={yTop - 7} textAnchor="middle"
-                  fill="rgb(var(--c-ink-900))" fontSize="12.5" fontWeight="700"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
-                  initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
-                  viewport={{ once: true, margin: "-40px" }} transition={{ delay: 0.35 + i * 0.05 }}
-                >{d.value}</motion.text>
+            <motion.g key={i}
+              initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: "-40px" }} transition={{ delay: 0.5 + i * 0.06 }}>
+              {isPeak && <circle cx={p[0]} cy={p[1]} r="8" fill={color} opacity="0.18" />}
+              <circle cx={p[0]} cy={p[1]} r={isPeak ? 5 : 3.6} fill="rgb(var(--c-surface))"
+                      stroke={color} strokeWidth={isPeak ? 2.6 : 2}
+                      style={isPeak ? { filter: `url(#glow${id})` } : undefined}>
+                <title>{data[i].label}: {data[i].value}</title>
+              </circle>
+              {isPeak && (
+                <text x={p[0]} y={p[1] - 12} textAnchor="middle" fill="rgb(var(--c-ink-900))"
+                      fontSize="12.5" fontWeight="700" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {data[i].value}
+                </text>
               )}
-              {/* category label */}
-              <text x={xAt(i) + bw / 2} y={H - padB + 17} textAnchor="middle"
-                    fill="rgb(var(--c-slate-400))" fontSize="11">{d.label}</text>
-            </g>
+              <text x={p[0]} y={H - padB + 17} textAnchor="middle" fill="rgb(var(--c-slate-400))" fontSize="11">{data[i].label}</text>
+            </motion.g>
           );
         })}
       </svg>
