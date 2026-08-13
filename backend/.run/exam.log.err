@@ -1,5 +1,0 @@
-{"ts":"2026-07-28 22:36:54,111","svc":"exam","level":"INFO","msg":"event bus for exam using backend=http"}
-{"ts":"2026-07-28 22:36:54,137","svc":"exam","level":"INFO","msg":"serving on 127.0.0.1:8013 via waitress (threads=16)"}
-{"ts":"2026-07-28 22:36:54,147","svc":"exam","level":"INFO","msg":"Serving on http://127.0.0.1:8013"}
-{"ts":"2026-07-28 23:14:21,452","svc":"exam","level":"WARNING","msg":"east-west POST http://127.0.0.1:8017/events/v1/ingest failed: timed out"}
-{"ts":"2026-07-28 23:14:21,459","svc":"exam","level":"WARNING","msg":"event exam.submitted not delivered to drive-evaluation"}

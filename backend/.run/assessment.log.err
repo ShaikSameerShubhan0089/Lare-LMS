@@ -1,3 +1,0 @@
-{"ts":"2026-07-28 22:36:12,740","svc":"assessment","level":"INFO","msg":"event bus for assessment using backend=http"}
-{"ts":"2026-07-28 22:36:12,764","svc":"assessment","level":"INFO","msg":"serving on 127.0.0.1:8007 via waitress (threads=16)"}
-{"ts":"2026-07-28 22:36:12,773","svc":"assessment","level":"INFO","msg":"Serving on http://127.0.0.1:8007"}

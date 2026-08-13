@@ -1,4 +1,0 @@
-{"ts":"2026-07-28 22:37:18,925","svc":"evaluation","level":"INFO","msg":"event bus for evaluation using backend=http"}
-{"ts":"2026-07-28 22:37:18,949","svc":"evaluation","level":"INFO","msg":"serving on 127.0.0.1:8017 via waitress (threads=16)"}
-{"ts":"2026-07-28 22:37:18,957","svc":"evaluation","level":"INFO","msg":"Serving on http://127.0.0.1:8017"}
-{"ts":"2026-07-28 23:14:21,483","svc":"evaluation","level":"INFO","msg":"auto-graded session 7ca71101-23c4-4ad0-bf50-5fc2720e6c0e: 0.0%"}

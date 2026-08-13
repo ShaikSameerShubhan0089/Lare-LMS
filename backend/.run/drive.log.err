@@ -1,4 +1,0 @@
-{"ts":"2026-07-28 22:36:41,207","svc":"drive","level":"INFO","msg":"event bus for drive using backend=http"}
-{"ts":"2026-07-28 22:36:41,228","svc":"drive","level":"INFO","msg":"serving on 127.0.0.1:8011 via waitress (threads=16)"}
-{"ts":"2026-07-28 22:36:41,237","svc":"drive","level":"INFO","msg":"Serving on http://127.0.0.1:8011"}
-{"ts":"2026-07-28 23:14:24,237","svc":"drive","level":"INFO","msg":"recorded written-test result for 2f511195-99f6-4955-a6d6-29bb0a078641 on drive 9253c7f1-716f-4aa7-8d29-748afbeacbd6 (0%)"}

@@ -1,3 +1,0 @@
-{"ts":"2026-07-28 22:36:05,503","svc":"progress","level":"INFO","msg":"event bus for progress using backend=http"}
-{"ts":"2026-07-28 22:36:05,519","svc":"progress","level":"INFO","msg":"serving on 127.0.0.1:8006 via waitress (threads=16)"}
-{"ts":"2026-07-28 22:36:05,525","svc":"progress","level":"INFO","msg":"Serving on http://127.0.0.1:8006"}
