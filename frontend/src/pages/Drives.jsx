@@ -6,6 +6,7 @@ import { PageHeader, Loading, DataSource, EmptyState } from "../components/ui/st
 import { useAsync } from "../hooks/useAsync.js";
 import { api, withFallback } from "../lib/api.js";
 import { demoDrives } from "../lib/demo.js";
+import { ReadOut } from "../components/drive/grammar.jsx";
 
 // Student view of LARE Hire. Students register via the public "Attend Drive"
 // flow, so here they simply see the open drive(s) and start the assessment — no
@@ -38,6 +39,12 @@ export default function Drives() {
       {list.length === 0 ? (
         <EmptyState title="No open drives" hint="Drives opened by your placement cell will appear here." />
       ) : (
+        <>
+        <div className="grid sm:grid-cols-3 gap-3 mb-4">
+          <ReadOut label="Open drives" value={list.length} hint="you can attempt now" />
+          <ReadOut label="Assessments" value={Object.values(exams).reduce((n, e) => n + (e?.length || 0), 0)} hint="ready to start" />
+          <ReadOut label="Companies" value={new Set(list.map((d) => d.company_name)).size} hint="hiring on campus" />
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           {list.map((d) => {
             const driveExams = exams[d.id] || [];
@@ -80,6 +87,7 @@ export default function Drives() {
             );
           })}
         </div>
+        </>
       )}
     </div>
   );
