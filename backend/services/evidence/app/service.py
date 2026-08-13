@@ -99,27 +99,27 @@ class EvidenceService:
 
     def backfill(self, s, drive_id, score_rows):
         """Emit assessment evidence from historical Round 1 marks. Idempotent:
-        a candidate already backfilled for this drive is skipped."""
+        a candidate already backfilled for this drive is skipped. Bulk path —
+        batch the existence check and INSERT directly (no per-row SELECT or
+        conflict detection, which would be an N+1 across hundreds of candidates)."""
+        ref = "round-1-backfill"
+        already = set(s.scalars(select(Evidence.candidate_id).where(
+            Evidence.drive_id == drive_id, Evidence.source_ref == ref)).all())
         appended = skipped = 0
         for row in score_rows or []:
             cand = row.get("candidate_id")
             pct = row.get("percentage")
-            if not cand or pct is None:
+            if not cand or pct is None or cand in already:
                 skipped += 1
                 continue
-            ref = "round-1-backfill"
-            exists = s.scalar(select(Evidence.id).where(
-                Evidence.drive_id == drive_id, Evidence.candidate_id == cand,
-                Evidence.source_ref == ref))
-            if exists:
-                skipped += 1
-                continue
-            self.append(
-                s, drive_id=drive_id, candidate_id=cand, competency_key="overall",
+            s.add(Evidence(
+                drive_id=drive_id, candidate_id=cand, competency_key="overall",
                 source_type="assessment", source_ref=ref, signal=float(pct),
                 confidence="high", rationale="Backfilled from Round 1 written test",
-                round_key="round-1", actor_id="backfill")
+                round_key="round-1", actor_id="backfill"))
+            already.add(cand)
             appended += 1
+        s.flush()
         return {"appended": appended, "skipped": skipped, "total": len(score_rows or [])}
 
     def conflicts(self, s, drive_id):

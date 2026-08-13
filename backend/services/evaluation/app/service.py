@@ -291,16 +291,19 @@ class EvaluationService:
         ).scalars().all()
         # Tie-breakers: percentage desc, accuracy desc, candidate_id asc (stable).
         ordered = sorted(evals, key=lambda e: (-e.percentage, -e.accuracy, e.candidate_id))
+        # Batch-load existing ranks in ONE query (was a SELECT per candidate — an
+        # N+1 that times out over a remote DB with hundreds of candidates).
+        existing = {r.candidate_id: r for r in s.execute(
+            select(Rank).where(Rank.exam_id == exam_id)).scalars().all()}
         out = []
         for i, e in enumerate(ordered):
-            r = s.execute(
-                select(Rank).where(Rank.exam_id == exam_id, Rank.candidate_id == e.candidate_id)
-            ).scalar_one_or_none()
             tie = f"pct={e.percentage},acc={e.accuracy}"
+            r = existing.get(e.candidate_id)
             if r is None:
                 r = Rank(id=new_id(), exam_id=exam_id, candidate_id=e.candidate_id,
                          rank=i + 1, percentage=e.percentage, tie_break=tie)
                 s.add(r)
+                existing[e.candidate_id] = r
             else:
                 r.rank = i + 1
                 r.percentage = e.percentage

@@ -548,17 +548,17 @@ class DriveService:
 
     def shortlist(self, s: Session, did: str, candidate_ids: list[str]) -> dict:
         self.get(s, did)
+        ids = [c for c in dict.fromkeys(candidate_ids) if c]
+        # Batch-load the registrations in ONE query (was a SELECT per candidate).
+        regs = {r.candidate_id: r for r in s.execute(
+            select(Registration).where(
+                Registration.drive_id == did, Registration.candidate_id.in_(ids))
+        ).scalars().all()} if ids else {}
         updated = 0
         skipped = []
-        for cid in candidate_ids:
-            reg = s.execute(
-                select(Registration).where(
-                    Registration.drive_id == did, Registration.candidate_id == cid)
-            ).scalar_one_or_none()
-            if not reg:
-                skipped.append(cid)
-                continue
-            if reg.eligible == "no":
+        for cid in ids:
+            reg = regs.get(cid)
+            if not reg or reg.eligible == "no":
                 skipped.append(cid)
                 continue
             reg.status = "shortlisted"
