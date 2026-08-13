@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Users, CheckCircle2, Percent, Code2, Download, Filter, Trophy, GitBranch, Gauge } from "lucide-react";
+import { BarChart3, CheckCircle2, Code2, Download, Filter, Trophy, GitBranch, Target } from "lucide-react";
 import { Card, Button } from "../../components/ui/primitives.jsx";
 import { Loading } from "../../components/ui/states.jsx";
 import { api, withFallback } from "../../lib/api.js";
-import { ReadOut, band, bandHex, initials, hueFor } from "../../components/drive/grammar.jsx";
+import { band, bandHex, initials, hueFor } from "../../components/drive/grammar.jsx";
+import { RadialGauge, Funnel, AreaChart, Donut } from "../../components/drive/charts.jsx";
 
-// World-class drive analytics: recruitment funnel, real score distribution,
-// pipeline occupancy, outcome & eligibility mix, and top performers — all
-// derived from live drive data (analytics + funnel + registrations). No mocks.
+// World-class drive analytics — a real recruitment intelligence dashboard.
+// Everything derives from live data (analytics + funnel + registrations); no mocks.
 export default function AnalyticsTab({ id }) {
-  const [a, setA] = useState(null);       // driveAnalytics
-  const [f, setF] = useState(null);       // funnel
-  const [regs, setRegs] = useState([]);   // registrations (real marks)
+  const [a, setA] = useState(null);
+  const [f, setF] = useState(null);
+  const [regs, setRegs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
@@ -47,34 +47,27 @@ export default function AnalyticsTab({ id }) {
   const inFlight = (bs.shortlisted || 0) + (bs.in_round || 0);
   const selected = bs.selected || 0;
   const rejected = bs.rejected || 0;
-  const screening = (bs.applied || 0);
+  const screening = bs.applied || 0;
+  const attRate = total ? Math.round((w.attended || 0) / total * 100) : 0;
+  const selRate = total ? Math.round(selected / total * 100) : 0;
 
-  // Recruitment funnel — real counts, each scaled to the top of the funnel.
   const funnel = [
-    { key: "registered", label: "Registered", value: total, tone: "#2563EB" },
-    { key: "attended", label: "Attended test", value: w.attended ?? 0, tone: "#2563EB" },
-    { key: "cleared", label: "Cleared written", value: w.cleared ?? 0, tone: "#1D4ED8" },
-    { key: "inpipe", label: "In rounds", value: inFlight + selected, tone: "#0D9488" },
-    { key: "selected", label: "Selected", value: selected, tone: "#0D9488" },
+    { label: "Registered", value: total, color: "#3B82F6" },
+    { label: "Attended test", value: w.attended ?? 0, color: "#2563EB" },
+    { label: "Cleared written", value: w.cleared ?? 0, color: "#1D4ED8" },
+    { label: "In rounds", value: inFlight + selected, color: "#0D9488" },
+    { label: "Selected", value: selected, color: "#0F766E" },
   ];
-  const funMax = Math.max(1, ...funnel.map((s) => s.value));
 
-  // Real score distribution (written test bands) + average.
-  const dist = w.score_distribution || [];
-  const distMax = Math.max(1, ...dist.map((d) => d.count));
+  const dist = (w.score_distribution || []).map((b) => ({ label: (b.band || "").replace(/\s|%/g, ""), value: b.count }));
 
-  // Pipeline occupancy by current round (from registrations).
   const roundMap = {};
   regs.forEach((r) => { const k = r.current_round || 0; roundMap[k] = (roundMap[k] || 0) + 1; });
-  const rounds = Object.keys(roundMap).map(Number).sort((x, y) => x - y)
-    .map((k) => ({ label: k === 0 ? "Not started" : `Round ${k}`, count: roundMap[k] }));
-  const roundMaxN = Math.max(1, ...rounds.map((r) => r.count));
+  const rounds = Object.keys(roundMap).map(Number).sort((x, y) => x - y).map((k) => ({ label: k === 0 ? "Pre" : `R${k}`, value: roundMap[k] }));
 
-  // Eligibility split.
   const elig = { yes: 0, no: 0, unknown: 0 };
   regs.forEach((r) => { elig[r.eligible === "yes" ? "yes" : r.eligible === "no" ? "no" : "unknown"]++; });
 
-  // Top performers by real marks.
   const top = regs.filter((r) => r.score != null).sort((x, y) => (y.score || 0) - (x.score || 0)).slice(0, 8);
   const scored = regs.filter((r) => r.score != null).length;
 
@@ -90,100 +83,70 @@ export default function AnalyticsTab({ id }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display font-semibold text-lg text-ink-900">Drive analytics</h2>
-          <p className="text-sm text-slate-500">Recruitment funnel, performance &amp; pipeline — from live drive data.</p>
+          <p className="text-sm text-slate-500">Recruitment intelligence — funnel, performance &amp; pipeline, from live data.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => download(false)} disabled={!!busy}>
-            <Download size={16} /> {busy === "all" ? "Preparing…" : "Attendees (Excel)"}
-          </Button>
-          <Button onClick={() => download(true)} disabled={!!busy}>
-            <Download size={16} /> {busy === "cleared" ? "Preparing…" : "Cleared (Excel)"}
-          </Button>
+          <Button variant="secondary" onClick={() => download(false)} disabled={!!busy}><Download size={16} /> {busy === "all" ? "Preparing…" : "Attendees (Excel)"}</Button>
+          <Button onClick={() => download(true)} disabled={!!busy}><Download size={16} /> {busy === "cleared" ? "Preparing…" : "Cleared (Excel)"}</Button>
         </div>
       </div>
 
       {err && <div className="rounded-md bg-amber-500/10 text-amber-700 p-3 text-sm">{err}</div>}
 
-      {/* KPI instruments */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <ReadOut label="Registered" value={total} hint="candidate pool" />
-        <ReadOut label="Attended" value={w.attended ?? 0} hint={total ? `${Math.round((w.attended || 0) / total * 100)}% of pool` : "written test"} />
-        <ReadOut label="Pass rate" value={w.pass_rate ?? 0} unit="%" hint={`avg ${w.avg_percentage ?? 0}%`} />
-        <ReadOut label="In flight" value={inFlight} hint="shortlisted + in-round" />
-        <ReadOut label="Selected" value={selected} hint={total ? `${Math.round(selected / total * 100)}% conversion` : "ready for offer"} />
+      {/* Headline band — hero number + performance rings */}
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-brand-500/[0.05] via-surface to-teal-500/[0.04] p-6">
+        <div className="grid lg:grid-cols-[1.1fr_2fr] gap-6 items-center">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Selection outcome</div>
+            <div className="mt-1 flex items-end gap-2">
+              <span className="font-display text-5xl font-bold tracking-tight text-ink-900 tabular-nums">{selected}</span>
+              <span className="text-slate-400 text-lg mb-1">/ {total}</span>
+            </div>
+            <p className="text-[13px] text-slate-500 mt-1">selected from the pool · <span className="font-semibold" style={{ color: bandHex(band(selRate * 4)) }}>{selRate}% conversion</span></p>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[["Attended", w.attended ?? 0], ["Cleared", w.cleared ?? 0], ["In flight", inFlight]].map(([l, v]) => (
+                <div key={l}><div className="font-display text-xl font-bold text-ink-900 tabular-nums">{v}</div><div className="text-[10.5px] uppercase tracking-wider text-slate-400">{l}</div></div>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 justify-items-center">
+            <div className="text-center"><RadialGauge value={attRate} label="Attendance" color="#2563EB" /></div>
+            <div className="text-center"><RadialGauge value={w.pass_rate ?? 0} label="Pass rate" color="#0D9488" /></div>
+            <div className="text-center"><RadialGauge value={selRate} label="Selection" color="#F59E0B" /></div>
+          </div>
+        </div>
       </div>
 
-      {/* Recruitment funnel */}
+      {/* Funnel — the centerpiece */}
       <Card className="p-6">
         <h3 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2"><Filter size={18} className="text-brand-500" /> Recruitment funnel</h3>
-        <p className="text-xs text-slate-400 mb-4">How the pool narrows at each stage · conversion between stages shown on the right</p>
-        <div className="space-y-2.5">
-          {funnel.map((st, i) => {
-            const prev = i === 0 ? null : funnel[i - 1].value;
-            const conv = prev ? Math.round((st.value / (prev || 1)) * 100) : 100;
-            return (
-              <div key={st.key} className="flex items-center gap-3" title={`${st.label}: ${st.value}`}>
-                <div className="w-28 shrink-0 text-[12.5px] text-slate-600 text-right">{st.label}</div>
-                <div className="flex-1 h-7 rounded-lg bg-slate-100 overflow-hidden relative">
-                  <div className="h-full rounded-lg flex items-center justify-end pr-2 text-white text-[12px] font-semibold tabular-nums transition-all"
-                    style={{ width: `${Math.max(6, (st.value / funMax) * 100)}%`, background: st.tone }}>
-                    {st.value}
-                  </div>
-                </div>
-                <div className="w-14 shrink-0 text-[11.5px] tabular-nums text-slate-400 text-right">{i === 0 ? "" : `${conv}%`}</div>
-              </div>
-            );
-          })}
-        </div>
+        <p className="text-xs text-slate-400 mb-5">How the pool narrows at each stage · stage-to-stage conversion on the right</p>
+        <Funnel stages={funnel} />
       </Card>
 
+      {/* Distribution + occupancy */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Score distribution */}
         <Card className="p-6">
           <h3 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2"><BarChart3 size={18} className="text-brand-500" /> Score distribution</h3>
-          <p className="text-xs text-slate-400 mb-4">Written test · average {w.avg_percentage ?? 0}%</p>
-          {w.attended ? (
-            <div className="space-y-3">
-              {dist.map((b) => (
-                <div key={b.band} title={`${b.band}: ${b.count}`}>
-                  <div className="flex justify-between text-[12.5px] mb-1"><span className="text-slate-600">{b.band}</span><span className="tabular-nums text-slate-500">{b.count}</span></div>
-                  <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(b.count / distMax) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-sm text-slate-400">No written-test results yet.</p>}
+          <p className="text-xs text-slate-400 mb-3">Written test · average {w.avg_percentage ?? 0}%</p>
+          {w.attended ? <AreaChart data={dist} color="#2563EB" /> : <p className="text-sm text-slate-400 py-8 text-center">No written-test results yet.</p>}
         </Card>
-
-        {/* Pipeline occupancy by round */}
         <Card className="p-6">
           <h3 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2"><GitBranch size={18} className="text-teal-500" /> Pipeline occupancy</h3>
-          <p className="text-xs text-slate-400 mb-4">Where candidates sit right now</p>
-          {rounds.length ? (
-            <div className="space-y-3">
-              {rounds.map((r) => (
-                <div key={r.label} title={`${r.label}: ${r.count}`}>
-                  <div className="flex justify-between text-[12.5px] mb-1"><span className="text-slate-600">{r.label}</span><span className="tabular-nums text-slate-500">{r.count}</span></div>
-                  <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-teal-500" style={{ width: `${(r.count / roundMaxN) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-sm text-slate-400">No candidates yet.</p>}
+          <p className="text-xs text-slate-400 mb-3">Where candidates sit right now</p>
+          {rounds.length ? <AreaChart data={rounds} color="#0D9488" /> : <p className="text-sm text-slate-400 py-8 text-center">No candidates yet.</p>}
         </Card>
       </div>
 
-      {/* Outcome + eligibility segmented bars */}
+      {/* Composition donuts */}
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="font-display font-semibold text-ink-900 mb-4 flex items-center gap-2"><Gauge size={18} className="text-brand-500" /> Outcome mix</h3>
-          <SegmentBar total={total} parts={outcome} />
+          <h3 className="font-display font-semibold text-ink-900 mb-4 flex items-center gap-2"><Target size={18} className="text-brand-500" /> Outcome mix</h3>
+          {outcome.length ? <Donut parts={outcome} centerValue={total} centerLabel="candidates" /> : <p className="text-sm text-slate-400">No data yet.</p>}
         </Card>
         <Card className="p-6">
           <h3 className="font-display font-semibold text-ink-900 mb-4 flex items-center gap-2"><CheckCircle2 size={18} className="text-teal-500" /> Eligibility</h3>
-          <SegmentBar total={regs.length} parts={[
+          <Donut centerValue={regs.length} centerLabel="screened" parts={[
             { label: "Eligible", n: elig.yes, color: "#0D9488" },
             { label: "Ineligible", n: elig.no, color: "#E11D48" },
             { label: "Unscreened", n: elig.unknown, color: "#64748b" },
@@ -191,23 +154,23 @@ export default function AnalyticsTab({ id }) {
         </Card>
       </div>
 
-      {/* Top performers + coding */}
+      {/* Leaderboard + coding */}
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2"><Trophy size={18} className="text-amber-500" /> Top performers</h3>
           <p className="text-xs text-slate-400 mb-4">By real marks · {scored} of {total} scored</p>
           {top.length ? (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {top.map((r, i) => {
                 const nm = r.candidate_name || r.candidate_id;
                 const sc = Math.round(r.score || 0);
                 return (
                   <div key={r.candidate_id} className="flex items-center gap-3">
-                    <span className="w-5 text-[12px] tabular-nums text-slate-400 text-right">{i + 1}</span>
+                    <span className="w-5 text-[12px] tabular-nums text-slate-400 text-right font-semibold">{i + 1}</span>
                     <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold shrink-0" style={{ background: hueFor(nm) }}>{initials(nm)}</span>
                     <div className="min-w-0 flex-1">
                       <div className="text-[12.5px] font-medium text-ink-900 truncate">{nm}</div>
-                      <div className="h-1.5 rounded-full bg-slate-100 mt-1 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${sc}%`, background: bandHex(band(sc)) }} /></div>
+                      <div className="h-1.5 rounded-full bg-slate-100 mt-1 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${sc}%`, background: bandHex(band(sc)), transition: "width 700ms cubic-bezier(.2,.8,.2,1)" }} /></div>
                     </div>
                     <span className="font-display font-bold tabular-nums text-[15px]" style={{ color: bandHex(band(sc)) }}>{sc}</span>
                   </div>
@@ -220,48 +183,18 @@ export default function AnalyticsTab({ id }) {
         <Card className="p-6">
           <h3 className="font-display font-semibold text-ink-900 mb-4 flex items-center gap-2"><Code2 size={18} className="text-teal-500" /> Coding performance</h3>
           {c.students_with_coding ? (
-            <div className="space-y-2.5 text-sm">
-              <Row label="Students with coding" value={c.students_with_coding} />
-              <Row label="Attempted coding" value={c.students_attempted} />
-              <Row label="Answers correct" value={c.total_correct} />
-              <Row label="Total attempted" value={c.total_attempted} />
-              <Row label="Coding accuracy" value={`${c.accuracy}%`} highlight />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2 flex items-center justify-center py-1"><RadialGauge value={c.accuracy ?? 0} label="Accuracy" color="#0D9488" size={124} /></div>
+              {[["With coding", c.students_with_coding], ["Attempted", c.students_attempted], ["Correct", c.total_correct], ["Total tried", c.total_attempted]].map(([l, v]) => (
+                <div key={l} className="rounded-lg bg-slate-50 border border-slate-100 p-3 text-center">
+                  <div className="font-display text-lg font-bold text-ink-900 tabular-nums">{v}</div>
+                  <div className="text-[10.5px] uppercase tracking-wider text-slate-400">{l}</div>
+                </div>
+              ))}
             </div>
           ) : <p className="text-sm text-slate-400">No coding questions in this drive's written test.</p>}
         </Card>
       </div>
-    </div>
-  );
-}
-
-function SegmentBar({ total, parts }) {
-  const sum = parts.reduce((n, p) => n + p.n, 0) || total || 1;
-  if (!parts.length) return <p className="text-sm text-slate-400">No data yet.</p>;
-  return (
-    <div>
-      <div className="flex h-3 rounded-full overflow-hidden bg-slate-100 gap-[2px]">
-        {parts.map((p) => (
-          <div key={p.label} title={`${p.label}: ${p.n}`} style={{ width: `${(p.n / sum) * 100}%`, background: p.color }} className="h-full first:rounded-l-full last:rounded-r-full" />
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
-        {parts.map((p) => (
-          <span key={p.label} className="inline-flex items-center gap-1.5 text-[12px] text-slate-600">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: p.color }} />
-            {p.label} <b className="tabular-nums text-ink-900">{p.n}</b>
-            <span className="text-slate-400">({Math.round((p.n / sum) * 100)}%)</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value, highlight }) {
-  return (
-    <div className={`flex items-center justify-between rounded-md px-3 py-2 ${highlight ? "bg-teal-500/10" : "bg-slate-50"}`}>
-      <span className="text-slate-600">{label}</span>
-      <span className={`font-display font-semibold ${highlight ? "text-teal-700" : "text-ink-900"}`}>{value}</span>
     </div>
   );
 }
