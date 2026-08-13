@@ -151,6 +151,19 @@ export default function SkillMap({ candidateId }) {
             </Card>
           )}
 
+          {/* Every topic — as gauge rings */}
+          {topics.length > 0 && (
+            <Card className="p-6">
+              <h3 className="font-display font-semibold text-ink-900 mb-1">Every topic</h3>
+              <p className="text-xs text-slate-400 mb-5">Ranked strongest first — each ring is your mastery of that topic.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-7 justify-items-center">
+                {topics.map((t) => (
+                  <GaugeCell key={t.name} name={t.name} pct={t.mastery} sub={`${t.correct}/${t.attempted}`} size={104} />
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* By category */}
           {cats.length > 0 && (
             <Card className="p-6">

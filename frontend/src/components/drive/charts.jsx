@@ -54,9 +54,11 @@ export function HeatTile({ label, pct = 0, sub, band, rank }) {
    Plots each topic on its own spoke; the connected polygon is the skill "shape".
    Concentric grid rings, gradient fill, glowing stroke, band-coloured vertices
    and per-axis value labels. Radius maps exactly to mastery. Needs ≥ 3 axes. */
-export function RadarChart({ data = [], color = "#2563EB", size = 340, max = 100 }) {
+export function RadarChart({ data = [], color = "#2563EB", size = 300, max = 100 }) {
   const id = useId();
-  const cx = size / 2, cy = size / 2, R = size / 2 - 54;
+  const padX = 100, padY = 46;                 // room so edge labels never clip
+  const W = size + padX * 2, H = size + padY * 2;
+  const cx = W / 2, cy = H / 2, R = size / 2;
   const n = Math.max(1, data.length);
   const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
   const onAxis = (frac, i, r = R) => [cx + frac * r * Math.cos(ang(i)), cy + frac * r * Math.sin(ang(i))];
@@ -64,7 +66,7 @@ export function RadarChart({ data = [], color = "#2563EB", size = 340, max = 100
   const valuePoly = data.map((d, i) => onAxis(Math.max(0, Math.min(max, d.value)) / max, i).join(",")).join(" ");
   return (
     <div className="w-full grid place-items-center overflow-x-auto">
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ maxWidth: "100%" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ maxWidth: "100%" }}>
         <defs>
           <radialGradient id={`rf${id}`} cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor={color} stopOpacity="0.42" />
@@ -96,7 +98,7 @@ export function RadarChart({ data = [], color = "#2563EB", size = 340, max = 100
           const p = Math.max(0, Math.min(100, Math.round(d.value)));
           const b = MASTERY_BANDS[bandFor(p)];
           const [vx, vy] = onAxis(p / max, i);
-          const [lx, ly] = onAxis(1, i, R + 20);
+          const [lx, ly] = onAxis(1, i, R + 26);
           const c = Math.cos(ang(i));
           const anchor = c > 0.3 ? "start" : c < -0.3 ? "end" : "middle";
           return (
