@@ -301,6 +301,13 @@ export const api = {
   decideInterview: (id, body) => request(`/drive/v1/interviews/${id}/decision`, { method: "POST", body }),
   driveInterviews: (driveId) => request(`/drive/v1/interviews/drive/${driveId}`),
 
+  // ---- Evidence ledger (Drive-OS, append-only) ----
+  addEvidence: (body) => request("/drive/v1/evidence", { method: "POST", body }),
+  driveEvidence: (driveId) => request(`/drive/v1/evidence/drive/${driveId}`),
+  driveEvidenceConflicts: (driveId) => request(`/drive/v1/evidence/drive/${driveId}/conflicts`),
+  candidateEvidence: (candidateId, driveId) => request(`/drive/v1/evidence/candidate/${candidateId}${driveId ? `?drive_id=${driveId}` : ""}`),
+  resolveEvidenceConflict: (conflictId) => request(`/drive/v1/evidence/conflicts/${conflictId}/resolve`, { method: "POST" }),
+
   // ---- Evaluation / Result (recruiter) ----
   computeRanks: (exam_id) => request("/drive/v1/evaluations/rank", { method: "POST", body: { exam_id } }),
   examRanks: (examId) => request(`/drive/v1/evaluations/exam/${examId}/ranks`),

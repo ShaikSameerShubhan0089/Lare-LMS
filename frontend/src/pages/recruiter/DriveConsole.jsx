@@ -5,6 +5,7 @@ import {
   Plus, Check, ChevronRight, Award, BarChart3, Trophy, MessagesSquare,
   ChevronUp, ChevronDown, Trash2, CheckCircle2, Search, Command, GitBranch,
   Gauge, Calendar, ShieldAlert, X, Compass, Target, Eye, ClipboardList, Star, Send, Scale,
+  FileSearch, ShieldCheck,
 } from "lucide-react";
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { Loading } from "../../components/ui/states.jsx";
@@ -26,6 +27,7 @@ const TAB_DEFS = {
   candidates: { label: "Candidates", icon: Users },
   interviews: { label: "Interviews", icon: MessagesSquare },
   rounds: { label: "Rounds & Marks", icon: CheckCircle2 },
+  evidence: { label: "Evidence", icon: FileSearch },
   decisions: { label: "Decisions", icon: Trophy },
   analytics: { label: "Analytics", icon: BarChart3 },
   configure: { label: "Configure", icon: SlidersHorizontal },
@@ -35,8 +37,8 @@ const TAB_DEFS = {
 // Hiring-Manager / Interviewer / Leadership are honest PERSPECTIVE LENSES over
 // the same real data — they reshape the operating surface, not permissions.
 const LENSES = {
-  recruiter: { label: "Recruiter", home: "command", tabs: ["command", "pipeline", "candidates", "interviews", "rounds", "decisions", "analytics", "configure"] },
-  manager: { label: "Hiring Manager", home: "candidates", tabs: ["candidates", "decisions", "analytics", "command"] },
+  recruiter: { label: "Recruiter", home: "command", tabs: ["command", "pipeline", "candidates", "interviews", "rounds", "evidence", "decisions", "analytics", "configure"] },
+  manager: { label: "Hiring Manager", home: "candidates", tabs: ["candidates", "evidence", "decisions", "analytics", "command"] },
   interviewer: { label: "Interviewer", home: "workspace", tabs: ["workspace", "candidates", "interviews"] },
   leadership: { label: "Leadership", home: "analytics", tabs: ["analytics", "command", "pipeline"] },
 };
@@ -114,6 +116,7 @@ export default function DriveConsole() {
       {activeTab === "candidates" && <CandidateIntelligence d={d} id={id} rounds={rounds} />}
       {activeTab === "interviews" && <InterviewsTab id={id} />}
       {activeTab === "rounds" && <RoundsTab id={id} />}
+      {activeTab === "evidence" && <EvidenceLedger id={id} />}
       {activeTab === "decisions" && <ResultsTab id={id} />}
       {activeTab === "analytics" && <AnalyticsTab id={id} />}
       {activeTab === "configure" && <ConfigureView d={d} id={id} onChange={setDrive} />}
@@ -479,6 +482,77 @@ function ComparePanel({ cands, rounds, onClose }) {
         </div>
         <div className="p-4 border-t border-slate-100 text-[11.5px] text-slate-400">Comparison uses live registration + evaluation‑twin data. Deeper per‑competency evidence needs the evidence service (Phase 4).</div>
       </Card>
+    </div>
+  );
+}
+
+/* ---------- Evidence Ledger (append-only system of record — drive-evidence service) ---------- */
+function EvidenceLedger({ id }) {
+  const evA = useAsync(() => withFallback(api.driveEvidence(id), []), [id]);
+  const cfA = useAsync(() => withFallback(api.driveEvidenceConflicts(id), []), [id]);
+  const [resolved, setResolved] = useState(() => new Set());
+  if (evA.loading || cfA.loading) return <Loading />;
+  const ledger = evA.data ?? [];
+  const conflicts = (cfA.data ?? []).filter((c) => !resolved.has(c.id));
+
+  const SRC = { assessment: "teal", interview: "amber", coding: "slate", referral: "slate", screen: "slate" };
+  const CONF = { high: "teal", medium: "amber", low: "rose" };
+  const sources = [...new Set(ledger.map((e) => e.source_type))];
+
+  async function reconcile(cid) {
+    try { await api.resolveEvidenceConflict(cid); } catch { /* still hide locally */ }
+    setResolved((r) => new Set(r).add(cid));
+  }
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="font-display text-lg font-semibold text-ink-900">Evidence Ledger</h2>
+        <p className="text-[12.5px] text-slate-500">The append‑only system of record. Every score traces back to a typed, sourced, confidence‑tagged row here — recorded automatically as assessments are graded.</p>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-3 mb-4">
+        <ReadOut label="Evidence rows" value={ledger.length} hint={sources.length ? sources.join(" · ") : "no sources yet"} />
+        <ReadOut label="Candidates covered" value={new Set(ledger.map((e) => e.candidate_id)).size} hint="with at least one signal" />
+        <ReadOut label="Open conflicts" value={conflicts.length} hint="divergent signals to reconcile" />
+      </div>
+
+      {conflicts.length > 0 && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-500/[0.04] overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-amber-200 flex items-center gap-2 text-[13px] font-semibold text-ink-900"><ShieldAlert size={16} className="text-amber-600" /> Evidence conflicts</div>
+          {conflicts.map((c) => (
+            <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-amber-100 last:border-b-0">
+              <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold shrink-0" style={{ background: hueFor(c.candidate_id) }}>{initials(c.candidate_id)}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12.5px] font-medium text-ink-900 truncate">{c.candidate_id}</div>
+                <div className="text-[11px] text-slate-500 capitalize">{c.competency_key} · signals diverge by <b>{Math.round(c.delta)}</b> pts</div>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => reconcile(c.id)}><ShieldCheck size={14} /> Reconcile</Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {ledger.length === 0 ? (
+        <Card className="p-10 text-center text-slate-400">No evidence recorded yet. Rows accrue automatically as candidates complete assessments and interviews are evaluated.</Card>
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="grid grid-cols-[1.4fr_1fr_0.85fr_0.7fr_0.9fr] gap-2 px-4 py-2.5 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span>Candidate</span><span>Competency</span><span>Source</span><span>Signal</span><span>Confidence</span>
+          </div>
+          <div className="max-h-[560px] overflow-y-auto">
+            {ledger.map((e) => (
+              <div key={e.id} className="grid grid-cols-[1.4fr_1fr_0.85fr_0.7fr_0.9fr] gap-2 px-4 py-2.5 border-b border-slate-50 last:border-b-0 items-center text-[12.5px]">
+                <span className="flex items-center gap-2 min-w-0"><span className="grid place-items-center h-6 w-6 rounded-md text-white text-[9px] font-bold shrink-0" style={{ background: hueFor(e.candidate_id) }}>{initials(e.candidate_id)}</span><span className="truncate text-ink-900">{e.candidate_id}</span></span>
+                <span className="text-slate-500 capitalize truncate">{e.competency_key}</span>
+                <span><Badge tone={SRC[e.source_type] || "slate"}>{e.source_type}</Badge></span>
+                <span className="font-display font-bold tabular-nums" style={{ color: bandHex(band(e.signal)) }}>{Math.round(e.signal)}</span>
+                <span><Badge tone={CONF[e.confidence] || "slate"}>{e.confidence}</Badge></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
