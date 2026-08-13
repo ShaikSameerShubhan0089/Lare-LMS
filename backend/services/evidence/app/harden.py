@@ -29,8 +29,10 @@ def install_immutability(db) -> bool:
     fn = f'"{sch}".evidence_immutable' if sch else "evidence_immutable"
     tbl = f'"{sch}".evidence' if sch else "evidence"
     stmts = [
+        # NOTE: %% — the driver (psycopg) treats a lone % as a bind placeholder,
+        # so it must be doubled to reach Postgres as a literal % for RAISE.
         f"CREATE OR REPLACE FUNCTION {fn}() RETURNS trigger AS $BODY$ "
-        f"BEGIN RAISE EXCEPTION 'evidence ledger is append-only (% blocked)', TG_OP; END; "
+        f"BEGIN RAISE EXCEPTION 'evidence ledger is append-only (%% blocked)', TG_OP; END; "
         f"$BODY$ LANGUAGE plpgsql;",
         f"DROP TRIGGER IF EXISTS evidence_no_mutate ON {tbl};",
         f"CREATE TRIGGER evidence_no_mutate BEFORE UPDATE OR DELETE ON {tbl} "
