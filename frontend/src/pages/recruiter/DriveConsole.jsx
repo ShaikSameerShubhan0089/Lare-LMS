@@ -198,7 +198,7 @@ function CommandCenter({ d, id, rounds, go }) {
 
   // Evidence-backed intelligence from the Drive-OS services (action + recruit-ai).
   // When present it leads; the funnel-derived signals above always remain as a floor.
-  const TARGET = { calibration: "analytics" };
+  const TARGET = { calibration: "decisions" };
   const ACT_ICON = { evidence_conflict: ShieldAlert, panel_divergent: GitBranch, ready_decision: Trophy, coverage_gap: FileSearch };
   const ACT_JUMP = { evidence_conflict: "evidence", panel_divergent: "candidates", ready_decision: "decisions", coverage_gap: "candidates" };
   const realActions = (actionsA.data || []).map((a) => ({
@@ -322,11 +322,16 @@ function PipelineView({ d, id, rounds, go }) {
 
 function CandidateIntelligence({ d, id, rounds }) {
   const regsA = useAsync(() => withFallback(api.driveRegistrations(id), []), [id]);
+  // Evidence-backed decision confidence per candidate (from the decision queue).
+  const queueA = useAsync(() => withFallback(api.decisionQueue(id), []), [id]);
   const [rows, setRows] = useState(null);
   const [q, setQ] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [open, setOpen] = useState(null);
   const list = rows ?? regsA.data ?? [];
+  const qmap = Object.fromEntries((queueA.data || []).map((x) => [x.candidate_id, x]));
+  // Rank by real evidence-backed confidence where it exists; else the readiness heuristic.
+  const scoreOf = (r) => { const x = qmap[r.candidate_id]; return x && x.evidence_count > 0 ? Math.round(x.confidence || 0) : readiness(r, rounds); };
 
   if (regsA.loading) return <Loading />;
   const query = q.trim().toLowerCase();
@@ -334,7 +339,7 @@ function CandidateIntelligence({ d, id, rounds }) {
     const mq = !query || [r.candidate_name, r.candidate_email, r.candidate_roll, r.candidate_id].some((v) => (v || "").toLowerCase().includes(query));
     const ms = statusF === "all" || r.status === statusF;
     return mq && ms;
-  }).sort((a, b) => readiness(b, rounds) - readiness(a, rounds));
+  }).sort((a, b) => scoreOf(b) - scoreOf(a));
   const STATUSES = ["all", "applied", "shortlisted", "in_round", "selected", "rejected"];
 
   function update(cid, patch) { setRows((rows ?? regsA.data ?? []).map((r) => (r.candidate_id === cid ? { ...r, ...patch } : r))); }
@@ -353,7 +358,7 @@ function CandidateIntelligence({ d, id, rounds }) {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold text-ink-900">Candidate Intelligence</h2>
-          <p className="text-[12.5px] text-slate-500">Ranked by decision‑readiness derived from eligibility, progression and status — not by raw score.{compareMode ? " Select up to 3 to compare." : ""}</p>
+          <p className="text-[12.5px] text-slate-500">Ranked by evidence‑backed decision confidence where evidence exists, else a readiness heuristic.{compareMode ? " Select up to 3 to compare." : ""}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { setCompareMode((m) => !m); if (compareMode) setCompare([]); }}
@@ -371,13 +376,18 @@ function CandidateIntelligence({ d, id, rounds }) {
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))" }}>
           {filtered.map((r) => {
             const nm = r.candidate_name || r.candidate_email || r.candidate_id;
-            const ready = readiness(r, rounds);
+            const qr = qmap[r.candidate_id];
+            const evb = qr && qr.evidence_count > 0;
+            const ready = scoreOf(r);
             const riskTag = r.eligible === "no"
               ? <span className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-600"><ShieldAlert size={12} />Ineligible</span>
+              : evb && qr.panel_agreement === "divergent" ? <span className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600"><GitBranch size={12} />Divergent</span>
               : r.status === "selected" ? <span className="inline-flex items-center gap-1 text-[10.5px] font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-600"><Check size={12} />Selected</span>
-                : <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 capitalize">{(r.status || "").replace("_", " ")}</span>;
+                : <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 capitalize">{evb ? "evidence‑backed" : (r.status || "").replace("_", " ")}</span>;
             const next = compareMode ? (compare.includes(r.candidate_id) ? "Selected" : "Add to compare") : r.eligible === "no" ? "" : r.status === "applied" ? "Shortlist" : r.status === "selected" ? "" : "Advance";
-            return <SignalCard key={r.candidate_id} name={nm} sub={(r.candidate_roll ? `Roll ${r.candidate_roll} · ` : "") + (r.current_round ? `round ${r.current_round}/${rounds}` : "not started")} confidence={ready} comps={[]} riskTag={riskTag} next={next} picked={compareMode && compare.includes(r.candidate_id)} onClick={() => cardClick(r)} />;
+            const baseSub = (r.candidate_roll ? `Roll ${r.candidate_roll} · ` : "") + (r.current_round ? `round ${r.current_round}/${rounds}` : "not started");
+            const sub = evb ? `${baseSub} · ${qr.evidence_count} evidence${qr.coverage_pct != null ? ` · ${qr.coverage_pct}% cov` : ""}` : baseSub;
+            return <SignalCard key={r.candidate_id} name={nm} sub={sub} confidence={ready} comps={[]} riskTag={riskTag} next={next} picked={compareMode && compare.includes(r.candidate_id)} onClick={() => cardClick(r)} />;
           })}
         </div>
       )}
@@ -519,8 +529,10 @@ function ComparePanel({ cands, rounds, onClose }) {
 /* ---------- Decision Intelligence (evidence-backed queue + offers) ---------- */
 function DecisionsView({ id }) {
   const qA = useAsync(() => withFallback(api.decisionQueue(id), []), [id]);
+  const regsA = useAsync(() => withFallback(api.driveRegistrations(id), []), [id]);
   const [decided, setDecided] = useState({});
   const queue = (qA.data || []).filter((x) => !x.decision && !decided[x.candidate_id]);
+  const nameOf = (cid) => { const r = (regsA.data || []).find((x) => x.candidate_id === cid); return r?.candidate_name || r?.candidate_email || cid; };
 
   async function decide(cid, verdict) {
     try { await api.recordDecision({ drive_id: id, candidate_id: cid, verdict }); } catch { /* keep local */ }
@@ -540,9 +552,9 @@ function DecisionsView({ id }) {
           <div className="grid gap-2">
             {queue.map((q) => (
               <div key={q.candidate_id} className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-wrap items-center gap-4">
-                <span className="grid place-items-center h-11 w-11 rounded-xl text-white font-bold shrink-0" style={{ background: hueFor(q.candidate_id) }}>{initials(q.candidate_id)}</span>
+                <span className="grid place-items-center h-11 w-11 rounded-xl text-white font-bold shrink-0" style={{ background: hueFor(nameOf(q.candidate_id)) }}>{initials(nameOf(q.candidate_id))}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-ink-900 truncate">{q.candidate_id}</div>
+                  <div className="font-semibold text-ink-900 truncate">{nameOf(q.candidate_id)}</div>
                   <div className="text-[11.5px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                     {q.coverage_pct != null && <span>Coverage {q.coverage_pct}%</span>}
                     <span>Agreement <b className="capitalize">{q.panel_agreement}</b></span>
@@ -564,9 +576,49 @@ function DecisionsView({ id }) {
           </div>
         )}
       </div>
+      <CalibrationPanel id={id} />
       <div>
         <div className="mb-3"><h2 className="font-display text-lg font-semibold text-ink-900">Results &amp; Offers</h2></div>
         <ResultsTab id={id} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Interviewer calibration (drift vs consensus — recruit-ai) ---------- */
+function CalibrationPanel({ id }) {
+  const calA = useAsync(() => withFallback(api.driveCalibration(id), []), [id]);
+  if (calA.loading) return null;
+  const rows = calA.data || [];
+  if (!rows.length) return null;
+  return (
+    <div>
+      <div className="mb-3">
+        <h3 className="font-display font-semibold text-ink-900 flex items-center gap-2"><Gauge size={17} className="text-slate-400" /> Interviewer calibration</h3>
+        <p className="text-[12.5px] text-slate-500">How far each interviewer scores from the consensus, per competency. Large drift signals a calibration gap to address.</p>
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        {rows.map((c, i) => {
+          const d = c.mean_delta || 0;
+          const tone = Math.abs(d) < 8 ? "teal" : Math.abs(d) < 18 ? "amber" : "rose";
+          const toneHex = { teal: "#0d9488", amber: "#d97706", rose: "#e11d48" }[tone];
+          return (
+            <div key={i} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 last:border-b-0">
+              <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold shrink-0" style={{ background: hueFor(c.interviewer_id) }}>{initials(c.interviewer_id)}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[12.5px] font-medium text-ink-900 truncate">{c.interviewer_id}</div>
+                <div className="text-[11px] text-slate-400 capitalize">{c.competency_key} · {c.sample_n} evaluation{c.sample_n === 1 ? "" : "s"}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-28 h-1.5 rounded bg-slate-100 relative overflow-hidden">
+                  <span className="absolute top-0 bottom-0 left-1/2 w-px bg-slate-300" />
+                  <span className="absolute top-0 bottom-0 rounded" style={{ background: toneHex, left: d < 0 ? `${50 + Math.max(-50, d / 2)}%` : "50%", right: d > 0 ? `${50 - Math.min(50, d / 2)}%` : "50%" }} />
+                </div>
+                <span className="w-14 text-right text-[12px] font-semibold tabular-nums" style={{ color: toneHex }}>{d > 0 ? "+" : ""}{d} pts</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -577,6 +629,8 @@ function EvidenceLedger({ id }) {
   const [nonce, setNonce] = useState(0);
   const evA = useAsync(() => withFallback(api.driveEvidence(id), []), [id, nonce]);
   const cfA = useAsync(() => withFallback(api.driveEvidenceConflicts(id), []), [id, nonce]);
+  const regsA = useAsync(() => withFallback(api.driveRegistrations(id), []), [id]);
+  const nameOf = (cid) => { const r = (regsA.data || []).find((x) => x.candidate_id === cid); return r?.candidate_name || r?.candidate_email || cid; };
   const [resolved, setResolved] = useState(() => new Set());
   const [backfilling, setBackfilling] = useState(false);
 
@@ -622,9 +676,9 @@ function EvidenceLedger({ id }) {
           <div className="px-4 py-3 border-b border-amber-200 flex items-center gap-2 text-[13px] font-semibold text-ink-900"><ShieldAlert size={16} className="text-amber-600" /> Evidence conflicts</div>
           {conflicts.map((c) => (
             <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-amber-100 last:border-b-0">
-              <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold shrink-0" style={{ background: hueFor(c.candidate_id) }}>{initials(c.candidate_id)}</span>
+              <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold shrink-0" style={{ background: hueFor(nameOf(c.candidate_id)) }}>{initials(nameOf(c.candidate_id))}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-[12.5px] font-medium text-ink-900 truncate">{c.candidate_id}</div>
+                <div className="text-[12.5px] font-medium text-ink-900 truncate">{nameOf(c.candidate_id)}</div>
                 <div className="text-[11px] text-slate-500 capitalize">{c.competency_key} · signals diverge by <b>{Math.round(c.delta)}</b> pts</div>
               </div>
               <Button size="sm" variant="secondary" onClick={() => reconcile(c.id)}><ShieldCheck size={14} /> Reconcile</Button>
@@ -643,7 +697,7 @@ function EvidenceLedger({ id }) {
           <div className="max-h-[560px] overflow-y-auto">
             {ledger.map((e) => (
               <div key={e.id} className="grid grid-cols-[1.4fr_1fr_0.85fr_0.7fr_0.9fr] gap-2 px-4 py-2.5 border-b border-slate-50 last:border-b-0 items-center text-[12.5px]">
-                <span className="flex items-center gap-2 min-w-0"><span className="grid place-items-center h-6 w-6 rounded-md text-white text-[9px] font-bold shrink-0" style={{ background: hueFor(e.candidate_id) }}>{initials(e.candidate_id)}</span><span className="truncate text-ink-900">{e.candidate_id}</span></span>
+                <span className="flex items-center gap-2 min-w-0"><span className="grid place-items-center h-6 w-6 rounded-md text-white text-[9px] font-bold shrink-0" style={{ background: hueFor(nameOf(e.candidate_id)) }}>{initials(nameOf(e.candidate_id))}</span><span className="truncate text-ink-900">{nameOf(e.candidate_id)}</span></span>
                 <span className="text-slate-500 capitalize truncate">{e.competency_key}</span>
                 <span><Badge tone={SRC[e.source_type] || "slate"}>{e.source_type}</Badge></span>
                 <span className="font-display font-bold tabular-nums" style={{ color: bandHex(band(e.signal)) }}>{Math.round(e.signal)}</span>
@@ -660,6 +714,8 @@ function EvidenceLedger({ id }) {
 /* ---------- Interviewer Workspace (real interviews + evaluation twin) ---------- */
 function InterviewerWorkspace({ id }) {
   const ivA = useAsync(() => withFallback(api.driveInterviews(id), []), [id]);
+  const regsA = useAsync(() => withFallback(api.driveRegistrations(id), []), [id]);
+  const nameOf = (cid) => { const r = (regsA.data || []).find((x) => x.candidate_id === cid); return r?.candidate_name || r?.candidate_email || cid; };
   const [rows, setRows] = useState(null);
   const [sel, setSel] = useState(null);
   const list = rows ?? ivA.data ?? [];
@@ -682,7 +738,7 @@ function InterviewerWorkspace({ id }) {
         <div className="grid lg:grid-cols-[300px_1fr] gap-4">
           <div className="grid gap-2 h-fit">
             {list.map((iv) => {
-              const nm = iv.candidate_id; const on = active && active.id === iv.id;
+              const nm = nameOf(iv.candidate_id); const on = active && active.id === iv.id;
               return (
                 <button key={iv.id} onClick={() => setSel(iv.id)} className={`text-left rounded-xl border p-3 ${on ? "border-brand-500 ring-1 ring-brand-500 bg-white" : "border-slate-200 bg-white hover:border-slate-300"}`}>
                   <div className="flex items-center gap-2.5">
@@ -694,14 +750,14 @@ function InterviewerWorkspace({ id }) {
               );
             })}
           </div>
-          <div>{active ? <WorkspacePanel iv={active} onRate={rate} onDecide={decide} /> : <Card className="p-10 text-center text-slate-400">Select an interview.</Card>}</div>
+          <div>{active ? <WorkspacePanel iv={active} name={nameOf(active.candidate_id)} onRate={rate} onDecide={decide} /> : <Card className="p-10 text-center text-slate-400">Select an interview.</Card>}</div>
         </div>
       )}
     </div>
   );
 }
-function WorkspacePanel({ iv, onRate, onDecide }) {
-  const nm = iv.candidate_id;
+function WorkspacePanel({ iv, name, onRate, onDecide }) {
+  const nm = name || iv.candidate_id;
   const [ev, setEv] = useState({ loading: true, skills: [] });
   useEffect(() => {
     let a = true;
