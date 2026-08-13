@@ -194,6 +194,91 @@ export function AreaChart({ data = [], color = "#2563EB", height = 180 }) {
   );
 }
 
+/* ---------- Column chart (categorical magnitude / histogram) ----------
+   Replaces a smooth line for binned/staged data, where interpolating between
+   categories would be misleading. Lit gradient columns with a gloss face, soft
+   drop-shadow, value caps, quarter gridlines and an animated grow-from-baseline.
+   Height maps exactly to value — depth is cosmetic. */
+export function ColumnChart({ data = [], color = "#2563EB", height = 190 }) {
+  const id = useId();
+  const W = 520, H = height, padX = 16, padT = 24, padB = 30;
+  const plotH = H - padT - padB;
+  const baseY = padT + plotH;
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const n = data.length || 1;
+  const slot = (W - padX * 2) / n;
+  const bw = Math.min(64, slot * 0.62);
+  const xAt = (i) => padX + slot * i + (slot - bw) / 2;
+  const hAt = (v) => (v / max) * plotH;
+  return (
+    <div className="w-full overflow-x-auto">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 320 }}>
+        <defs>
+          <linearGradient id={`col${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.78" />
+            <stop offset="100%" stopColor={color} stopOpacity="1" />
+          </linearGradient>
+          <linearGradient id={`gloss${id}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0.45" />
+            <stop offset="42%" stopColor="#fff" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.10" />
+          </linearGradient>
+          <filter id={`sh${id}`} x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor={color} floodOpacity="0.28" />
+          </filter>
+        </defs>
+
+        {/* quarter gridlines + baseline */}
+        {[0.25, 0.5, 0.75, 1].map((g) => (
+          <line key={g} x1={padX} x2={W - padX} y1={baseY - g * plotH} y2={baseY - g * plotH}
+                stroke="rgb(var(--c-slate-100))" strokeWidth="1" />
+        ))}
+        <line x1={padX} x2={W - padX} y1={baseY} y2={baseY} stroke="rgb(var(--c-slate-200))" strokeWidth="1.5" />
+
+        {data.map((d, i) => {
+          const bh = hAt(d.value);
+          const yTop = baseY - bh;
+          const r = Math.min(7, bw / 2, bh);
+          return (
+            <g key={d.label}>
+              <motion.rect
+                x={xAt(i)} width={bw} rx={r} fill={`url(#col${id})`} filter={`url(#sh${id})`}
+                initial={{ height: 0, y: baseY }}
+                whileInView={{ height: Math.max(bh, 0.001), y: yTop }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.05 }}
+              >
+                <title>{d.label}: {d.value}</title>
+              </motion.rect>
+              {/* gloss face */}
+              <motion.rect
+                x={xAt(i)} width={bw} rx={r} fill={`url(#gloss${id})`} pointerEvents="none"
+                initial={{ height: 0, y: baseY }}
+                whileInView={{ height: Math.max(bh, 0.001), y: yTop }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.05 }}
+              />
+              {/* value cap */}
+              {d.value > 0 && (
+                <motion.text
+                  x={xAt(i) + bw / 2} y={yTop - 7} textAnchor="middle"
+                  fill="rgb(var(--c-ink-900))" fontSize="12.5" fontWeight="700"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                  initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+                  viewport={{ once: true, margin: "-40px" }} transition={{ delay: 0.35 + i * 0.05 }}
+                >{d.value}</motion.text>
+              )}
+              {/* category label */}
+              <text x={xAt(i) + bw / 2} y={H - padB + 17} textAnchor="middle"
+                    fill="rgb(var(--c-slate-400))" fontSize="11">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 /* ---------- Donut (composition, headline in center) ---------- */
 function arc(cx, cy, r, a0, a1) {
   const p = (a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
