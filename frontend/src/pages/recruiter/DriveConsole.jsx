@@ -336,6 +336,9 @@ function CandidateIntelligence({ d, id, rounds }) {
   const [q, setQ] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [open, setOpen] = useState(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compare, setCompare] = useState([]);
+  const [showCmp, setShowCmp] = useState(false);
   const list = rows ?? regsA.data ?? [];
   const qmap = Object.fromEntries((queueA.data || []).map((x) => [x.candidate_id, x]));
   // Rank by real evidence-backed confidence where it exists; else the readiness heuristic.
@@ -354,9 +357,6 @@ function CandidateIntelligence({ d, id, rounds }) {
   async function shortlist(cid) { try { await api.shortlist(id, [cid]); } catch { /* keep */ } update(cid, { status: "shortlisted", current_round: 1 }); }
   async function advance(cid, cur) { try { await api.advance(id, cid); } catch { /* keep */ } const n = (cur || 0) + 1; update(cid, n > rounds ? { status: "selected" } : { status: "in_round", current_round: n }); }
 
-  const [compareMode, setCompareMode] = useState(false);
-  const [compare, setCompare] = useState([]);
-  const [showCmp, setShowCmp] = useState(false);
   const toggleCmp = (cid) => setCompare((c) => (c.includes(cid) ? c.filter((x) => x !== cid) : c.length >= 3 ? c : [...c, cid]));
   const cardClick = (r) => (compareMode ? toggleCmp(r.candidate_id) : setOpen(r));
   const selectedCands = list.filter((r) => compare.includes(r.candidate_id));
