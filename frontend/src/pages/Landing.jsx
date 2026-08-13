@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
 import {
   ArrowRight,
   Sparkles,
@@ -66,6 +66,19 @@ export default function Landing() {
   const { scrollY } = useScroll();
   const heroY = useTransform(scrollY, [0, 500], [0, -64]);
   const heroGlow = useTransform(scrollY, [0, 500], [0, 40]);
+
+  // Interactive 3D tilt for the hero mockup (follows the cursor, springy).
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const rotX = useSpring(useTransform(my, [-0.5, 0.5], [11, -11]), { stiffness: 150, damping: 18 });
+  const rotY = useSpring(useTransform(mx, [-0.5, 0.5], [-16, 16]), { stiffness: 150, damping: 18 });
+  const onTilt = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    mx.set((e.clientX - r.left) / r.width - 0.5);
+    my.set((e.clientY - r.top) / r.height - 0.5);
+  };
+  const resetTilt = () => { mx.set(0); my.set(0); };
+
   return (
     <div className="min-h-screen bg-surface">
       {/* Nav */}
@@ -122,14 +135,23 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Product preview — parallax, framed like a real app screenshot */}
-          <motion.div style={{ y: heroY }} className="relative">
+          {/* Product preview — 3D tilt, parallax, app-framed */}
+          <motion.div style={{ y: heroY }} onMouseMove={onTilt} onMouseLeave={resetTilt} className="relative">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="relative"
+              style={{ rotateX: rotX, rotateY: rotY, transformPerspective: 1100, transformStyle: "preserve-3d" }}
+              className="relative will-change-transform"
             >
+              {/* floating 3D spheres */}
+              <motion.div aria-hidden animate={{ y: [0, -12, 0] }} transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                style={{ z: 80, background: "radial-gradient(circle at 32% 28%, #fde68a, #f59e0b 52%, #b45309 100%)", boxShadow: "0 26px 50px -12px rgba(217,119,6,.5), inset -5px -7px 14px rgba(120,53,15,.4), inset 4px 5px 10px rgba(255,255,255,.4)" }}
+                className="absolute -top-8 -right-7 h-20 w-20 rounded-full" />
+              <motion.div aria-hidden animate={{ y: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                style={{ z: 40, background: "radial-gradient(circle at 32% 28%, #93c5fd, #2563EB 52%, #1e3a8a 100%)", boxShadow: "0 20px 40px -12px rgba(37,99,235,.45), inset -4px -6px 12px rgba(30,58,138,.4), inset 3px 4px 9px rgba(255,255,255,.4)" }}
+                className="absolute -bottom-9 right-10 h-12 w-12 rounded-full" />
+
               <div className="rounded-2xl border border-slate-200 bg-surface shadow-lift overflow-hidden">
                 {/* window chrome */}
                 <div className="flex items-center gap-1.5 px-4 h-10 border-b border-slate-100 bg-slate-50/70">
@@ -171,9 +193,10 @@ export default function Landing() {
                 </div>
               </div>
 
-              {/* floating "offer received" chip — depth */}
+              {/* floating "offer received" chip — pops forward in 3D */}
               <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5, duration: 0.4 }}
-                className="absolute -bottom-5 -left-5 rounded-xl border border-slate-200 bg-surface shadow-card px-3.5 py-2.5 flex items-center gap-2.5">
+                style={{ z: 60 }}
+                className="absolute -bottom-5 -left-5 rounded-xl border border-slate-200 bg-surface shadow-lift px-3.5 py-2.5 flex items-center gap-2.5">
                 <span className="grid place-items-center h-8 w-8 rounded-lg bg-teal-500/10 text-teal-600"><Award size={16} /></span>
                 <div><p className="text-[12px] font-semibold text-ink-900 leading-none">Offer received</p><p className="text-[10.5px] text-slate-400 mt-0.5">94% skill match</p></div>
               </motion.div>
