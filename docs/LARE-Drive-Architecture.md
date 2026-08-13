@@ -1,6 +1,6 @@
 # LARE Drive — Production Architecture (Phase 2)
 
-**Status:** Phase 2 design. No implementation. Awaiting review before Phase 3 (frontend).
+**Status:** Phase 2 design — **Phases 3 (frontend) and 4 (backend) implemented.** See §15 for the delivered state.
 **Scope:** Evolve the existing LARE Hire/Drive product into the approved **Recruitment Operating System** without breaking the running LARE platform.
 
 ---
@@ -258,4 +258,26 @@ Bus events (Redis Streams / HTTP fan‑out): `evidence.added`, `evidence.conflic
 
 ---
 
-*Phase 2 ends here. On your approval of this architecture, I'll begin **Phase 3 (frontend implementation)** and stop for review before backend.*
+*Phase 2 design ends here.*
+
+---
+
+## 15. Delivered state (Phases 3 & 4)
+
+**Open decisions — resolved (recommended defaults adopted):** (1) `evidence` and `recruit-ai` are separate services for immutability/AI isolation; `decision` and `action` were also built as their own services for clean bounded contexts. (2) Real-time transport: SSE (deferred — surfaces poll/refresh today). (3) AI provider kept abstract; recruit-ai narrates deterministically today (mode `derived`), LLM narration via `ai_orchestration` is additive. (4) Calibration is per-drive first.
+
+**Phase 4 — backend services (implemented).** Five new services on the existing spine, each schema-per-service, RS256/RBAC, `lare_common`, registered in `services.txt`, the gateway (`ROUTES`/`UPSTREAMS`), and `internal.SERVICE_URLS`:
+
+| Service | Schema | Port | Route prefix | Delivers |
+|---|---|---|---|---|
+| evidence | `drive_evidence` | 8027 | `/drive/v1/evidence` | Append-only ledger; auto-records from `evaluation.completed`; conflict detection; confidence-weighted deterministic roll-ups; publishes `evidence.added` / `evidence.conflict.opened`. |
+| competency | `drive_competency` | 8028 | `/drive/v1/competency` | Competency catalogue + per-drive weighted evaluation models (one active per drive). |
+| decision | `drive_decision` | 8029 | `/drive/v1/decisions` | Evidence-cited decisions with immutable lineage; deterministic coverage / panel-agreement / confidence; decision queue. Publishes `decision.made`. |
+| action | `drive_action` | 8030 | `/drive/v1/actions` | Attention engine — derives prioritised actions from live conflicts + decision queue; idempotent regeneration; user resolution preserved. |
+| recruit-ai | `drive_recruit_ai` | 8031 | `/drive/v1/insights`, `/drive/v1/calibration` | Deterministic O/R/I/A insights + interviewer calibration drift vs consensus. |
+
+Cross-service reads are best-effort east-west (`ServiceClient`) and degrade gracefully — no hard dependency for read surfaces. Evidence/decision metrics are **deterministic** (no LLM), so they are reproducible and auditable; the LLM only narrates later.
+
+**Phase 3 — frontend (implemented).** Cross-drive Command Center; the Drive console as an operating unit with perspective lenses; visual grammar library (`grammar.jsx`: ReadOut, Ribbon, Attention, AIObservation, SignalCard, Delta, Spark); Evidence Ledger, Decision Intelligence queue, Interviewer Workspace, Candidate Comparison, and a ⌘K command palette — all on the real services, with derived-signal fallbacks on fresh drives.
+
+**Remaining (future phases).** DB grants revoking UPDATE/DELETE on evidence (Phase 6 immutability hardening); SSE real-time; LLM narration for recruit-ai; a one-time evidence backfill from historical exam/coding/interview data (§12.2); competency-model authoring UI.
