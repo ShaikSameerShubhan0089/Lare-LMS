@@ -587,16 +587,27 @@ function DecisionsView({ id }) {
 
 /* ---------- Interviewer calibration (drift vs consensus — recruit-ai) ---------- */
 function CalibrationPanel({ id }) {
-  const calA = useAsync(() => withFallback(api.driveCalibration(id), []), [id]);
-  if (calA.loading) return null;
-  const rows = calA.data || [];
-  if (!rows.length) return null;
+  const [scope, setScope] = useState("drive");
+  const driveA = useAsync(() => withFallback(api.driveCalibration(id), []), [id]);
+  const crossA = useAsync(() => withFallback(api.crossCalibration(), []), []);
+  const loading = scope === "drive" ? driveA.loading : crossA.loading;
+  const rows = (scope === "drive" ? driveA.data : crossA.data) || [];
+  if (loading && !(driveA.data || crossA.data)) return null;
+  if (!(driveA.data || []).length && !(crossA.data || []).length) return null;
   return (
     <div>
-      <div className="mb-3">
-        <h3 className="font-display font-semibold text-ink-900 flex items-center gap-2"><Gauge size={17} className="text-slate-400" /> Interviewer calibration</h3>
-        <p className="text-[12.5px] text-slate-500">How far each interviewer scores from the consensus, per competency. Large drift signals a calibration gap to address.</p>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="font-display font-semibold text-ink-900 flex items-center gap-2"><Gauge size={17} className="text-slate-400" /> Interviewer calibration</h3>
+          <p className="text-[12.5px] text-slate-500">How far each interviewer scores from the consensus, per competency. Large drift signals a calibration gap to address.</p>
+        </div>
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-[11.5px] font-semibold">
+          {[["drive", "This drive"], ["all", "All drives"]].map(([k, label]) => (
+            <button key={k} onClick={() => setScope(k)} className={`h-8 px-3 ${scope === k ? "bg-ink-900 text-white" : "bg-white text-slate-500 hover:text-ink-900"}`}>{label}</button>
+          ))}
+        </div>
       </div>
+      {rows.length === 0 && <Card className="p-6 text-center text-[12.5px] text-slate-400">No calibration data {scope === "all" ? "across drives" : "for this drive"} yet.</Card>}
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
         {rows.map((c, i) => {
           const d = c.mean_delta || 0;
@@ -607,7 +618,7 @@ function CalibrationPanel({ id }) {
               <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold shrink-0" style={{ background: hueFor(c.interviewer_id) }}>{initials(c.interviewer_id)}</span>
               <div className="min-w-0 flex-1">
                 <div className="text-[12.5px] font-medium text-ink-900 truncate">{c.interviewer_id}</div>
-                <div className="text-[11px] text-slate-400 capitalize">{c.competency_key} · {c.sample_n} evaluation{c.sample_n === 1 ? "" : "s"}</div>
+                <div className="text-[11px] text-slate-400 capitalize">{c.competency_key} · {c.sample_n} evaluation{c.sample_n === 1 ? "" : "s"}{c.drive_count ? ` · ${c.drive_count} drive${c.drive_count === 1 ? "" : "s"}` : ""}</div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-28 h-1.5 rounded bg-slate-100 relative overflow-hidden">

@@ -327,6 +327,7 @@ export const api = {
   // ---- Recruit-AI insights + calibration ----
   driveInsights: (driveId) => request(`/drive/v1/insights/drive/${driveId}`),
   driveCalibration: (driveId) => request(`/drive/v1/calibration/drive/${driveId}`),
+  crossCalibration: () => request("/drive/v1/calibration/interviewers"),
 
   // ---- Evaluation / Result (recruiter) ----
   computeRanks: (exam_id) => request("/drive/v1/evaluations/rank", { method: "POST", body: { exam_id } }),
