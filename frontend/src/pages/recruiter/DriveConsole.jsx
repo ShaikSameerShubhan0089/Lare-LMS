@@ -750,20 +750,39 @@ function InterviewerWorkspace({ id }) {
               );
             })}
           </div>
-          <div>{active ? <WorkspacePanel iv={active} name={nameOf(active.candidate_id)} onRate={rate} onDecide={decide} /> : <Card className="p-10 text-center text-slate-400">Select an interview.</Card>}</div>
+          <div>{active ? <WorkspacePanel iv={active} name={nameOf(active.candidate_id)} driveId={id} onRate={rate} onDecide={decide} /> : <Card className="p-10 text-center text-slate-400">Select an interview.</Card>}</div>
         </div>
       )}
     </div>
   );
 }
-function WorkspacePanel({ iv, name, onRate, onDecide }) {
+function WorkspacePanel({ iv, name, driveId, onRate, onDecide }) {
   const nm = name || iv.candidate_id;
   const [ev, setEv] = useState({ loading: true, skills: [] });
+  const [comps, setComps] = useState([]);
+  const [comp, setComp] = useState("technical");
+  const [captured, setCaptured] = useState(null);
   useEffect(() => {
     let a = true;
     api.candidateSkills(iv.candidate_id).then((r) => { if (a) setEv({ loading: false, skills: r?.verified_skills || [] }); }).catch(() => { if (a) setEv({ loading: false, skills: [] }); });
     return () => { a = false; };
   }, [iv.candidate_id]);
+  useEffect(() => {
+    let a = true;
+    api.evaluationModel(driveId).then((m) => { if (!a) return; const ks = (m?.weights || []).map((w) => ({ key: w.competency_key, name: w.name })); setComps(ks); if (ks.length) setComp(ks[0].key); }).catch(() => {});
+    return () => { a = false; };
+  }, [driveId]);
+
+  // Rating a competency records the interview rating AND emits real per-competency
+  // interview evidence (signal = score×20) into the ledger, feeding decisions + calibration.
+  async function capture(score) {
+    onRate(iv.id, score);
+    try {
+      await api.addEvidence({ drive_id: driveId, candidate_id: iv.candidate_id, competency_key: comp, source_type: "interview", signal: score * 20, confidence: "high", rationale: `Interview rating for ${comp}`, round_key: iv.stage });
+    } catch { /* rating still recorded */ }
+    setCaptured(`${comp} · ${score}/5`);
+    setTimeout(() => setCaptured(null), 2500);
+  }
   return (
     <div className="grid gap-4">
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -783,8 +802,12 @@ function WorkspacePanel({ iv, name, onRate, onDecide }) {
         <h3 className="text-[13px] font-semibold text-ink-900 mb-3 flex items-center gap-2"><ClipboardList size={15} className="text-slate-400" /> Capture evaluation</h3>
         {iv.decision ? <div className="text-sm text-teal-600 flex items-center gap-2"><Check size={16} /> Decision recorded: <b className="capitalize">{iv.decision}</b></div> : (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] text-slate-400 mr-1">Rate</span>
-            {[3, 4, 5].map((s) => <button key={s} onClick={() => onRate(iv.id, s)} className="grid place-items-center h-8 w-8 rounded-md bg-slate-100 hover:bg-amber-500/15 text-slate-600 text-sm font-semibold">{s}</button>)}
+            <select value={comp} onChange={(e) => setComp(e.target.value)} className="h-8 px-2 rounded-md border border-slate-200 text-[12px] bg-white capitalize">
+              {comps.length ? comps.map((c) => <option key={c.key} value={c.key}>{c.name}</option>) : <option value="technical">Technical</option>}
+            </select>
+            <span className="text-[11px] text-slate-400">rate</span>
+            {[3, 4, 5].map((s) => <button key={s} onClick={() => capture(s)} className="grid place-items-center h-8 w-8 rounded-md bg-slate-100 hover:bg-amber-500/15 text-slate-600 text-sm font-semibold">{s}</button>)}
+            {captured && <span className="text-[11px] text-teal-600">Recorded {captured}</span>}
             <div className="flex-1" />
             <Button size="sm" variant="secondary" onClick={() => onDecide(iv.id, "reject")}><X size={14} /> Reject</Button>
             <Button size="sm" onClick={() => onDecide(iv.id, "select")}><Send size={14} /> Recommend</Button>
