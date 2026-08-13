@@ -4,7 +4,7 @@ import {
   Compass, Target, ArrowRight, CheckCircle2, TrendingUp, Brain, Code2,
 } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
-import { RadialGauge } from "../components/drive/charts.jsx";
+import { RadialGauge, MasteryBar } from "../components/drive/charts.jsx";
 import { PageHeader, Loading, EmptyState } from "../components/ui/states.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -71,13 +71,6 @@ export default function CareerReadiness({ candidateId }) {
   );
 }
 
-function bandTone(pct) {
-  return pct >= 80 ? "teal" : pct >= 50 ? "amber" : "rose";
-}
-function bandBar(pct) {
-  return pct >= 80 ? "bg-teal-500" : pct >= 50 ? "bg-amber-500" : "bg-rose-500";
-}
-
 function RoleCard({ r }) {
   const [open, setOpen] = useState(false);
   return (
@@ -92,8 +85,8 @@ function RoleCard({ r }) {
         </div>
       </div>
 
-      <div className="mt-3 h-2.5 rounded-full bg-slate-200 overflow-hidden">
-        <div className={`h-full rounded-full ${bandBar(r.match_pct)} transition-all`} style={{ width: `${r.match_pct}%` }} />
+      <div className="mt-3">
+        <MasteryBar pct={r.match_pct} />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

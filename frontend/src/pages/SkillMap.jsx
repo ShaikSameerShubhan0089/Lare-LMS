@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Brain, Target, TrendingUp, Sparkles, AlertCircle, CalendarDays, Lightbulb, WandSparkles, Code2, Repeat } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
-import { RadialGauge } from "../components/drive/charts.jsx";
+import { RadialGauge, MasteryBar } from "../components/drive/charts.jsx";
 import { PageHeader, Loading } from "../components/ui/states.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -141,7 +141,9 @@ export default function SkillMap({ candidateId }) {
             <Card className="p-6">
               <h3 className="font-display font-semibold text-ink-900 mb-4">Mastery by area</h3>
               <div className="space-y-4">
-                {cats.map((c) => <Bar key={c.name} row={c} />)}
+                {cats.map((c) => (
+                  <MasteryBar key={c.name} label={c.name} pct={c.mastery} band={c.band} sub={`${c.correct}/${c.attempted}`} />
+                ))}
               </div>
             </Card>
           )}
@@ -160,7 +162,7 @@ export default function SkillMap({ candidateId }) {
               </div>
               <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
                 {languages.map((l) => (
-                  <Bar key={l.name} row={{ ...l, correct: l.solved, attempted: l.attempted }} />
+                  <MasteryBar key={l.name} label={l.name} pct={l.mastery} band={l.band} sub={`${l.solved}/${l.attempted}`} />
                 ))}
               </div>
             </Card>
@@ -171,7 +173,9 @@ export default function SkillMap({ candidateId }) {
             <Card className="p-6">
               <h3 className="font-display font-semibold text-ink-900 mb-4">Every topic, ranked</h3>
               <div className="space-y-3">
-                {topics.map((t) => <Bar key={t.name} row={t} small />)}
+                {topics.map((t, i) => (
+                  <MasteryBar key={t.name} label={t.name} pct={t.mastery} band={t.band} sub={`${t.correct}/${t.attempted}`} small rank={i + 1} />
+                ))}
               </div>
             </Card>
           )}
@@ -366,26 +370,3 @@ function Stat({ icon: Icon, label, value, tone }) {
   );
 }
 
-const BAND = {
-  strong: { bar: "bg-teal-500", text: "text-teal-700", chip: "teal" },
-  developing: { bar: "bg-amber-500", text: "text-amber-700", chip: "amber" },
-  weak: { bar: "bg-rose-500", text: "text-rose-700", chip: "rose" },
-};
-
-function Bar({ row, small }) {
-  const b = BAND[row.band] || BAND.developing;
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <span className={`${small ? "text-sm" : "font-medium"} text-ink-900 capitalize`}>{row.name}</span>
-        <span className="flex items-center gap-2 text-sm">
-          <span className="tabular-nums text-slate-500">{row.correct}/{row.attempted}</span>
-          <span className={`tabular-nums font-semibold ${b.text}`}>{row.mastery}%</span>
-        </span>
-      </div>
-      <div className="h-2.5 rounded-full bg-slate-200 overflow-hidden">
-        <div className={`h-full rounded-full ${b.bar} transition-all`} style={{ width: `${row.mastery}%` }} />
-      </div>
-    </div>
-  );
-}

@@ -2,6 +2,72 @@
 // chart library. Theme-aware (tracks/axes use CSS token vars; data colors are
 // explicit hues). Each chart is data-driven from real drive metrics.
 import { useId } from "react";
+import { motion } from "framer-motion";
+
+/* ---------- Mastery bar (magnitude, with depth) ----------
+   A recessed glossy track with a gradient fill, quarter-scale ticks, a glowing
+   leading knob and an animated grow-in. Width maps exactly to `pct` — depth is
+   cosmetic only, never distorts the value. Shared by Skill Map + Career Readiness. */
+const MASTERY_BANDS = {
+  strong:     { c1: "#5eead4", c2: "#0d9488", text: "#0f766e", glow: "rgba(13,148,136,.55)" },
+  developing: { c1: "#fcd34d", c2: "#d97706", text: "#b45309", glow: "rgba(217,119,6,.52)" },
+  weak:       { c1: "#fda4af", c2: "#e11d48", text: "#be123c", glow: "rgba(225,29,72,.52)" },
+};
+const bandFor = (p) => (p >= 80 ? "strong" : p >= 50 ? "developing" : "weak");
+
+export function MasteryBar({ label, pct = 0, sub, band, small, rank }) {
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  const b = MASTERY_BANDS[band] || MASTERY_BANDS[bandFor(p)];
+  const h = small ? "h-2.5" : "h-3.5";
+  const knob = small ? 12 : 15;
+  const showHeader = label != null || sub != null || rank != null;
+  return (
+    <div>
+      {showHeader && (
+        <div className="flex items-center justify-between mb-1.5 gap-3">
+          <span className="flex items-center gap-2 min-w-0">
+            {rank != null && (
+              <span className="shrink-0 grid place-items-center h-5 w-5 rounded-md text-[11px] font-bold tabular-nums text-slate-500 bg-slate-100">
+                {rank}
+              </span>
+            )}
+            <span className={`${small ? "text-sm" : "font-medium"} text-ink-900 capitalize truncate`}>{label}</span>
+          </span>
+          <span className="flex items-center gap-2 text-sm shrink-0">
+            {sub != null && <span className="tabular-nums text-slate-400">{sub}</span>}
+            <span className="tabular-nums font-bold" style={{ color: b.text }}>{p}%</span>
+          </span>
+        </div>
+      )}
+      {/* recessed track (not clipped, so the leading knob & glow read) */}
+      <div
+        className={`relative ${h} rounded-full bg-slate-200/80`}
+        style={{ boxShadow: "inset 0 1px 2.5px rgba(15,23,42,.18), inset 0 -1px 0 rgba(255,255,255,.55)" }}
+      >
+        {[25, 50, 75].map((t) => (
+          <span key={t} aria-hidden className="absolute top-0 bottom-0 w-px bg-slate-300/60" style={{ left: `${t}%` }} />
+        ))}
+        <motion.div
+          className="absolute left-0 top-0 h-full rounded-full"
+          style={{ background: `linear-gradient(120deg, ${b.c1}, ${b.c2})`, boxShadow: `0 1px 6px -1px ${b.glow}, inset 0 1px 0 rgba(255,255,255,.45)` }}
+          initial={{ width: 0 }}
+          whileInView={{ width: `${p}%` }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {/* glossy top highlight */}
+          <span aria-hidden className="absolute inset-x-0 top-0 h-1/2 rounded-full"
+                style={{ background: "linear-gradient(180deg, rgba(255,255,255,.55), transparent)" }} />
+          {/* glowing leading knob */}
+          {p > 0 && (
+            <span aria-hidden className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 rounded-full"
+                  style={{ width: knob, height: knob, background: `radial-gradient(circle at 38% 32%, #fff, ${b.c1} 70%)`, boxShadow: `0 0 9px 1px ${b.glow}, inset 0 -1px 2px rgba(0,0,0,.15)` }} />
+          )}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
 
 /* ---------- smooth path (Catmull-Rom-ish) ---------- */
 function smoothPath(pts) {
