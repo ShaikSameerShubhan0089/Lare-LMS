@@ -9,14 +9,23 @@ logged and non-fatal so init-db still succeeds.
 from __future__ import annotations
 
 import logging
+import re
 
 log = logging.getLogger("lare-evidence")
+
+# Schema comes from the DB_SCHEMA env (operator-controlled), but validate it as a
+# plain SQL identifier before interpolating into DDL — defence in depth against
+# a mis-set/hostile value reaching raw SQL.
+_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def install_immutability(db) -> bool:
     if getattr(db, "is_sqlite", True):
         return False
     sch = db.schema
+    if sch is not None and not _IDENT.match(sch):
+        log.warning("refusing to install immutability trigger: unsafe schema name %r", sch)
+        return False
     fn = f'"{sch}".evidence_immutable' if sch else "evidence_immutable"
     tbl = f'"{sch}".evidence' if sch else "evidence"
     stmts = [
