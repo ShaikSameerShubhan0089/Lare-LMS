@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
   Sparkles,
@@ -26,16 +26,19 @@ const YEARS = [
 ];
 
 const STATS = [
-  { icon: Users, value: 52000, suffix: "+", label: "Learners on the platform" },
-  { icon: Building2, value: 480, suffix: "+", label: "Partner colleges" },
-  { icon: Briefcase, value: 2400, suffix: "+", label: "Drives conducted" },
-  { icon: Award, value: 19500, suffix: "+", label: "Offers generated" },
+  { icon: Users, value: 60000, suffix: "+", label: "Learners trained" },
+  { icon: Building2, value: 500, suffix: "+", label: "Campus partners" },
+  { icon: Briefcase, value: 3000, suffix: "+", label: "Drives conducted" },
+  { icon: Award, value: 22000, suffix: "+", label: "Offers generated" },
 ];
 
+// Placeholder "trusted by" wordmarks (generic brands — swap for real partners).
+const TRUSTED = ["NovaByte", "Trigon Labs", "Cloudspan", "Finlytics", "Vaultise", "Northgate"];
+
 const STORIES = [
-  { name: "Sneha Reddy", role: "Placed · SDE", company: "Product company", quote: "The four-year track meant I was interview-ready by year three. LARE Drive put my evidence in front of recruiters, not just my resume." },
-  { name: "Arjun Mehta", role: "Placed · Data Analyst", company: "Fintech", quote: "Adaptive drills and the skill map showed me exactly what to fix. I walked into the drive knowing I'd earned the shortlist." },
-  { name: "T. Ananya", role: "Placement Officer", company: "Partner college", quote: "One drive used to be weeks of spreadsheets. With LARE we ran screening to offers in days, with a full audit trail." },
+  { name: "Sneha Reddy", role: "Placed · Software Engineer", company: "Product company", quote: "By third year I was interview-ready, not just exam-ready. LARE put my proven skills in front of recruiters — I got shortlisted on evidence, not a resume keyword." },
+  { name: "Arjun Mehta", role: "Placed · Data Analyst", company: "Fintech", quote: "The skill map showed me exactly what to fix, and the adaptive drills closed the gap. I walked into the drive knowing I'd earned the offer." },
+  { name: "T. Ananya", role: "Placement Officer", company: "Partner college", quote: "A drive used to be weeks of spreadsheets and follow-ups. With LARE we run screening to signed offers in days — with a full audit trail our management trusts." },
 ];
 
 function CountUp({ to, suffix = "", dur = 1.6 }) {
@@ -60,6 +63,9 @@ function CountUp({ to, suffix = "", dur = 1.6 }) {
 }
 
 export default function Landing() {
+  const { scrollY } = useScroll();
+  const heroY = useTransform(scrollY, [0, 500], [0, -64]);
+  const heroGlow = useTransform(scrollY, [0, 500], [0, 40]);
   return (
     <div className="min-h-screen bg-surface">
       {/* Nav */}
@@ -83,16 +89,17 @@ export default function Landing() {
         <div className="relative mx-auto max-w-6xl px-5 py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <Badge tone="amber">
-              <Sparkles size={13} /> AI-integrated · Gamified · 4-Year Journey
+              <Sparkles size={13} /> AI-native · Learn → Hire · Evidence-driven
             </Badge>
-            <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-ink-900 leading-[1.05]">
-              Elevating ideas.
+            <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-ink-900 leading-[1.03] tracking-[-0.01em]">
+              Where careers are built
               <br />
-              <span className="text-brand-500">Empowering futures.</span>
+              <span className="bg-gradient-to-r from-amber-500 to-amber-600 bg-clip-text text-transparent">— and proven.</span>
             </h1>
             <p className="mt-5 text-lg text-slate-600 max-w-md">
-              One platform for the full journey — a four-year, branch-wise training programme
-              with an AI tutor and a real campus-recruitment pipeline. Learn, level up, get placed.
+              One platform for the whole arc: a four-year, AI-guided journey that makes students
+              genuinely job-ready — and an evidence-driven hiring engine that places them.
+              <span className="text-ink-900 font-medium"> Learn. Prove it. Get hired.</span>
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button as={Link} to="/drive/attend" size="lg" variant="amber">
@@ -115,52 +122,79 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Floating gamified preview card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="relative"
-          >
-            <Card className="p-6 shadow-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Your progress</p>
-                  <p className="font-display text-xl font-semibold text-ink-900">Year 2 · Coding</p>
+          {/* Product preview — parallax, framed like a real app screenshot */}
+          <motion.div style={{ y: heroY }} className="relative">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="relative"
+            >
+              <div className="rounded-2xl border border-slate-200 bg-surface shadow-lift overflow-hidden">
+                {/* window chrome */}
+                <div className="flex items-center gap-1.5 px-4 h-10 border-b border-slate-100 bg-slate-50/70">
+                  <span className="h-2.5 w-2.5 rounded-full bg-rose-400/70" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-teal-400/70" />
+                  <span className="ml-3 text-[11px] text-slate-400 font-medium truncate">lareitcloudsolutions.com · dashboard</span>
                 </div>
-                <Badge tone="amber">
-                  <Trophy size={13} /> Level 4
-                </Badge>
-              </div>
-              <div className="mt-5 space-y-4">
-                <XPBar value={720} max={1000} label="XP to next level" />
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { k: "Streak", v: "12🔥", c: "text-amber-600" },
-                    { k: "Coding", v: "84%", c: "text-teal-600" },
-                    { k: "Aptitude", v: "78%", c: "text-brand-600" },
-                  ].map((s) => (
-                    <div key={s.k} className="rounded-md bg-slate-50 p-3 text-center">
-                      <p className={`font-display text-lg font-semibold ${s.c}`}>{s.v}</p>
-                      <p className="text-xs text-slate-400">{s.k}</p>
+                <div className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-500">Your progress</p>
+                      <p className="font-display text-xl font-semibold text-ink-900">Year 2 · Coding</p>
                     </div>
-                  ))}
-                </div>
-                <div className="rounded-md border border-slate-100 p-3 flex items-center gap-3">
-                  <span className="grid place-items-center h-9 w-9 rounded-md bg-brand-500/10 text-brand-600">
-                    <Code2 size={18} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink-900 truncate">
-                      Next: DSA — Recursion challenge
-                    </p>
-                    <p className="text-xs text-slate-400">Earn 120 XP · unlocks a badge</p>
+                    <Badge tone="amber"><Trophy size={13} /> Level 4</Badge>
+                  </div>
+                  <div className="mt-5 space-y-4">
+                    <XPBar value={720} max={1000} label="XP to next level" />
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { k: "Streak", v: "12🔥", c: "text-amber-600" },
+                        { k: "Coding", v: "84%", c: "text-teal-600" },
+                        { k: "Aptitude", v: "78%", c: "text-brand-600" },
+                      ].map((s) => (
+                        <div key={s.k} className="rounded-md bg-slate-50 p-3 text-center">
+                          <p className={`font-display text-lg font-semibold ${s.c}`}>{s.v}</p>
+                          <p className="text-xs text-slate-400">{s.k}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="rounded-md border border-slate-100 p-3 flex items-center gap-3">
+                      <span className="grid place-items-center h-9 w-9 rounded-md bg-brand-500/10 text-brand-600"><Code2 size={18} /></span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink-900 truncate">Next: DSA — Recursion challenge</p>
+                        <p className="text-xs text-slate-400">Earn 120 XP · unlocks a badge</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </Card>
-            <div className="absolute -z-10 -top-6 -right-6 h-24 w-24 rounded-full bg-amber-500/20 blur-2xl animate-float" />
+
+              {/* floating "offer received" chip — depth */}
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5, duration: 0.4 }}
+                className="absolute -bottom-5 -left-5 rounded-xl border border-slate-200 bg-surface shadow-card px-3.5 py-2.5 flex items-center gap-2.5">
+                <span className="grid place-items-center h-8 w-8 rounded-lg bg-teal-500/10 text-teal-600"><Award size={16} /></span>
+                <div><p className="text-[12px] font-semibold text-ink-900 leading-none">Offer received</p><p className="text-[10.5px] text-slate-400 mt-0.5">94% skill match</p></div>
+              </motion.div>
+            </motion.div>
+            <motion.div style={{ y: heroGlow }} className="absolute -z-10 -top-6 -right-6 h-24 w-24 rounded-full bg-amber-500/20 blur-2xl animate-float" />
           </motion.div>
+        </div>
+      </section>
+
+      {/* Trusted by */}
+      <section className="border-y border-slate-100 bg-slate-50/40">
+        <div className="mx-auto max-w-6xl px-5 py-8">
+          <p className="text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-5">Trusted by colleges &amp; recruiters</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-5">
+            {TRUSTED.map((name) => (
+              <span key={name} className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors">
+                <span className="grid place-items-center h-7 w-7 rounded-md bg-invert-900 text-white text-[12px] font-display font-bold">{name[0]}</span>
+                <span className="font-display font-semibold text-[15px] tracking-tight">{name}</span>
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
