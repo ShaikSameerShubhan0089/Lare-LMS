@@ -153,14 +153,20 @@ function stageBuckets(d, regs) {
 }
 
 function CommandCenter({ d, id, rounds, go }) {
-  const funnel = useAsync(() => withFallback(api.funnel(id), { total: 0, by_status: {} }), [id]);
-  const regsA = useAsync(() => withFallback(api.driveRegistrations(id), []), [id]);
+  // Live tick — refreshes the funnel + intelligence every 25s without a full
+  // reload (useAsync keeps prior data during refetch, so no flicker). A true
+  // bus-backed SSE stream is the future upgrade (see architecture §15).
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => setTick((v) => v + 1), 25000); return () => clearInterval(t); }, []);
+
+  const funnel = useAsync(() => withFallback(api.funnel(id), { total: 0, by_status: {} }), [id, tick]);
+  const regsA = useAsync(() => withFallback(api.driveRegistrations(id), []), [id, tick]);
   const ivA = useAsync(() => withFallback(api.driveInterviews(id), []), [id]);
   // Drive-OS intelligence (evidence-backed). Non-blocking: the console renders
   // even if these peers are slow/unavailable, and falls back to derived signals.
-  const insightsA = useAsync(() => withFallback(api.driveInsights(id), []), [id]);
-  const actionsA = useAsync(() => withFallback(api.driveActions(id), []), [id]);
-  if (funnel.loading || regsA.loading) return <Loading />;
+  const insightsA = useAsync(() => withFallback(api.driveInsights(id), []), [id, tick]);
+  const actionsA = useAsync(() => withFallback(api.driveActions(id), []), [id, tick]);
+  if ((funnel.loading && !funnel.data) || (regsA.loading && !regsA.data)) return <Loading />;
 
   const f = funnel.data || { total: 0, by_status: {} };
   const regs = regsA.data || [];
@@ -209,6 +215,9 @@ function CommandCenter({ d, id, rounds, go }) {
 
   return (
     <div>
+      <div className="flex items-center justify-end mb-2">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live · auto-refreshing</span>
+      </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <ReadOut label="Candidate pool" value={total} hint={`${ineligible} ineligible`} />
         <ReadOut label="In flight" value={inFlight} hint="shortlisted + in-round" />
@@ -565,10 +574,19 @@ function DecisionsView({ id }) {
 
 /* ---------- Evidence Ledger (append-only system of record — drive-evidence service) ---------- */
 function EvidenceLedger({ id }) {
-  const evA = useAsync(() => withFallback(api.driveEvidence(id), []), [id]);
-  const cfA = useAsync(() => withFallback(api.driveEvidenceConflicts(id), []), [id]);
+  const [nonce, setNonce] = useState(0);
+  const evA = useAsync(() => withFallback(api.driveEvidence(id), []), [id, nonce]);
+  const cfA = useAsync(() => withFallback(api.driveEvidenceConflicts(id), []), [id, nonce]);
   const [resolved, setResolved] = useState(() => new Set());
-  if (evA.loading || cfA.loading) return <Loading />;
+  const [backfilling, setBackfilling] = useState(false);
+
+  async function backfill() {
+    setBackfilling(true);
+    try { await api.backfillEvidence(id); } catch { /* no-op */ }
+    finally { setBackfilling(false); setNonce((n) => n + 1); }
+  }
+
+  if (evA.loading && !evA.data) return <Loading />;
   const ledger = evA.data ?? [];
   const conflicts = (cfA.data ?? []).filter((c) => !resolved.has(c.id));
 
@@ -583,9 +601,14 @@ function EvidenceLedger({ id }) {
 
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="font-display text-lg font-semibold text-ink-900">Evidence Ledger</h2>
-        <p className="text-[12.5px] text-slate-500">The append‑only system of record. Every score traces back to a typed, sourced, confidence‑tagged row here — recorded automatically as assessments are graded.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <h2 className="font-display text-lg font-semibold text-ink-900">Evidence Ledger</h2>
+          <p className="text-[12.5px] text-slate-500">The append‑only system of record. Every score traces back to a typed, sourced, confidence‑tagged row here — recorded automatically as assessments are graded.</p>
+        </div>
+        <Button size="sm" variant="secondary" onClick={backfill} disabled={backfilling}>
+          <FileSearch size={14} /> {backfilling ? "Backfilling…" : "Backfill from marks"}
+        </Button>
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3 mb-4">
@@ -721,11 +744,70 @@ function ConfigureView({ d, id, onChange }) {
   return (
     <div className="grid gap-6">
       <Config d={d} id={id} onChange={onChange} />
+      <EvaluationModelCard id={id} />
       <div className="grid lg:grid-cols-2 gap-6">
         <Eligibility id={id} />
         <Ppo id={id} />
       </div>
     </div>
+  );
+}
+
+/* Evaluation model — the weighted competencies a drive hires for (drive-competency). */
+function EvaluationModelCard({ id }) {
+  const [weights, setWeights] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const m = await api.evaluationModel(id).catch(() => null);
+      setWeights((m?.weights || []).map((w) => ({ competency_key: w.competency_key, name: w.name, weight: w.weight })));
+      setLoaded(true);
+    })();
+  }, [id]);
+
+  const total = weights.reduce((n, w) => n + (Number(w.weight) || 0), 0) || 1;
+  const add = () => setWeights((w) => [...w, { competency_key: "", name: "", weight: 1 }]);
+  const upd = (i, patch) => setWeights((w) => w.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const rm = (i) => setWeights((w) => w.filter((_, j) => j !== i));
+
+  async function save() {
+    const clean = weights
+      .map((w) => ({ ...w, competency_key: (w.competency_key || w.name || "").toLowerCase().trim().replace(/\s+/g, "_"), name: w.name || w.competency_key, weight: Number(w.weight) > 0 ? Number(w.weight) : 1 }))
+      .filter((w) => w.competency_key);
+    if (!clean.length) return;
+    setSaving(true);
+    try { await api.setEvaluationModel({ drive_id: id, weights: clean }); setSaved(true); setTimeout(() => setSaved(false), 2000); } catch { /* surfaced by empty state */ }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-display font-semibold text-ink-900 flex items-center gap-2"><Scale size={17} className="text-slate-400" /> Evaluation model</h3>
+        <span className="text-[11px] text-slate-400">weights normalise automatically</span>
+      </div>
+      <p className="text-[12.5px] text-slate-500 mb-3">The competencies this drive hires for and their relative weight. Evidence roll-ups and decision confidence use this model.</p>
+      {!loaded ? <div className="text-sm text-slate-400">Loading…</div> : (
+        <div className="grid gap-2">
+          {weights.length === 0 && <div className="text-[12.5px] text-slate-400 py-2">No model yet — add the competencies that matter for this drive.</div>}
+          {weights.map((w, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input value={w.name} onChange={(e) => upd(i, { name: e.target.value })} placeholder="Competency (e.g. System Design)" className="flex-1" />
+              <Input type="number" min="1" max="10" value={w.weight} onChange={(e) => upd(i, { weight: e.target.value })} className="w-20" />
+              <span className="w-12 text-right text-[12px] tabular-nums text-slate-500">{Math.round((Number(w.weight) || 0) / total * 100)}%</span>
+              <button onClick={() => rm(i)} aria-label="Remove" className="grid place-items-center h-9 w-9 rounded-md border border-slate-200 text-slate-400 hover:text-rose-600"><X size={16} /></button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between mt-1">
+            <Button variant="ghost" size="sm" onClick={add}><Plus size={15} /> Add competency</Button>
+            <Button size="sm" onClick={save} disabled={saving || weights.length === 0}>{saving ? "Saving…" : saved ? "Saved ✓" : "Save model"}</Button>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 

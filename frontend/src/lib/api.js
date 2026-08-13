@@ -307,6 +307,7 @@ export const api = {
   driveEvidenceConflicts: (driveId) => request(`/drive/v1/evidence/drive/${driveId}/conflicts`),
   candidateEvidence: (candidateId, driveId) => request(`/drive/v1/evidence/candidate/${candidateId}${driveId ? `?drive_id=${driveId}` : ""}`),
   resolveEvidenceConflict: (conflictId) => request(`/drive/v1/evidence/conflicts/${conflictId}/resolve`, { method: "POST" }),
+  backfillEvidence: (driveId) => request(`/drive/v1/evidence/backfill/${driveId}`, { method: "POST" }),
 
   // ---- Competency models ----
   competencyCatalogue: () => request("/drive/v1/competency/catalogue"),
