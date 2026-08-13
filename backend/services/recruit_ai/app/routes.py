@@ -75,3 +75,10 @@ def calibration(did):
     evidence = _drive_evidence(did, ident.user_id)
     with _db().session() as s:
         return ok(_svc().calibration(s, did, evidence))
+
+
+@bp.get("/drive/v1/calibration/interviewers")
+@require_roles(*READ)
+def cross_calibration():
+    with _db().session() as s:
+        return ok(_svc().cross_calibration(s))

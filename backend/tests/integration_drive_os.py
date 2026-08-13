@@ -173,6 +173,11 @@ def main() -> int:
         check("calibration computed for interviewers", {"iv1", "iv2"} <= set(cal))
         check("iv2 shows negative drift (scored below consensus)", cal and cal["iv2"]["mean_delta"] < 0)
 
+        # 8) cross-drive calibration aggregates stored per-drive calibration
+        st, body = _req("GET", 8031, "/drive/v1/calibration/interviewers", tok)
+        xcal = {c["interviewer_id"] for c in (body["data"] if st == 200 else [])}
+        check("cross-drive calibration aggregates interviewers", {"iv1", "iv2"} <= xcal)
+
         passed = sum(1 for _, ok in checks if ok)
         print(f"\n{passed}/{len(checks)} checks passed")
         return 0 if passed == len(checks) else 1

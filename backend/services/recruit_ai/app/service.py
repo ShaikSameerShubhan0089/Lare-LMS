@@ -138,6 +138,26 @@ class RecruitAiService:
         out.sort(key=lambda x: abs(x["mean_delta"]), reverse=True)
         return out
 
+    def cross_calibration(self, s):
+        """Aggregate stored per-drive calibration into a cross-drive view per
+        interviewer + competency (mean drift weighted by sample size)."""
+        rows = s.scalars(select(Calibration)).all()
+        agg: dict[tuple, dict] = {}
+        for r in rows:
+            a = agg.setdefault((r.interviewer_id, r.competency_key), {"num": 0.0, "n": 0, "drives": set()})
+            a["num"] += r.mean_delta * r.sample_n
+            a["n"] += r.sample_n
+            a["drives"].add(r.drive_id)
+        out = []
+        for (iv, comp), a in agg.items():
+            out.append({
+                "interviewer_id": iv, "competency_key": comp,
+                "mean_delta": round(a["num"] / a["n"], 1) if a["n"] else 0.0,
+                "sample_n": a["n"], "drive_count": len(a["drives"]),
+            })
+        out.sort(key=lambda x: abs(x["mean_delta"]), reverse=True)
+        return out
+
     @staticmethod
     def _dump_insight(r):
         return {

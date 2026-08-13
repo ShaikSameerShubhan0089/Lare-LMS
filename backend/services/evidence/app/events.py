@@ -41,4 +41,23 @@ def register_handlers(bus, db, svc) -> None:
             bus.publish("evidence.conflict.opened", c, key=cand)
         log.info("evidence appended for %s on drive %s (%.0f%%)", cand, did, pct)
 
+        # Per-competency breakdown: when the assessment included a coding section,
+        # emit a separate "coding" competency signal so coverage/decisions/calibration
+        # can distinguish coding ability from the overall score.
+        coding_total = float(p.get("coding_total", 0) or 0)
+        if coding_total > 0:
+            coding_pct = round(float(p.get("coding_correct", 0) or 0) / coding_total * 100, 1)
+            with db.session() as s:
+                svc.append(
+                    s, drive_id=did, candidate_id=cand, competency_key="coding",
+                    source_type="coding", source_ref=p.get("exam_id") or p.get("session_id"),
+                    signal=coding_pct, confidence="high",
+                    rationale="Auto-graded coding section",
+                    round_key=p.get("round_key") or "round-1", actor_id="system")
+            bus.publish("evidence.added", {
+                "drive_id": did, "candidate_id": cand,
+                "competency_key": "coding", "signal": coding_pct,
+            })
+            log.info("coding evidence appended for %s on drive %s (%.0f%%)", cand, did, coding_pct)
+
     bus.on("evaluation.completed", on_evaluation_completed)
