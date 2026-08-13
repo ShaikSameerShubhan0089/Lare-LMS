@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Sparkles, ShieldCheck, Trophy } from "lucide-react";
 import { Logo } from "../components/ui/Logo.jsx";
+import { Orbs } from "../components/ui/Decor.jsx";
 
 // Focused single-panel auth with a branded rail (distinct from landing/dashboard).
 export function AuthLayout({ title, subtitle, children, footer }) {
@@ -9,6 +10,7 @@ export function AuthLayout({ title, subtitle, children, footer }) {
       {/* Brand rail */}
       <div className="hidden lg:flex flex-col justify-between bg-invert-900 text-white p-10 relative overflow-hidden">
         <div className="bg-grid absolute inset-0 opacity-[0.15]" />
+        <Orbs tone="warm" className="opacity-80" />
         <Link to="/" className="relative flex items-center gap-4">
           <Logo dark size={92} />
           <span className="flex flex-col leading-none">

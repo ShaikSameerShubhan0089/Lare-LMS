@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Logo } from "../components/ui/Logo.jsx";
 import { Button, Badge, Card, XPBar } from "../components/ui/primitives.jsx";
+import { LogoTile } from "../components/ui/Decor.jsx";
 
 const YEARS = [
   { n: 1, t: "Foundation & Personality", c: "brand" },
@@ -32,8 +33,15 @@ const STATS = [
   { icon: Award, value: 22000, suffix: "+", label: "Offers generated" },
 ];
 
-// Placeholder "trusted by" wordmarks (generic brands — swap for real partners).
-const TRUSTED = ["NovaByte", "Trigon Labs", "Cloudspan", "Finlytics", "Vaultise", "Northgate"];
+// Placeholder "trusted by" brand tiles (generic brands — swap for real partners).
+const TRUSTED = [
+  { name: "NovaByte", from: "#6366f1", to: "#a855f7" },
+  { name: "Trigon Labs", from: "#0ea5e9", to: "#2563EB" },
+  { name: "Cloudspan", from: "#2dd4bf", to: "#0D9488" },
+  { name: "Finlytics", from: "#fbbf24", to: "#f97316" },
+  { name: "Vaultise", from: "#64748b", to: "#0f172a" },
+  { name: "Northgate", from: "#fb7185", to: "#be123c" },
+];
 
 const STORIES = [
   { name: "Sneha Reddy", role: "Placed · Software Engineer", company: "Product company", quote: "By third year I was interview-ready, not just exam-ready. LARE put my proven skills in front of recruiters — I got shortlisted on evidence, not a resume keyword." },
@@ -211,12 +219,7 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-5 py-8">
           <p className="text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-5">Trusted by colleges &amp; recruiters</p>
           <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-5">
-            {TRUSTED.map((name) => (
-              <span key={name} className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors">
-                <span className="grid place-items-center h-7 w-7 rounded-md bg-invert-900 text-white text-[12px] font-display font-bold">{name[0]}</span>
-                <span className="font-display font-semibold text-[15px] tracking-tight">{name}</span>
-              </span>
-            ))}
+            {TRUSTED.map((t) => <LogoTile key={t.name} {...t} />)}
           </div>
         </div>
       </section>

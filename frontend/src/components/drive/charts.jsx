@@ -40,7 +40,7 @@ export function RadialGauge({ value = 0, max = 100, label, color = "#2563EB", si
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--c-slate-200))" strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#g${id})`} strokeWidth={stroke} strokeLinecap="round"
-          strokeDasharray={`${circ * pct} ${circ}`} style={{ transition: "stroke-dasharray 900ms cubic-bezier(.2,.8,.2,1)" }} />
+          strokeDasharray={`${circ * pct} ${circ}`} style={{ transition: "stroke-dasharray 900ms cubic-bezier(.2,.8,.2,1)", filter: "drop-shadow(0 3px 7px rgba(0,0,0,.18))" }} />
       </svg>
       <div className="absolute text-center">
         <div className="font-display text-[26px] font-bold text-ink-900 tabular-nums leading-none">{Math.round(value)}<span className="text-[15px] text-slate-400 font-semibold">{suffix}</span></div>
@@ -150,7 +150,7 @@ export function Donut({ parts = [], size = 168, centerValue, centerLabel }) {
             const a0 = ang + gap / 2, a1 = ang + frac * 2 * Math.PI - gap / 2;
             ang += frac * 2 * Math.PI;
             if (a1 <= a0) return null;
-            return <path key={p.label} d={arc(cx, cy, r, a0, a1)} fill="none" stroke={p.color} strokeWidth={stroke} strokeLinecap="round"><title>{p.label}: {p.n}</title></path>;
+            return <path key={p.label} d={arc(cx, cy, r, a0, a1)} fill="none" stroke={p.color} strokeWidth={stroke} strokeLinecap="round" style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,.16))" }}><title>{p.label}: {p.n}</title></path>;
           })}
         </svg>
         <div className="absolute inset-0 grid place-items-center text-center">
