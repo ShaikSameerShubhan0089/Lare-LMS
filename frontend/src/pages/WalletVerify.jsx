@@ -40,7 +40,10 @@ export default function WalletVerify() {
         ) : d?.valid ? (
           <div className="rounded-2xl bg-surface border border-teal-200 shadow-sm overflow-hidden">
             <div className="bg-teal-500/10 p-6 flex items-center gap-3">
-              <span className="grid place-items-center h-12 w-12 rounded-full bg-teal-500 text-white"><ShieldCheck size={26} /></span>
+              <span className="relative grid place-items-center h-14 w-14 rounded-full text-white shrink-0" style={{ background: "linear-gradient(145deg,#5eead4,#0d9488)", boxShadow: "0 12px 26px -6px rgba(13,148,136,.55), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 7px rgba(0,0,0,.3)" }}>
+                <ShieldCheck size={26} strokeWidth={2} />
+                <span aria-hidden className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 34% 24%, rgba(255,255,255,.5), transparent 46%)" }} />
+              </span>
               <div>
                 <p className="font-display text-lg font-bold text-ink-900">Authentic & current</p>
                 <p className="text-sm text-teal-700">Verified by LARE Learn · issued {(d.issued_at || "").slice(0, 10)}</p>

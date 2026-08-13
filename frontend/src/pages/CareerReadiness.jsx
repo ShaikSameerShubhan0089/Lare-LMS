@@ -4,6 +4,7 @@ import {
   Compass, Target, ArrowRight, CheckCircle2, TrendingUp, Brain, Code2,
 } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
+import { RadialGauge } from "../components/drive/charts.jsx";
 import { PageHeader, Loading, EmptyState } from "../components/ui/states.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -86,11 +87,8 @@ function RoleCard({ r }) {
           <h3 className="font-display text-lg font-semibold text-ink-900">{r.title}</h3>
           {r.description && <p className="text-sm text-slate-500 mt-0.5">{r.description}</p>}
         </div>
-        <div className="text-right shrink-0">
-          <p className={`font-display text-3xl font-bold tabular-nums ${
-            r.match_pct >= 80 ? "text-teal-600" : r.match_pct >= 50 ? "text-amber-600" : "text-rose-600"
-          }`}>{r.match_pct}%</p>
-          <p className="text-xs text-slate-400">ready</p>
+        <div className="shrink-0">
+          <RadialGauge value={r.match_pct} label="role fit" size={92} color={r.match_pct >= 80 ? "#0D9488" : r.match_pct >= 50 ? "#F59E0B" : "#E11D48"} />
         </div>
       </div>
 

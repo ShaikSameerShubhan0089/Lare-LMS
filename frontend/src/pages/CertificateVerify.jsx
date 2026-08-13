@@ -39,8 +39,12 @@ export default function CertificateVerify() {
         ) : valid ? (
           <div>
             <div className="rounded-xl bg-teal-500/10 border border-teal-200 p-4 mb-4 flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-teal-800 font-medium">
-                <ShieldCheck size={18} className="text-teal-600" /> Authentic — issued by LARE Learn
+              <span className="flex items-center gap-3 text-teal-800 font-medium">
+                <span className="relative grid place-items-center h-11 w-11 rounded-full text-white shrink-0" style={{ background: "linear-gradient(145deg,#5eead4,#0d9488)", boxShadow: "0 8px 18px -5px rgba(13,148,136,.55), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -3px 5px rgba(0,0,0,.28)" }}>
+                  <ShieldCheck size={20} strokeWidth={2} />
+                  <span aria-hidden className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 34% 24%, rgba(255,255,255,.5), transparent 46%)" }} />
+                </span>
+                Authentic — issued by LARE Learn
               </span>
               <Button variant="secondary" onClick={() => printCertificate(cert)}><Printer size={15} /> Print</Button>
             </div>
