@@ -5,7 +5,10 @@ GET recomputes from live cross-service state (best-effort east-west to evidence
 """
 from __future__ import annotations
 
-from flask import Blueprint, current_app, request
+import json
+import time
+
+from flask import Blueprint, Response, current_app, request, stream_with_context
 
 from lare_common.auth_context import current_identity, require_roles
 from lare_common.responses import ok
@@ -53,6 +56,35 @@ def list_actions(did):
     queue = _queue(did, ident.user_id)
     with _db().session() as s:
         return ok(_svc().recompute(s, did, conflicts, queue))
+
+
+@bp.get("/drive/v1/actions/drive/<did>/stream")
+@require_roles(*READ)
+def stream(did):
+    """Server-Sent-Events push of the live attention queue. Bounded to ~60s per
+    connection (the client reconnects) so a streaming request never pins a worker
+    indefinitely — the deliberate trade-off vs. a persistent socket."""
+    ident = current_identity()
+    uid = ident.user_id
+    db, svc = _db(), _svc()
+
+    def gen():
+        last = None
+        for _ in range(5):  # ~60s window (5 × 12s)
+            conflicts = _conflicts(did, uid)
+            queue = _queue(did, uid)
+            with db.session() as s:
+                actions = svc.recompute(s, did, conflicts, queue)
+            payload = json.dumps(actions)
+            if payload != last:
+                yield f"data: {payload}\n\n"
+                last = payload
+            else:
+                yield ": heartbeat\n\n"
+            time.sleep(12)
+
+    return Response(stream_with_context(gen()), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
 
 
 @bp.post("/drive/v1/actions/<aid>/resolve")

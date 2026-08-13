@@ -64,6 +64,37 @@ async function refreshAccess() {
   return _refreshing;
 }
 
+// Server-Sent-Events stream over fetch (so we can send the Bearer header, which
+// EventSource cannot). Calls onData(parsedJson) per `data:` frame; returns a
+// stop() function. Silently no-ops on abort/network error — callers keep their
+// last-known state (e.g. the polling fallback).
+export function sseStream(path, onData) {
+  const ctrl = new AbortController();
+  (async () => {
+    try {
+      const headers = { Accept: "text/event-stream" };
+      if (tokens.access) headers.Authorization = `Bearer ${tokens.access}`;
+      const res = await fetch(`/api${path}`, { headers, signal: ctrl.signal });
+      if (!res.ok || !res.body) return;
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\n\n")) >= 0) {
+          const frame = buf.slice(0, i); buf = buf.slice(i + 2);
+          const line = frame.split("\n").find((l) => l.startsWith("data:"));
+          if (line) { try { onData(JSON.parse(line.slice(5).trim())); } catch { /* ignore */ } }
+        }
+      }
+    } catch { /* aborted or network — fallback poll covers it */ }
+  })();
+  return () => ctrl.abort();
+}
+
 async function request(path, opts = {}) {
   const { method = "GET", body, auth = true, raw = false, _retried = false } = opts;
   const headers = { "Content-Type": "application/json" };

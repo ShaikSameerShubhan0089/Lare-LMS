@@ -10,7 +10,7 @@ import {
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { Loading } from "../../components/ui/states.jsx";
 import { useAsync } from "../../hooks/useAsync.js";
-import { api, withFallback } from "../../lib/api.js";
+import { api, withFallback, sseStream } from "../../lib/api.js";
 import ResultsTab from "./ResultsTab.jsx";
 import InterviewsTab from "./InterviewsTab.jsx";
 import RoundsTab from "./RoundsTab.jsx";
@@ -166,6 +166,14 @@ function CommandCenter({ d, id, rounds, go }) {
   // even if these peers are slow/unavailable, and falls back to derived signals.
   const insightsA = useAsync(() => withFallback(api.driveInsights(id), []), [id, tick]);
   const actionsA = useAsync(() => withFallback(api.driveActions(id), []), [id, tick]);
+  // Live push of the attention queue via SSE (bounded ~60s server-side, so we
+  // reconnect). Falls back to actionsA (the poll) when the stream is unavailable.
+  const [liveActions, setLiveActions] = useState(null);
+  useEffect(() => {
+    let stop = sseStream(`/drive/v1/actions/drive/${id}/stream`, setLiveActions);
+    const reconnect = setInterval(() => { stop(); stop = sseStream(`/drive/v1/actions/drive/${id}/stream`, setLiveActions); }, 62000);
+    return () => { stop(); clearInterval(reconnect); };
+  }, [id]);
   if ((funnel.loading && !funnel.data) || (regsA.loading && !regsA.data)) return <Loading />;
 
   const f = funnel.data || { total: 0, by_status: {} };
@@ -201,7 +209,7 @@ function CommandCenter({ d, id, rounds, go }) {
   const TARGET = { calibration: "decisions" };
   const ACT_ICON = { evidence_conflict: ShieldAlert, panel_divergent: GitBranch, ready_decision: Trophy, coverage_gap: FileSearch };
   const ACT_JUMP = { evidence_conflict: "evidence", panel_divergent: "candidates", ready_decision: "decisions", coverage_gap: "candidates" };
-  const realActions = (actionsA.data || []).map((a) => ({
+  const realActions = ((liveActions ?? actionsA.data) || []).map((a) => ({
     priority: a.priority, tone: a.priority === "high" ? "warn" : a.kind === "ready_decision" ? "teal" : "brand",
     icon: ACT_ICON[a.kind] || Command, title: a.title, detail: a.detail,
     actions: [{ label: "Open", primary: true, onClick: () => go(ACT_JUMP[a.kind] || "candidates") }],
@@ -216,7 +224,7 @@ function CommandCenter({ d, id, rounds, go }) {
   return (
     <div>
       <div className="flex items-center justify-end mb-2">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> Live · auto-refreshing</span>
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" /> {liveActions ? "Live · streaming" : "Live · auto-refreshing"}</span>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <ReadOut label="Candidate pool" value={total} hint={`${ineligible} ineligible`} />
