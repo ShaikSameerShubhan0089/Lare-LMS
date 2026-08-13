@@ -9,6 +9,26 @@ import { useAuth } from "../lib/auth.jsx";
 
 // Cognitive Twin v0.1 — a learner's skill map, computed from their exam history.
 // A student sees their own; a recruiter/admin can pass a candidateId to view any.
+
+// Topic codes are stored short (e.g. "DP"); expand common ones for display.
+const TOPIC_FULL = {
+  dp: "Dynamic Programming",
+  dsa: "Data Structures & Algorithms",
+  ds: "Data Structures",
+  oop: "Object-Oriented Programming",
+  oops: "Object-Oriented Programming",
+  os: "Operating Systems",
+  dbms: "Database Management",
+  db: "Databases",
+  cn: "Computer Networks",
+  ml: "Machine Learning",
+  ai: "Artificial Intelligence",
+  bst: "Binary Search Trees",
+  ll: "Linked Lists",
+  regex: "Regular Expressions",
+};
+const expandTopic = (name = "") => TOPIC_FULL[name.trim().toLowerCase()] || name;
+
 export default function SkillMap({ candidateId }) {
   const { user } = useAuth();
   const id = candidateId || user?.id;
@@ -143,14 +163,14 @@ export default function SkillMap({ candidateId }) {
               <p className="text-xs text-slate-400 mb-2">Mastery across every mapped topic — the bigger the shape, the more well-rounded.</p>
               {topics.length >= 3 ? (
                 <>
-                  <RadarChart data={topics.slice(0, 8).map((t) => ({ label: t.name, value: t.mastery }))} color="#2563EB" />
+                  <RadarChart data={topics.slice(0, 8).map((t) => ({ label: expandTopic(t.name), value: t.mastery }))} color="#2563EB" />
                   {topics.length > 8 && (
                     <p className="text-[11px] text-slate-400 text-center -mt-1">Top 8 shown · all {topics.length} topics below</p>
                   )}
                 </>
               ) : (
                 <div className="flex flex-wrap gap-x-8 gap-y-4 justify-center py-2">
-                  {topics.map((t) => <GaugeCell key={t.name} name={t.name} pct={t.mastery} sub={`${t.correct}/${t.attempted}`} />)}
+                  {topics.map((t) => <GaugeCell key={t.name} name={expandTopic(t.name)} pct={t.mastery} sub={`${t.correct}/${t.attempted}`} />)}
                 </div>
               )}
             </Card>
@@ -163,7 +183,7 @@ export default function SkillMap({ candidateId }) {
               <p className="text-xs text-slate-400 mb-5">Ranked strongest first — each ring is your mastery of that topic.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-7 justify-items-center">
                 {topics.map((t) => (
-                  <GaugeCell key={t.name} name={t.name} pct={t.mastery} sub={`${t.correct}/${t.attempted}`} size={104} />
+                  <GaugeCell key={t.name} name={expandTopic(t.name)} pct={t.mastery} sub={`${t.correct}/${t.attempted}`} size={104} />
                 ))}
               </div>
             </Card>

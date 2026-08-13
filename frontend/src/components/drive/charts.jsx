@@ -56,7 +56,7 @@ export function HeatTile({ label, pct = 0, sub, band, rank }) {
    and per-axis value labels. Radius maps exactly to mastery. Needs ≥ 3 axes. */
 export function RadarChart({ data = [], color = "#2563EB", size = 300, max = 100 }) {
   const id = useId();
-  const padX = 100, padY = 46;                 // room so edge labels never clip
+  const padX = 138, padY = 48;                 // room so long edge labels never clip
   const W = size + padX * 2, H = size + padY * 2;
   const cx = W / 2, cy = H / 2, R = size / 2;
   const n = Math.max(1, data.length);
@@ -108,7 +108,7 @@ export function RadarChart({ data = [], color = "#2563EB", size = 300, max = 100
                 transition={{ delay: 0.5 + i * 0.05 }}>
                 <title>{d.label}: {p}%</title>
               </motion.circle>
-              <text x={lx} y={ly - 5} textAnchor={anchor} fill="rgb(var(--c-ink-900))" fontSize="11.5" fontWeight="600" className="capitalize">{d.label}</text>
+              <text x={lx} y={ly - 5} textAnchor={anchor} fill="rgb(var(--c-ink-900))" fontSize="11" fontWeight="600" style={{ textTransform: "capitalize" }}>{d.label}</text>
               <text x={lx} y={ly + 9} textAnchor={anchor} fontSize="11" fontWeight="700" fill={b.c2} style={{ fontVariantNumeric: "tabular-nums" }}>{p}%</text>
             </g>
           );
