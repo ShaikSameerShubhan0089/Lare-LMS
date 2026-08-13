@@ -192,6 +192,46 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Two products, one journey */}
+      <section className="mx-auto max-w-6xl px-5 py-16">
+        <div className="text-center mb-10">
+          <p className="text-sm font-semibold text-brand-500">One platform · two products</p>
+          <h2 className="mt-1 text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-ink-900">From first-year foundation to signed offer</h2>
+          <p className="mt-3 text-slate-500 max-w-2xl mx-auto">LARE Learn grows the talent. LARE Hire proves it and places it — on the same evidence, end to end.</p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-5 relative">
+          <div className="hidden md:grid absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-surface border border-slate-200 shadow-card place-items-center text-slate-400"><ArrowRight size={20} /></div>
+
+          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
+            className="rounded-2xl border border-slate-200 bg-gradient-to-br from-brand-500/[0.06] via-surface to-surface p-7">
+            <div className="flex items-center gap-3">
+              <span className="grid place-items-center h-12 w-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-sm"><GraduationCap size={24} /></span>
+              <div><p className="font-display text-xl font-bold text-ink-900">LARE Learn</p><p className="text-[12.5px] text-slate-500">Four years. One platform. Career-ready.</p></div>
+            </div>
+            <ul className="mt-5 space-y-2.5">
+              {[[Code2, "Branch-wise curriculum + adaptive coding drills"], [Sparkles, "AI tutor, skill map & micro-lessons"], [Trophy, "Gamified XP, badges & leaderboards"], [ShieldCheck, "Proctored assessments with a verifiable wallet"]].map(([Ic, t]) => (
+                <li key={t} className="flex items-start gap-2.5 text-[13.5px] text-slate-600"><Ic size={16} className="text-brand-500 mt-0.5 shrink-0" />{t}</li>
+              ))}
+            </ul>
+            <Button as={Link} to="/register" variant="secondary" className="mt-6 w-full justify-center">Start learning <ArrowRight size={16} /></Button>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.08 }}
+            className="rounded-2xl border border-slate-200 bg-gradient-to-br from-amber-500/[0.07] via-surface to-surface p-7">
+            <div className="flex items-center gap-3">
+              <span className="grid place-items-center h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-sm"><Briefcase size={24} /></span>
+              <div><p className="font-display text-xl font-bold text-ink-900">LARE Hire</p><p className="text-[12.5px] text-slate-500">Find the right talent, faster.</p></div>
+            </div>
+            <ul className="mt-5 space-y-2.5">
+              {[[Building2, "Campus drives, eligibility & multi-round pipelines"], [Award, "Evidence-backed candidate intelligence"], [TrendingUp, "Decision confidence, not gut feel"], [Users, "Interviewer workspace & calibration"]].map(([Ic, t]) => (
+                <li key={t} className="flex items-start gap-2.5 text-[13.5px] text-slate-600"><Ic size={16} className="text-amber-600 mt-0.5 shrink-0" />{t}</li>
+              ))}
+            </ul>
+            <Button as={Link} to="/drive/attend" variant="amber" className="mt-6 w-full justify-center">Attend a drive <ArrowRight size={16} /></Button>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Four-year journey */}
       <section className="mx-auto max-w-6xl px-5 py-14">
         <div className="flex items-end justify-between mb-6">
@@ -265,6 +305,22 @@ export default function Landing() {
             <span className="flex items-center gap-2"><TrendingUp size={16} className="text-teal-500" /> 94% placement readiness</span>
             <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-brand-500" /> Proctored &amp; audited</span>
             <span className="flex items-center gap-2"><Trophy size={16} className="text-amber-500" /> Evidence-backed hiring</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Closing CTA */}
+      <section className="relative overflow-hidden bg-invert-950">
+        <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 h-64 w-[42rem] rounded-full bg-amber-500/20 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.10] bg-grid" />
+        <div className="relative mx-auto max-w-4xl px-5 py-20 text-center">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-white leading-[1.1]">
+            Build career-ready talent.<br /><span className="text-amber-400">Hire it with confidence.</span>
+          </h2>
+          <p className="mt-4 text-slate-300 max-w-xl mx-auto">One evidence-driven platform for students, colleges and recruiters — from first-year foundation to signed offer.</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button as={Link} to="/register" size="lg" variant="amber">Get started <ArrowRight size={18} /></Button>
+            <Link to="/login" className="inline-flex items-center gap-2 h-12 px-6 rounded-lg border border-white/25 text-white font-semibold hover:bg-white/10 transition-colors">College / TPO login</Link>
           </div>
         </div>
       </section>
