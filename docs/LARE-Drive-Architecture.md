@@ -280,4 +280,11 @@ Cross-service reads are best-effort east-west (`ServiceClient`) and degrade grac
 
 **Phase 3 — frontend (implemented).** Cross-drive Command Center; the Drive console as an operating unit with perspective lenses; visual grammar library (`grammar.jsx`: ReadOut, Ribbon, Attention, AIObservation, SignalCard, Delta, Spark); Evidence Ledger, Decision Intelligence queue, Interviewer Workspace, Candidate Comparison, and a ⌘K command palette — all on the real services, with derived-signal fallbacks on fresh drives.
 
-**Remaining (future phases).** DB grants revoking UPDATE/DELETE on evidence (Phase 6 immutability hardening); SSE real-time; LLM narration for recruit-ai; a one-time evidence backfill from historical exam/coding/interview data (§12.2); competency-model authoring UI.
+**Hardening & completion (implemented).**
+- **Evidence immutability:** `init-db` installs a PostgreSQL `BEFORE UPDATE/DELETE` trigger on `evidence` (no-op on SQLite), making the ledger append-only at the database, not just the app layer.
+- **Evidence backfill:** `POST /drive/v1/evidence/backfill/{drive_id}` turns historical Round 1 marks into assessment evidence (idempotent), surfaced by a "Backfill from marks" button in the Evidence Ledger.
+- **LLM narration:** recruit-ai sharpens each insight's impact line via `lare_common.ai` when a provider key is present (`mode=live`), degrading to deterministic `derived` otherwise. Structure stays deterministic; only prose changes.
+- **Evaluation-model authoring:** the Configure tab edits the per-drive weighted competency model (`drive-competency`), with auto-normalising weights.
+- **Near-real-time:** the Command Center auto-refreshes funnel + intelligence every 25s (no flicker), with a Live indicator.
+
+**Still future.** True bus-backed **SSE** streaming (deferred deliberately: browser `EventSource` cannot send the RS256 bearer, and long-lived server streams risk worker exhaustion across 27 services — the safe path is a fetch-stream endpoint + gateway query-token support); DB `REVOKE` grants as a second immutability layer; per-competency (not just overall) evidence emission from coding/interview sources; cross-drive calibration.
