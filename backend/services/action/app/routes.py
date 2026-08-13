@@ -89,8 +89,10 @@ def stream(did):
                 yield ": heartbeat\n\n"
             time.sleep(12)
 
+    # NB: do NOT set a "Connection" header — it's a hop-by-hop header that WSGI
+    # servers (waitress/gunicorn) reject with an AssertionError (PEP 3333).
     return Response(stream_with_context(gen()), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @bp.post("/drive/v1/actions/<aid>/resolve")

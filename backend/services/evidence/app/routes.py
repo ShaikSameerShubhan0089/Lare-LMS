@@ -88,7 +88,9 @@ def backfill(did):
     ident = current_identity()
     try:
         r = _client.get("drive-core", f"/drive/v1/drives/{did}/rounds/1/scores", user_id=ident.user_id)
-        rows = (r or {}).get("data") or []
+        data = (r or {}).get("data") or {}
+        # round_scores returns {..., "scores": [ {candidate_id, percentage, ...} ]}
+        rows = data.get("scores", []) if isinstance(data, dict) else (data or [])
     except Exception:  # noqa: BLE001 — best effort
         rows = []
     with _db().session() as s:
