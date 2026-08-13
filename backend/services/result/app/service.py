@@ -21,6 +21,11 @@ class ResultService:
     def compile(self, s: Session, data) -> dict:
         # rank by final_score desc; outcome from cutoff + interview decision.
         ranked = sorted(data.rows, key=lambda r: -r.final_score)
+        # Batch-load existing results in ONE query (was N+1 — a SELECT per candidate,
+        # which times out over a remote/tunneled DB with hundreds of candidates).
+        existing = {r.candidate_id: r for r in s.execute(
+            select(Result).where(Result.drive_id == data.drive_id)
+        ).scalars().all()}
         compiled = 0
         for i, row in enumerate(ranked):
             if row.interview_decision == "select":
@@ -29,14 +34,11 @@ class ResultService:
                 outcome = "shortlist"
             else:
                 outcome = "fail"
-            res = s.execute(
-                select(Result).where(
-                    Result.drive_id == data.drive_id,
-                    Result.candidate_id == row.candidate_id)
-            ).scalar_one_or_none()
+            res = existing.get(row.candidate_id)
             if res is None:
                 res = Result(id=new_id(), drive_id=data.drive_id, candidate_id=row.candidate_id)
                 s.add(res)
+                existing[row.candidate_id] = res
             if res.status == "published":
                 continue  # don't mutate published results silently
             res.final_score = row.final_score

@@ -139,6 +139,8 @@ class GatewayConfig(BaseConfig):
     # which would let any slow upstream hold a connection open.
     SLOW_TIMEOUT = int(os.getenv("SLOW_TIMEOUT", "120"))
     SLOW_ROUTES = (
+        "/drive/v1/results/compile",     # ranks + upserts every candidate's result
+        "/drive/v1/evidence/backfill",   # emits evidence for every candidate
         "/drive/v1/questions/generate",  # LLM question generation
         "/ai/v1/complete",               # LLM completion
         "/drive/v1/coding/run-adhoc",    # multi-case code execution
