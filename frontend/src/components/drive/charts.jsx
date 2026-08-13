@@ -50,6 +50,72 @@ export function HeatTile({ label, pct = 0, sub, band, rank }) {
   );
 }
 
+/* ---------- Radar / spider chart (a profile across topics) ----------
+   Plots each topic on its own spoke; the connected polygon is the skill "shape".
+   Concentric grid rings, gradient fill, glowing stroke, band-coloured vertices
+   and per-axis value labels. Radius maps exactly to mastery. Needs ≥ 3 axes. */
+export function RadarChart({ data = [], color = "#2563EB", size = 340, max = 100 }) {
+  const id = useId();
+  const cx = size / 2, cy = size / 2, R = size / 2 - 54;
+  const n = Math.max(1, data.length);
+  const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
+  const onAxis = (frac, i, r = R) => [cx + frac * r * Math.cos(ang(i)), cy + frac * r * Math.sin(ang(i))];
+  const ringPoly = (f) => data.map((_, i) => onAxis(f, i).join(",")).join(" ");
+  const valuePoly = data.map((d, i) => onAxis(Math.max(0, Math.min(max, d.value)) / max, i).join(",")).join(" ");
+  return (
+    <div className="w-full grid place-items-center overflow-x-auto">
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ maxWidth: "100%" }}>
+        <defs>
+          <radialGradient id={`rf${id}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.42" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.14" />
+          </radialGradient>
+          <filter id={`rg${id}`} x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor={color} floodOpacity="0.5" />
+          </filter>
+        </defs>
+
+        {/* grid rings + spokes */}
+        {[0.25, 0.5, 0.75, 1].map((f) => (
+          <polygon key={f} points={ringPoly(f)} fill="none" stroke="rgb(var(--c-slate-200))" strokeWidth="1" opacity={f === 1 ? 0.9 : 0.55} />
+        ))}
+        {data.map((d, i) => {
+          const [x, y] = onAxis(1, i);
+          return <line key={`sp${i}`} x1={cx} y1={cy} x2={x} y2={y} stroke="rgb(var(--c-slate-100))" strokeWidth="1" />;
+        })}
+
+        {/* value shape */}
+        <motion.g style={{ transformBox: "fill-box", transformOrigin: "center" }}
+          initial={{ opacity: 0, scale: 0.5 }} whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
+          <polygon points={valuePoly} fill={`url(#rf${id})`} stroke={color} strokeWidth="2.5" strokeLinejoin="round" filter={`url(#rg${id})`} />
+        </motion.g>
+
+        {/* vertices (coloured by band) + labels */}
+        {data.map((d, i) => {
+          const p = Math.max(0, Math.min(100, Math.round(d.value)));
+          const b = MASTERY_BANDS[bandFor(p)];
+          const [vx, vy] = onAxis(p / max, i);
+          const [lx, ly] = onAxis(1, i, R + 20);
+          const c = Math.cos(ang(i));
+          const anchor = c > 0.3 ? "start" : c < -0.3 ? "end" : "middle";
+          return (
+            <g key={`v${i}`}>
+              <motion.circle cx={vx} cy={vy} r="4.5" fill="rgb(var(--c-surface))" stroke={b.c2} strokeWidth="2.5"
+                initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: "-40px" }}
+                transition={{ delay: 0.5 + i * 0.05 }}>
+                <title>{d.label}: {p}%</title>
+              </motion.circle>
+              <text x={lx} y={ly - 5} textAnchor={anchor} fill="rgb(var(--c-ink-900))" fontSize="11.5" fontWeight="600" className="capitalize">{d.label}</text>
+              <text x={lx} y={ly + 9} textAnchor={anchor} fontSize="11" fontWeight="700" fill={b.c2} style={{ fontVariantNumeric: "tabular-nums" }}>{p}%</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 export function MasteryBar({ label, pct = 0, sub, band, small, rank }) {
   const p = Math.max(0, Math.min(100, Math.round(pct)));
   const b = MASTERY_BANDS[band] || MASTERY_BANDS[bandFor(p)];

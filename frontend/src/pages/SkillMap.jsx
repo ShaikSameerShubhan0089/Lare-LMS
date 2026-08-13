@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Brain, Target, TrendingUp, Sparkles, AlertCircle, CalendarDays, Lightbulb, WandSparkles, Code2, Repeat } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
-import { RadialGauge, HeatTile } from "../components/drive/charts.jsx";
+import { RadialGauge, RadarChart } from "../components/drive/charts.jsx";
 import { PageHeader, Loading } from "../components/ui/states.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -136,13 +136,28 @@ export default function SkillMap({ candidateId }) {
             </Card>
           </div>
 
+          {/* Skill profile — radar across every topic */}
+          {topics.length > 0 && (
+            <Card className="p-6">
+              <h3 className="font-display font-semibold text-ink-900 mb-1">Your skill profile</h3>
+              <p className="text-xs text-slate-400 mb-2">Mastery across every mapped topic — the bigger the shape, the more well-rounded.</p>
+              {topics.length >= 3 ? (
+                <RadarChart data={topics.map((t) => ({ label: t.name, value: t.mastery }))} color="#2563EB" />
+              ) : (
+                <div className="flex flex-wrap gap-x-8 gap-y-4 justify-center py-2">
+                  {topics.map((t) => <GaugeCell key={t.name} name={t.name} pct={t.mastery} sub={`${t.correct}/${t.attempted}`} />)}
+                </div>
+              )}
+            </Card>
+          )}
+
           {/* By category */}
           {cats.length > 0 && (
             <Card className="p-6">
               <h3 className="font-display font-semibold text-ink-900 mb-4">Mastery by area</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="flex flex-wrap gap-x-8 gap-y-5 justify-center sm:justify-start">
                 {cats.map((c) => (
-                  <HeatTile key={c.name} label={c.name} pct={c.mastery} band={c.band} sub={`${c.correct}/${c.attempted}`} />
+                  <GaugeCell key={c.name} name={c.name} pct={c.mastery} sub={`${c.correct}/${c.attempted}`} size={118} />
                 ))}
               </div>
             </Card>
@@ -160,21 +175,9 @@ export default function SkillMap({ candidateId }) {
                   {codingVerified > 0 && <Badge tone="teal">{codingVerified} verified ✓</Badge>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="flex flex-wrap gap-x-8 gap-y-5 justify-center sm:justify-start">
                 {languages.map((l) => (
-                  <HeatTile key={l.name} label={l.name} pct={l.mastery} band={l.band} sub={`${l.solved}/${l.attempted}`} />
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* All topics */}
-          {topics.length > 0 && (
-            <Card className="p-6">
-              <h3 className="font-display font-semibold text-ink-900 mb-4">Every topic, ranked</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {topics.map((t, i) => (
-                  <HeatTile key={t.name} label={t.name} pct={t.mastery} band={t.band} sub={`${t.correct}/${t.attempted}`} rank={i + 1} />
+                  <GaugeCell key={l.name} name={l.name} pct={l.mastery} sub={`${l.solved}/${l.attempted}`} />
                 ))}
               </div>
             </Card>
@@ -352,6 +355,17 @@ function Coach({ learnerId }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function GaugeCell({ name, pct, sub, size = 108 }) {
+  const color = pct >= 80 ? "#0D9488" : pct >= 50 ? "#D97706" : "#E11D48";
+  return (
+    <div className="text-center">
+      <RadialGauge value={pct} color={color} size={size} />
+      <p className="mt-1.5 text-sm font-medium text-ink-900 capitalize">{name}</p>
+      {sub && <p className="text-[11px] text-slate-400 tabular-nums">{sub}</p>}
+    </div>
   );
 }
 
