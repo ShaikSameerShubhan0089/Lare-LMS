@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Brain, Target, TrendingUp, Sparkles, AlertCircle, CalendarDays, Lightbulb, WandSparkles, Code2, Repeat } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
+import { RadialGauge } from "../components/drive/charts.jsx";
 import { PageHeader, Loading } from "../components/ui/states.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -68,6 +69,14 @@ export default function SkillMap({ candidateId }) {
         </Card>
       ) : (
         <div className="space-y-6">
+          {/* Mastery hero */}
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-brand-500/[0.05] via-surface to-teal-500/[0.04] p-6 flex flex-col sm:flex-row items-center gap-6">
+            <RadialGauge value={o.mastery} label="Mastery" color="#2563EB" size={132} />
+            <div className="text-center sm:text-left">
+              <h2 className="font-display text-xl font-bold text-ink-900">Your skill map</h2>
+              <p className="text-sm text-slate-500 mt-1 max-w-md">Overall competence across {topics.length} mapped topics — {o.correct} of {o.attempted} questions correct across {data.exams_taken} tests.</p>
+            </div>
+          </div>
           {/* Overall */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Stat icon={Brain} tone="brand" label="Overall mastery" value={`${o.mastery}%`} />

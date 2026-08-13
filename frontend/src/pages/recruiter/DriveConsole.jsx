@@ -66,7 +66,8 @@ export default function DriveConsole() {
       </Link>
 
       {/* Mission header — the drive as an operating unit */}
-      <div className="rounded-2xl border border-slate-200 bg-surface p-5 mb-5">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-brand-500/[0.04] via-surface to-surface p-5 mb-5">
+        <div aria-hidden className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-brand-500/10 blur-3xl pointer-events-none" />
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">

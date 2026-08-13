@@ -8,13 +8,14 @@ import { api, withFallback } from "../lib/api.js";
 import { demoCertificates, DEMO_LEARNER_ID } from "../lib/demo.js";
 import { certificateHtml, printCertificate } from "../lib/certificate.js";
 
-// Full static class strings (Tailwind JIT can't see interpolated class names).
-const SERIES_ICON = {
-  1: "bg-brand-500/10 text-brand-600",
-  2: "bg-teal-500/10 text-teal-600",
-  3: "bg-amber-500/10 text-amber-600",
-  4: "bg-rose-500/10 text-rose-600",
+// 3D seal medallion gradients per programme year.
+const SEAL = {
+  1: { g: "linear-gradient(145deg,#93c5fd,#1d4ed8)", s: "37,99,235" },
+  2: { g: "linear-gradient(145deg,#5eead4,#0d9488)", s: "13,148,136" },
+  3: { g: "linear-gradient(145deg,#fcd34d,#d97706)", s: "245,158,11" },
+  4: { g: "linear-gradient(145deg,#fda4af,#be123c)", s: "225,29,72" },
 };
+const sealOf = (y) => SEAL[y] || SEAL[1];
 
 export default function Certificates() {
   const { user } = useAuth();
@@ -40,11 +41,13 @@ export default function Certificates() {
               onClick={() => setSelected(c)}
               className="w-full text-left"
             >
-              <Card className="p-6 relative overflow-hidden hover:border-brand-300 hover:shadow-sm transition">
+              <Card className="p-6 relative overflow-hidden hover:border-brand-300 hover:shadow-lift transition">
                 <div className="absolute top-0 right-0 h-24 w-24 bg-gradient-to-br from-amber-400/20 to-transparent rounded-bl-full" />
                 <div className="flex items-start gap-4">
-                  <span className={`grid place-items-center h-12 w-12 rounded-lg ${SERIES_ICON[c.year_no] || SERIES_ICON[1]}`}>
-                    <Award size={26} />
+                  <span className="relative grid place-items-center h-14 w-14 rounded-full text-white shrink-0"
+                    style={{ background: sealOf(c.year_no).g, boxShadow: `0 10px 22px -6px rgba(${sealOf(c.year_no).s},.5), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 6px rgba(0,0,0,.28)` }}>
+                    <Award size={24} strokeWidth={2} />
+                    <span aria-hidden className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 34% 24%, rgba(255,255,255,.5), transparent 46%)" }} />
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
