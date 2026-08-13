@@ -14,7 +14,7 @@ const APPS = [
     name: "LARE Learn",
     tagline: "Four years. One platform. Career-ready.",
     desc: "The 4-year structured training programme — curriculum, assessments, gamified progress, certificates, and the AI tutor.",
-    from: "#3B82F6", to: "#1D4ED8", glow: "rgba(37,99,235,.22)",
+    c1: "#3B82F6", c2: "#1D4ED8", glow: "rgba(37,99,235,.22)",
   },
   {
     to: "/drive",
@@ -22,7 +22,7 @@ const APPS = [
     name: "LARE Hire",
     tagline: "Find the right talent, faster.",
     desc: "Online recruitment & assessment — drives, proctored exams, coding rounds, interviews, results, and offers.",
-    from: "#F59E0B", to: "#D97706", glow: "rgba(245,158,11,.26)",
+    c1: "#F59E0B", c2: "#D97706", glow: "rgba(245,158,11,.26)",
   },
 ];
 
@@ -38,7 +38,7 @@ function ProductTile({ a, onClick }) {
     >
       <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full blur-2xl opacity-70" style={{ background: a.glow }} />
       <div style={{ z: 28 }} className="relative">
-        <span className="grid place-items-center h-14 w-14 rounded-2xl text-white" style={{ background: `linear-gradient(135deg, ${a.from}, ${a.to})`, boxShadow: `0 12px 26px -8px ${a.from}, inset 0 1px 0 rgba(255,255,255,.35)` }}>
+        <span className="grid place-items-center h-14 w-14 rounded-2xl text-white" style={{ background: `linear-gradient(135deg, ${a.c1}, ${a.c2})`, boxShadow: `0 12px 26px -8px ${a.c1}, inset 0 1px 0 rgba(255,255,255,.35)` }}>
           <a.icon size={28} />
         </span>
         <div className="mt-5 flex items-center justify-between">
