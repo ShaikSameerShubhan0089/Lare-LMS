@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Flame, Trophy, Award, Star, ArrowRight, Code2, Target } from "lucide-react";
 import { Button, Badge, Card, XPBar, StatTile } from "../components/ui/primitives.jsx";
+import { Orbs } from "../components/ui/Decor.jsx";
 import { Loading } from "../components/ui/states.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { api, withFallback } from "../lib/api.js";
@@ -48,6 +49,7 @@ export default function Dashboard() {
       {/* Hero */}
       <Card className="p-6 bg-invert-900 text-white border-0 relative overflow-hidden">
         <div className="bg-grid absolute inset-0 opacity-[0.12]" />
+        <Orbs tone="warm" className="opacity-70" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>
             <Badge tone="amber"><Star size={13} /> Level {g.level}</Badge>

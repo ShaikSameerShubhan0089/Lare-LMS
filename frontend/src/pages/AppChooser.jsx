@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { GraduationCap, Briefcase, ArrowRight, LogOut } from "lucide-react";
 import { Logo } from "../components/ui/Logo.jsx";
+import { Sphere, useTilt } from "../components/ui/Decor.jsx";
 import { useAuth } from "../lib/auth.jsx";
 
 // Post-login chooser: two standalone apps on one platform. Pick one to enter its
@@ -12,8 +14,7 @@ const APPS = [
     name: "LARE Learn",
     tagline: "Four years. One platform. Career-ready.",
     desc: "The 4-year structured training programme — curriculum, assessments, gamified progress, certificates, and the AI tutor.",
-    accent: "from-brand-500/15 to-brand-500/0 text-brand-600",
-    ring: "hover:border-brand-300",
+    from: "#3B82F6", to: "#1D4ED8", glow: "rgba(37,99,235,.22)",
   },
   {
     to: "/drive",
@@ -21,10 +22,35 @@ const APPS = [
     name: "LARE Hire",
     tagline: "Find the right talent, faster.",
     desc: "Online recruitment & assessment — drives, proctored exams, coding rounds, interviews, results, and offers.",
-    accent: "from-amber-500/15 to-amber-500/0 text-amber-600",
-    ring: "hover:border-amber-300",
+    from: "#F59E0B", to: "#D97706", glow: "rgba(245,158,11,.26)",
   },
 ];
+
+function ProductTile({ a, onClick }) {
+  const { rotX, rotY, onTilt, resetTilt } = useTilt(10);
+  return (
+    <motion.button
+      onClick={onClick}
+      onMouseMove={onTilt}
+      onMouseLeave={resetTilt}
+      style={{ rotateX: rotX, rotateY: rotY, transformPerspective: 1000, transformStyle: "preserve-3d" }}
+      className="relative text-left group rounded-2xl border border-slate-200 bg-surface p-7 shadow-card hover:shadow-lift transition-shadow overflow-hidden will-change-transform"
+    >
+      <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full blur-2xl opacity-70" style={{ background: a.glow }} />
+      <div style={{ z: 28 }} className="relative">
+        <span className="grid place-items-center h-14 w-14 rounded-2xl text-white" style={{ background: `linear-gradient(135deg, ${a.from}, ${a.to})`, boxShadow: `0 12px 26px -8px ${a.from}, inset 0 1px 0 rgba(255,255,255,.35)` }}>
+          <a.icon size={28} />
+        </span>
+        <div className="mt-5 flex items-center justify-between">
+          <h2 className="font-display font-semibold text-lg text-ink-900">{a.name}</h2>
+          <ArrowRight size={18} className="text-slate-300 group-hover:text-ink-900 group-hover:translate-x-0.5 transition-all" />
+        </div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mt-0.5">{a.tagline}</p>
+        <p className="text-sm text-slate-500 mt-3 leading-relaxed">{a.desc}</p>
+      </div>
+    </motion.button>
+  );
+}
 
 export default function AppChooser() {
   const nav = useNavigate();
@@ -36,40 +62,23 @@ export default function AppChooser() {
         <Logo size={84} />
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-500 hidden sm:block">{user?.full_name || user?.email}</span>
-          <button
-            onClick={async () => { await logout(); nav("/login"); }}
-            className="text-sm text-slate-500 hover:text-ink-900 flex items-center gap-1.5"
-          >
+          <button onClick={async () => { await logout(); nav("/login"); }} className="text-sm text-slate-500 hover:text-ink-900 flex items-center gap-1.5">
             <LogOut size={15} /> Sign out
           </button>
         </div>
       </header>
 
-      <main className="flex-1 grid place-items-center p-6">
-        <div className="w-full max-w-3xl">
-          <div className="text-center mb-8">
+      <main className="relative flex-1 grid place-items-center p-6 overflow-hidden">
+        {/* ambient 3D spheres */}
+        <Sphere color="brand" size={70} className="absolute top-16 left-[12%] opacity-30" delay={0.4} />
+        <Sphere color="amber" size={90} className="absolute bottom-16 right-[10%] opacity-30" delay={1.2} />
+        <div className="relative w-full max-w-3xl">
+          <div className="text-center mb-9">
             <h1 className="text-2xl lg:text-3xl font-display font-bold text-ink-900">Choose your app</h1>
             <p className="text-slate-500 mt-1">Two applications, one LARE platform. Pick where you're headed.</p>
           </div>
-
           <div className="grid sm:grid-cols-2 gap-5">
-            {APPS.map((a) => (
-              <button
-                key={a.to}
-                onClick={() => nav(a.to)}
-                className={`text-left group rounded-xl border border-slate-200 bg-surface p-6 shadow-card transition-colors ${a.ring}`}
-              >
-                <div className={`grid place-items-center h-14 w-14 rounded-xl bg-gradient-to-br ${a.accent}`}>
-                  <a.icon size={28} />
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <h2 className="font-display font-semibold text-lg text-ink-900">{a.name}</h2>
-                  <ArrowRight size={18} className="text-slate-300 group-hover:text-ink-900 transition-colors" />
-                </div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mt-0.5">{a.tagline}</p>
-                <p className="text-sm text-slate-500 mt-3 leading-relaxed">{a.desc}</p>
-              </button>
-            ))}
+            {APPS.map((a) => <ProductTile key={a.to} a={a} onClick={() => nav(a.to)} />)}
           </div>
         </div>
       </main>
