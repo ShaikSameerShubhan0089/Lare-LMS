@@ -54,8 +54,11 @@ def list_actions(did):
     ident = current_identity()
     conflicts = _conflicts(did, ident.user_id)
     queue = _queue(did, ident.user_id)
-    with _db().session() as s:
-        return ok(_svc().recompute(s, did, conflicts, queue))
+    try:
+        with _db().session() as s:
+            return ok(_svc().recompute(s, did, conflicts, queue))
+    except Exception:  # noqa: BLE001 — degrade to empty rather than 500 the surface
+        return ok([])
 
 
 @bp.get("/drive/v1/actions/drive/<did>/stream")
@@ -71,11 +74,14 @@ def stream(did):
     def gen():
         last = None
         for _ in range(5):  # ~60s window (5 × 12s)
-            conflicts = _conflicts(did, uid)
-            queue = _queue(did, uid)
-            with db.session() as s:
-                actions = svc.recompute(s, did, conflicts, queue)
-            payload = json.dumps(actions)
+            try:
+                conflicts = _conflicts(did, uid)
+                queue = _queue(did, uid)
+                with db.session() as s:
+                    actions = svc.recompute(s, did, conflicts, queue)
+                payload = json.dumps(actions)
+            except Exception:  # noqa: BLE001 — never let the stream 500; emit empty
+                payload = "[]"
             if payload != last:
                 yield f"data: {payload}\n\n"
                 last = payload
