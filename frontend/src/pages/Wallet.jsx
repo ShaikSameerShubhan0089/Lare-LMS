@@ -102,9 +102,17 @@ export default function Wallet() {
                 <h2 className="mt-1 font-display text-2xl font-bold text-ink-900">{cred.subject_name}</h2>
                 <p className="text-sm text-slate-500">Issued {(cred.issued_at || "").slice(0, 10)} · {vc.issuer}</p>
               </div>
-              <div className="text-right">
-                <p className="font-display text-3xl font-bold text-brand-600 tabular-nums">{vc.overall_mastery}%</p>
-                <p className="text-xs text-slate-400">overall mastery</p>
+              <div className="flex items-center gap-4">
+                {/* 3D verified seal */}
+                <div aria-hidden className="relative grid place-items-center h-16 w-16 rounded-full text-white shrink-0"
+                  style={{ background: "linear-gradient(145deg,#5eead4,#0d9488)", boxShadow: "0 12px 26px -6px rgba(13,148,136,.55), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 7px rgba(0,0,0,.3)" }}>
+                  <ShieldCheck size={28} strokeWidth={2} />
+                  <span className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 34% 24%, rgba(255,255,255,.5), transparent 46%)" }} />
+                </div>
+                <div className="text-right">
+                  <p className="font-display text-3xl font-bold text-brand-600 tabular-nums">{vc.overall_mastery}%</p>
+                  <p className="text-xs text-slate-400">overall mastery</p>
+                </div>
               </div>
             </div>
 
