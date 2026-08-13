@@ -113,7 +113,7 @@ export default function RoundsTab({ id }) {
             key={r.order}
             onClick={() => setOrder(r.order)}
             className={`h-9 px-4 rounded-md text-sm font-medium transition-colors ${
-              order === r.order ? "bg-ink-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              order === r.order ? "bg-invert-900 text-white" : "bg-surface border border-slate-200 text-slate-600 hover:bg-slate-50"
             }`}
           >
             {r.order}. {r.label || r.type}{r.optional ? " (opt)" : ""}
@@ -164,7 +164,7 @@ export default function RoundsTab({ id }) {
                 placeholder="Search this round by name, email, roll…" className="h-9 pl-8 sm:w-72" />
             </div>
             <select value={filterC} onChange={(e) => setFilterC(e.target.value)}
-              className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white">
+              className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-surface">
               <option value="all">All candidates</option>
               <option value="cleared">Cleared only</option>
               <option value="not_cleared">Not cleared</option>
@@ -288,7 +288,7 @@ function SkillsModal({ candidate, onClose }) {
   const cats = data?.by_category || [];
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-invert-950/40 p-4" onClick={onClose}>
       <Card className="w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
           <div>

@@ -35,7 +35,7 @@ export default function CertificateVerify() {
         </div>
 
         {state.loading ? (
-          <div className="rounded-2xl bg-white border border-slate-200 p-10 text-center text-slate-400">Verifying…</div>
+          <div className="rounded-2xl bg-surface border border-slate-200 p-10 text-center text-slate-400">Verifying…</div>
         ) : valid ? (
           <div>
             <div className="rounded-xl bg-teal-500/10 border border-teal-200 p-4 mb-4 flex items-center justify-between gap-3">
@@ -48,7 +48,7 @@ export default function CertificateVerify() {
                  dangerouslySetInnerHTML={{ __html: certificateHtml(cert) }} />
           </div>
         ) : (
-          <div className="rounded-2xl bg-white border border-rose-200 shadow-sm p-8 text-center">
+          <div className="rounded-2xl bg-surface border border-rose-200 shadow-sm p-8 text-center">
             <span className="mx-auto grid place-items-center h-12 w-12 rounded-full bg-rose-500/10 text-rose-600"><ShieldX size={26} /></span>
             <p className="mt-3 font-display text-lg font-bold text-ink-900">Could not verify</p>
             <p className="mt-1 text-sm text-slate-500">

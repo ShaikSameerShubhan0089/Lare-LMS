@@ -82,7 +82,7 @@ function Authoring({ onCreated }) {
               <select
                 value={form[key]}
                 onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                className="w-full h-10 px-2 rounded-md border border-slate-200 bg-white text-sm text-ink-900"
+                className="w-full h-10 px-2 rounded-md border border-slate-200 bg-surface text-sm text-ink-900"
               >
                 {options.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -147,7 +147,7 @@ function DriveSelect({ value, onChange }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full h-11 px-3 rounded-md border border-slate-200 text-ink-900 bg-white"
+        className="w-full h-11 px-3 rounded-md border border-slate-200 text-ink-900 bg-surface"
       >
         <option value="">— Select a drive —</option>
         {list.map((d) => (

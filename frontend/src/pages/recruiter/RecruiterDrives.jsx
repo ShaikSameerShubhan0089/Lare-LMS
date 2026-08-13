@@ -79,7 +79,7 @@ export default function RecruiterDrives() {
       </div>
 
       {actions.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden mb-4">
+        <div className="rounded-2xl border border-slate-200 bg-surface overflow-hidden mb-4">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><Command size={16} className="text-slate-400" /> Needs attention</h3>
             <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">across all drives</span>
@@ -93,7 +93,7 @@ export default function RecruiterDrives() {
           <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search drives by title, company, venue…" className="h-9 pl-8 w-72" />
         </div>
-        <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white capitalize">
+        <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-surface capitalize">
           {["all", "draft", "open", "closed"].map((st) => <option key={st} value={st}>{st === "all" ? "All statuses" : st}</option>)}
         </select>
         <span className="text-xs text-slate-400">{list.length} of {all.length}</span>
@@ -105,9 +105,9 @@ export default function RecruiterDrives() {
         {list.map((d) => {
           const f = stat(d); const health = healthOf(d); const fl = flightOf(f); const sel = f.by_status?.selected || 0;
           return (
-            <div key={d.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div key={d.id} className="rounded-2xl border border-slate-200 bg-surface p-5">
               <div className="flex items-start justify-between">
-                <span className="grid place-items-center h-11 w-11 rounded-xl bg-ink-900 text-white"><Building2 size={22} /></span>
+                <span className="grid place-items-center h-11 w-11 rounded-xl bg-invert-900 text-white"><Building2 size={22} /></span>
                 <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold px-2 py-1 rounded" style={{ background: health === "good" ? "rgba(13,148,136,.1)" : health === "warn" ? "rgba(217,119,6,.12)" : "rgba(100,116,139,.1)", color: bandHex(health) }}>
                   <span className="h-1.5 w-1.5 rounded-full" style={{ background: bandHex(health) }} />
                   {d.status === "draft" ? "Draft" : health === "good" ? "On track" : health === "warn" ? "Needs attention" : "Idle"}
@@ -159,7 +159,7 @@ function CreateDrive({ onClose, onCreated }) {
     finally { setBusy(false); }
   }
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink-950/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-invert-950/40 p-4" onClick={onClose}>
       <Card className="w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-lg font-bold text-ink-900">New recruitment drive</h2>

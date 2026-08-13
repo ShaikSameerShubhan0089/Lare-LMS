@@ -39,7 +39,7 @@ export default function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-ink-900/50 backdrop-blur-sm flex items-start justify-center pt-[14vh] p-4"
+      className="fixed inset-0 z-[60] bg-invert-900/50 backdrop-blur-sm flex items-start justify-center pt-[14vh] p-4"
       onClick={() => setOpen(false)}
       onKeyDown={(e) => {
         if (e.key === "ArrowDown") { e.preventDefault(); setCur((c) => Math.min(c + 1, items.length - 1)); }
@@ -47,7 +47,7 @@ export default function CommandPalette() {
         else if (e.key === "Enter") { e.preventDefault(); go(cur); }
       }}
     >
-      <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-surface shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100">
           <Search size={18} className="text-slate-400" />
           <input autoFocus value={q} onChange={(e) => { setQ(e.target.value); setCur(0); }} aria-label="Command palette — jump to a drive or run a command" placeholder="Jump to a drive, or run a command…" className="flex-1 outline-none text-[15px] text-ink-900 bg-transparent" />

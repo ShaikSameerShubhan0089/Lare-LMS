@@ -3,7 +3,10 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth.jsx";
 import App from "./App.jsx";
+import { initTheme } from "./lib/theme.js";
 import "./index.css";
+
+initTheme(); // apply persisted light/dark before first paint
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

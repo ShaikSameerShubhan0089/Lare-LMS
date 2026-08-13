@@ -80,7 +80,7 @@ function CodeAnswer({ q, answer, onSave }) {
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5"><Code2 size={14} /> Write your solution</span>
         <select value={lang} onChange={(e) => { setLang(e.target.value); onSave({ code, language: e.target.value }); }}
-          className="h-8 px-2 rounded-md border border-slate-200 text-xs bg-white">
+          className="h-8 px-2 rounded-md border border-slate-200 text-xs bg-surface">
           {effLangs.map((l) => <option key={l} value={l}>{LANG_LABEL[l] || l}</option>)}
         </select>
       </div>
@@ -89,7 +89,7 @@ function CodeAnswer({ q, answer, onSave }) {
         onChange={(e) => setCode(e.target.value)}
         onBlur={() => onSave({ code, language: lang })}
         spellCheck={false}
-        className="w-full min-h-[190px] p-3 rounded-md border border-slate-200 font-mono text-sm text-ink-900 bg-slate-50 focus:bg-white"
+        className="w-full min-h-[190px] p-3 rounded-md border border-slate-200 font-mono text-sm text-ink-900 bg-slate-50 focus:bg-surface"
         placeholder="// write your code here"
       />
 
@@ -248,12 +248,12 @@ function Calculator({ onClose }) {
   const fnc = "bg-amber-500/10 text-amber-700 hover:bg-amber-500/20";
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-72 rounded-xl border border-slate-200 bg-white shadow-lift p-3">
+    <div className="fixed bottom-6 right-6 z-50 w-72 rounded-xl border border-slate-200 bg-surface shadow-lift p-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><CalcIcon size={13} /> Scientific calculator</span>
         <button onClick={onClose} className="text-slate-400 hover:text-ink-900" title="Close"><X size={15} /></button>
       </div>
-      <div className="mb-2 rounded-md bg-ink-900 text-white px-3 py-2 text-right">
+      <div className="mb-2 rounded-md bg-invert-900 text-white px-3 py-2 text-right">
         <div className="h-4 text-xs text-slate-400 truncate">{sub}</div>
         <div className="font-display text-2xl tabular-nums truncate">{main}</div>
       </div>
@@ -284,7 +284,7 @@ function Calculator({ onClose }) {
 
         <B onClick={() => push("0", "num")}>0</B>
         <B onClick={() => push(".", "num")}>.</B>
-        <B onClick={equals} cls="col-span-2 bg-ink-900 text-white hover:bg-ink-800">=</B>
+        <B onClick={equals} cls="col-span-2 bg-invert-900 text-white hover:bg-invert-800">=</B>
         <B onClick={() => push("+", "op")} cls={opc}>+</B>
       </div>
     </div>
@@ -538,7 +538,7 @@ function Runner({ exam: demoExam, live, onExit }) {
             <Eye size={15} /> {violations}/{VIOLATION_LIMIT} flags
           </span>
           <div className={`flex items-center gap-2 px-4 h-11 rounded-md font-display font-semibold tabular-nums ${
-            low ? "bg-rose-500/10 text-rose-600" : "bg-ink-900 text-white"
+            low ? "bg-rose-500/10 text-rose-600" : "bg-invert-900 text-white"
           }`}>
             <Clock size={18} /> {fmt(remaining)}
           </div>

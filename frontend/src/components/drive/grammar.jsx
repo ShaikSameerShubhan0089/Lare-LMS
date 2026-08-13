@@ -42,7 +42,7 @@ export function Spark({ points = [], color = "#4f46e5", w = 62, h = 20 }) {
 /* ---------- ReadOut (instrument metric) ---------- */
 export function ReadOut({ label, value, unit, delta, hint, spark }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 relative overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 bg-surface p-4 relative overflow-hidden">
       <div className="text-[10.5px] font-bold uppercase tracking-[0.13em] text-slate-400">{label}</div>
       <div className="mt-2 font-display text-[26px] font-bold tracking-tight text-ink-900 leading-none">
         {value}{unit && <span className="text-[15px] text-slate-400 font-semibold"> {unit}</span>}
@@ -66,13 +66,13 @@ export function Ribbon({ stages = [], selected, onSelect }) {
         return (
           <div key={s.key} className="relative flex-1 min-w-[122px] px-1">
             {i < stages.length - 1 && (
-              <div className="absolute top-9 -right-2 z-10 grid place-items-center h-4 w-4 rounded-full bg-white border border-slate-200 text-slate-300">
+              <div className="absolute top-9 -right-2 z-10 grid place-items-center h-4 w-4 rounded-full bg-surface border border-slate-200 text-slate-300">
                 <ChevronRight size={11} />
               </div>
             )}
             <button
               onClick={() => onSelect && onSelect(sel ? null : s.key)}
-              className={`w-full text-left rounded-xl border p-3 transition ${sel ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-200 hover:border-slate-300 bg-white"}`}
+              className={`w-full text-left rounded-xl border p-3 transition ${sel ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-200 hover:border-slate-300 bg-surface"}`}
             >
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 whitespace-nowrap">
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: hex }} /> {s.label}
@@ -113,7 +113,7 @@ export function Attention({ items = [] }) {
                 <div className="flex gap-2 mt-2.5">
                   {a.actions.map((x, j) => (
                     <button key={j} onClick={x.onClick}
-                      className={`h-7 px-3 rounded-lg text-[11.5px] font-semibold transition ${x.primary ? "bg-ink-900 text-white hover:bg-ink-800" : "text-slate-500 hover:text-ink-900 hover:bg-slate-100"}`}>
+                      className={`h-7 px-3 rounded-lg text-[11.5px] font-semibold transition ${x.primary ? "bg-invert-900 text-white hover:bg-invert-800" : "text-slate-500 hover:text-ink-900 hover:bg-slate-100"}`}>
                       {x.label}
                     </button>
                   ))}
@@ -149,7 +149,7 @@ export function AIObservation({ severity = "brand", title, observation, reason, 
       {action && (
         <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100">
           <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">Recommended</span>
-          <button onClick={action.onClick} className="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-ink-900 text-white text-[11.5px] font-semibold hover:bg-ink-800">
+          <button onClick={action.onClick} className="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-invert-900 text-white text-[11.5px] font-semibold hover:bg-invert-800">
             {action.label} <ChevronRight size={13} />
           </button>
         </div>
@@ -163,7 +163,7 @@ export function SignalCard({ name, sub, confidence, comps = [], riskTag, next, p
   const cHex = bandHex(band(confidence));
   return (
     <button onClick={onClick}
-      className={`text-left rounded-2xl border bg-white p-4 transition w-full ${picked ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-200 hover:border-slate-300 hover:-translate-y-px"}`}>
+      className={`text-left rounded-2xl border bg-surface p-4 transition w-full ${picked ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-200 hover:border-slate-300 hover:-translate-y-px"}`}>
       <div className="flex items-center gap-3">
         <span className="grid place-items-center h-10 w-10 rounded-xl text-white font-bold text-sm shrink-0" style={{ background: hueFor(name) }}>{initials(name)}</span>
         <div className="min-w-0 flex-1">

@@ -70,7 +70,7 @@ export default function LessonEditor({ lessonId, title, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink-900/40 flex items-start justify-center overflow-y-auto p-4">
+    <div className="fixed inset-0 z-50 bg-invert-900/40 flex items-start justify-center overflow-y-auto p-4">
       <Card className="w-full max-w-3xl my-8 p-0 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div>

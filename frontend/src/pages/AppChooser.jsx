@@ -32,7 +32,7 @@ export default function AppChooser() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="h-24 flex items-center justify-between px-6 lg:px-10 border-b border-slate-200 bg-white">
+      <header className="h-24 flex items-center justify-between px-6 lg:px-10 border-b border-slate-200 bg-surface">
         <Logo size={84} />
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-500 hidden sm:block">{user?.full_name || user?.email}</span>
@@ -57,7 +57,7 @@ export default function AppChooser() {
               <button
                 key={a.to}
                 onClick={() => nav(a.to)}
-                className={`text-left group rounded-xl border border-slate-200 bg-white p-6 shadow-card transition-colors ${a.ring}`}
+                className={`text-left group rounded-xl border border-slate-200 bg-surface p-6 shadow-card transition-colors ${a.ring}`}
               >
                 <div className={`grid place-items-center h-14 w-14 rounded-xl bg-gradient-to-br ${a.accent}`}>
                   <a.icon size={28} />

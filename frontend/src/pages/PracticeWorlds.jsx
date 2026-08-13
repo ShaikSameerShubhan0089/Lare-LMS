@@ -42,7 +42,7 @@ export default function PracticeWorlds() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {worlds.map((w) => (
             <button key={w.id} onClick={() => setActive(w)}
-              className="text-left rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-300 hover:shadow-sm transition group">
+              className="text-left rounded-xl border border-slate-200 bg-surface p-5 hover:border-brand-300 hover:shadow-sm transition group">
               <div className="flex items-start justify-between gap-2">
                 <span className="grid place-items-center h-10 w-10 rounded-lg bg-brand-500/10 text-brand-600"><Boxes size={20} /></span>
                 <Badge tone={DIFF[w.difficulty] || "slate"}>{w.difficulty}</Badge>

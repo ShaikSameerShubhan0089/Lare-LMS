@@ -29,10 +29,13 @@ import {
   Gauge,
   Users,
   Boxes,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Logo } from "../ui/Logo.jsx";
 import { Badge } from "../ui/primitives.jsx";
 import { useAuth } from "../../lib/auth.jsx";
+import { getTheme, toggleTheme } from "../../lib/theme.js";
 
 const RECRUITER_ROLES = ["recruiter", "company_admin", "super_admin"];
 const STAFF_ROLES = ["super_admin", "company_admin", "college_admin", "trainer"];
@@ -128,6 +131,7 @@ export function AppShell({ children, product = "lms" }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const [theme, setThemeState] = useState(getTheme());
   const roles = user?.roles || [];
 
   const initials = (user?.full_name || user?.email || "?")
@@ -141,9 +145,9 @@ export function AppShell({ children, product = "lms" }) {
 
   return (
     <div className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-[260px_1fr]">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-ink-900 focus:text-white focus:text-sm">Skip to content</a>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-invert-900 focus:text-white focus:text-sm">Skip to content</a>
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[260px] bg-ink-900 text-slate-200 flex flex-col transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[260px] bg-invert-900 text-slate-200 flex flex-col transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -204,7 +208,7 @@ export function AppShell({ children, product = "lms" }) {
           <img
             src="/brand/lare-parent.png"
             alt="LARE Consulting & Technology Pvt. Ltd."
-            className="h-14 w-14 object-contain rounded-lg bg-white p-1 shrink-0 shadow-sm"
+            className="h-14 w-14 object-contain rounded-lg bg-surface p-1 shrink-0 shadow-sm"
           />
           <p className="text-[11px] leading-snug text-slate-400">
             A unit of
@@ -214,11 +218,11 @@ export function AppShell({ children, product = "lms" }) {
       </aside>
 
       {open && (
-        <div className="fixed inset-0 z-30 bg-ink-950/40 lg:hidden" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-invert-950/40 lg:hidden" onClick={() => setOpen(false)} />
       )}
 
       <div className="flex flex-col min-h-screen">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
+        <header className="h-16 bg-surface border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
           <button
             className="lg:hidden grid place-items-center h-10 w-10 rounded-md hover:bg-slate-100"
             onClick={() => setOpen((o) => !o)}
@@ -244,6 +248,14 @@ export function AppShell({ children, product = "lms" }) {
               <Badge tone="amber"><Trophy size={13} /> Level 4</Badge>
             )}
             <button
+              onClick={() => setThemeState(toggleTheme())}
+              className="grid place-items-center h-10 w-10 rounded-md hover:bg-slate-100 text-slate-500"
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
+            >
+              {theme === "dark" ? <Sun size={19} strokeWidth={1.75} /> : <Moon size={19} strokeWidth={1.75} />}
+            </button>
+            <button
               onClick={() => nav(`${cfg.base}/notifications`)}
               className="relative grid place-items-center h-10 w-10 rounded-md hover:bg-slate-100"
               aria-label="Notifications"
@@ -253,7 +265,7 @@ export function AppShell({ children, product = "lms" }) {
             </button>
             <button
               onClick={() => nav(`${cfg.base}/profile`)}
-              className="grid place-items-center h-10 w-10 rounded-full bg-ink-900 text-white text-sm font-semibold"
+              className="grid place-items-center h-10 w-10 rounded-full bg-invert-900 text-white text-sm font-semibold"
               aria-label="Profile"
             >
               {initials}

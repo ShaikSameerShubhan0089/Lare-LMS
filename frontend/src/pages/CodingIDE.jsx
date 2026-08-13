@@ -118,7 +118,7 @@ export default function CodingIDE() {
                     key={l}
                     onClick={() => switchLang(l)}
                     className={`px-3 h-8 rounded-md text-sm font-medium capitalize ${
-                      lang === l ? "bg-ink-900 text-white" : "text-slate-500 hover:bg-slate-100"
+                      lang === l ? "bg-invert-900 text-white" : "text-slate-500 hover:bg-slate-100"
                     }`}
                   >
                     {l}
@@ -138,7 +138,7 @@ export default function CodingIDE() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
-              className="w-full h-72 p-4 font-mono text-sm text-slate-100 bg-ink-950 resize-none outline-none"
+              className="w-full h-72 p-4 font-mono text-sm text-slate-100 bg-invert-950 resize-none outline-none"
             />
           </Card>
 

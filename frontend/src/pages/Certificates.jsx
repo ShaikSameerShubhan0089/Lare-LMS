@@ -89,7 +89,7 @@ function CertificateModal({ cert, onClose, verifiedBanner }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink-900/50 flex items-start justify-center overflow-y-auto p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-invert-900/50 flex items-start justify-center overflow-y-auto p-4" onClick={onClose}>
       <div className="w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex flex-wrap gap-2">

@@ -21,7 +21,7 @@ const YEARS = [
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface">
       {/* Nav */}
       <header className="h-24 border-b border-slate-100">
         <div className="mx-auto max-w-6xl h-full px-5 flex items-center justify-between">
@@ -145,7 +145,7 @@ export default function Landing() {
             >
               <Card className="p-5 h-full">
                 <div className="flex items-center gap-2">
-                  <span className="grid place-items-center h-8 w-8 rounded-md bg-ink-900 text-white font-display font-semibold text-sm">
+                  <span className="grid place-items-center h-8 w-8 rounded-md bg-invert-900 text-white font-display font-semibold text-sm">
                     {y.n}
                   </span>
                   <GraduationCap size={18} className="text-slate-300" />

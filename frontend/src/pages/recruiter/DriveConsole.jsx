@@ -66,7 +66,7 @@ export default function DriveConsole() {
       </Link>
 
       {/* Mission header — the drive as an operating unit */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 mb-5">
+      <div className="rounded-2xl border border-slate-200 bg-surface p-5 mb-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
@@ -80,7 +80,7 @@ export default function DriveConsole() {
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <label className="flex items-center gap-2 h-9 px-3 rounded-lg border border-slate-200 bg-white text-[12.5px]" title="Reshape the console for a persona (a view lens, not a permission change)">
+            <label className="flex items-center gap-2 h-9 px-3 rounded-lg border border-slate-200 bg-surface text-[12.5px]" title="Reshape the console for a persona (a view lens, not a permission change)">
               <Eye size={14} className="text-slate-400" />
               <span className="text-slate-400">View as</span>
               <select value={lens} onChange={(e) => pickLens(e.target.value)} className="bg-transparent font-semibold text-ink-900 outline-none">
@@ -233,7 +233,7 @@ function CommandCenter({ d, id, rounds, go }) {
         <ReadOut label="Conversion" value={conv} unit="%" hint="selected / pool" />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white mb-4">
+      <div className="rounded-2xl border border-slate-200 bg-surface mb-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
           <h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><GitBranch size={16} className="text-slate-400" /> Pipeline Ribbon — live drive state</h3>
           <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">click a stage to focus</span>
@@ -243,20 +243,20 @@ function CommandCenter({ d, id, rounds, go }) {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 grid gap-4">
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 bg-surface overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><Command size={16} className="text-slate-400" /> Needs attention</h3>
               <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{realActions.length ? "evidence-backed + derived" : "ranked by impact"}</span>
             </div>
             <Attention items={mergedActions} />
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 bg-surface overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100"><h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><Compass size={16} className="text-slate-400" /> {realObs.length ? "Evidence-backed insights" : "Drive observations"}</h3></div>
             <div className="p-4 grid gap-3">{observations.map((o, i) => <AIObservation key={i} {...o} />)}</div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden h-fit">
+        <div className="rounded-2xl border border-slate-200 bg-surface overflow-hidden h-fit">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><Gauge size={16} className="text-slate-400" /> Most decision-ready</h3>
             <button className="text-[11.5px] text-brand-600 font-medium" onClick={() => go("candidates")}>All</button>
@@ -295,7 +295,7 @@ function PipelineView({ d, id, rounds, go }) {
 
   return (
     <div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-4"><Ribbon stages={stages} selected={sel} onSelect={setSel} /></div>
+      <div className="rounded-2xl border border-slate-200 bg-surface p-4 mb-4"><Ribbon stages={stages} selected={sel} onSelect={setSel} /></div>
       <div className="grid lg:grid-cols-2 gap-4">
         <Card className="p-5">
           <h3 className="font-display font-semibold text-ink-900 mb-3 flex items-center gap-2"><BarChart3 size={17} className="text-brand-500" /> Stage occupancy & flow</h3>
@@ -374,7 +374,7 @@ function CandidateIntelligence({ d, id, rounds }) {
             <Scale size={14} /> {compareMode ? "Comparing" : "Compare"}
           </button>
           <div className="relative"><Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, roll…" className="h-9 pl-8 w-56" /></div>
-          <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white capitalize">{STATUSES.map((s) => <option key={s} value={s}>{s === "all" ? "All statuses" : s.replace("_", " ")}</option>)}</select>
+          <select value={statusF} onChange={(e) => setStatusF(e.target.value)} className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-surface capitalize">{STATUSES.map((s) => <option key={s} value={s}>{s === "all" ? "All statuses" : s.replace("_", " ")}</option>)}</select>
         </div>
       </div>
 
@@ -403,9 +403,9 @@ function CandidateIntelligence({ d, id, rounds }) {
       {open && !compareMode && <CandidateDrawer r={open} rounds={rounds} onClose={() => setOpen(null)} onShortlist={shortlist} onAdvance={advance} />}
 
       {compareMode && compare.length > 0 && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-ink-900 text-white px-4 py-2.5 shadow-xl">
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-invert-900 text-white px-4 py-2.5 shadow-xl">
           <span className="text-[12.5px]">{compare.length} selected</span>
-          <button onClick={() => setShowCmp(true)} disabled={compare.length < 2} className="h-8 px-3 rounded-full bg-white text-ink-900 text-[12px] font-semibold disabled:opacity-40">Compare {compare.length}</button>
+          <button onClick={() => setShowCmp(true)} disabled={compare.length < 2} className="h-8 px-3 rounded-full bg-surface text-ink-900 text-[12px] font-semibold disabled:opacity-40">Compare {compare.length}</button>
           <button onClick={() => setCompare([])} aria-label="Clear comparison selection" className="text-white/70 hover:text-white"><X size={16} /></button>
         </div>
       )}
@@ -424,12 +424,12 @@ function CandidateDrawer({ r, rounds, onClose, onShortlist, onAdvance }) {
     return () => { alive = false; };
   }, [r.candidate_id]);
 
-  const Mini = ({ l, v, tone }) => <div className="rounded-lg border border-slate-200 bg-white p-2.5"><div className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">{l}</div><div className="mt-1 font-semibold text-[13px]" style={{ color: bandHex(tone) }}>{v}</div></div>;
+  const Mini = ({ l, v, tone }) => <div className="rounded-lg border border-slate-200 bg-surface p-2.5"><div className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400">{l}</div><div className="mt-1 font-semibold text-[13px]" style={{ color: bandHex(tone) }}>{v}</div></div>;
 
   return (
     <>
-      <div className="fixed inset-0 bg-ink-900/50 z-40" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-screen w-[520px] max-w-[94vw] bg-white border-l border-slate-200 z-50 flex flex-col shadow-2xl">
+      <div className="fixed inset-0 bg-invert-900/50 z-40" onClick={onClose} />
+      <div className="fixed top-0 right-0 h-screen w-[520px] max-w-[94vw] bg-surface border-l border-slate-200 z-50 flex flex-col shadow-2xl">
         <div className="flex items-center gap-3 p-4 border-b border-slate-100">
           <span className="grid place-items-center h-11 w-11 rounded-xl text-white font-bold shrink-0" style={{ background: hueFor(nm) }}>{initials(nm)}</span>
           <div className="flex-1 min-w-0">
@@ -489,7 +489,7 @@ function CandidateDrawer({ r, rounds, onClose, onShortlist, onAdvance }) {
 
 /* ---------- Candidate Comparison (derived from live data) ---------- */
 function CmpRow({ l, v, tone }) {
-  return <div className="flex items-center justify-between text-[12px]"><span className="text-slate-500">{l}</span><span className="font-medium" style={{ color: tone ? bandHex(tone) : "#0f172a" }}>{v}</span></div>;
+  return <div className="flex items-center justify-between text-[12px]"><span className="text-slate-500">{l}</span><span className="font-medium" style={{ color: tone ? bandHex(tone) : "rgb(var(--c-ink-900))" }}>{v}</span></div>;
 }
 function ComparePanel({ cands, rounds, onClose }) {
   const [ev, setEv] = useState({});
@@ -500,7 +500,7 @@ function ComparePanel({ cands, rounds, onClose }) {
     return () => { a = false; };
   }, [cands.map((c) => c.candidate_id).join(",")]);
   return (
-    <div className="fixed inset-0 z-50 bg-ink-900/50 grid place-items-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-invert-900/50 grid place-items-center p-4" onClick={onClose}>
       <Card className="w-full max-w-4xl max-h-[86vh] overflow-y-auto p-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-slate-100">
           <h2 className="font-display font-semibold text-ink-900 flex items-center gap-2"><Scale size={18} className="text-brand-500" /> Candidate comparison</h2>
@@ -559,7 +559,7 @@ function DecisionsView({ id }) {
         ) : (
           <div className="grid gap-2">
             {queue.map((q) => (
-              <div key={q.candidate_id} className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-wrap items-center gap-4">
+              <div key={q.candidate_id} className="rounded-2xl border border-slate-200 bg-surface p-4 flex flex-wrap items-center gap-4">
                 <span className="grid place-items-center h-11 w-11 rounded-xl text-white font-bold shrink-0" style={{ background: hueFor(nameOf(q.candidate_id)) }}>{initials(nameOf(q.candidate_id))}</span>
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-ink-900 truncate">{nameOf(q.candidate_id)}</div>
@@ -611,12 +611,12 @@ function CalibrationPanel({ id }) {
         </div>
         <div className="flex rounded-lg border border-slate-200 overflow-hidden text-[11.5px] font-semibold">
           {[["drive", "This drive"], ["all", "All drives"]].map(([k, label]) => (
-            <button key={k} onClick={() => setScope(k)} className={`h-8 px-3 ${scope === k ? "bg-ink-900 text-white" : "bg-white text-slate-500 hover:text-ink-900"}`}>{label}</button>
+            <button key={k} onClick={() => setScope(k)} className={`h-8 px-3 ${scope === k ? "bg-invert-900 text-white" : "bg-surface text-slate-500 hover:text-ink-900"}`}>{label}</button>
           ))}
         </div>
       </div>
       {rows.length === 0 && <Card className="p-6 text-center text-[12.5px] text-slate-400">No calibration data {scope === "all" ? "across drives" : "for this drive"} yet.</Card>}
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-surface overflow-hidden">
         {rows.map((c, i) => {
           const d = c.mean_delta || 0;
           const tone = Math.abs(d) < 8 ? "teal" : Math.abs(d) < 18 ? "amber" : "rose";
@@ -709,7 +709,7 @@ function EvidenceLedger({ id }) {
       {ledger.length === 0 ? (
         <Card className="p-10 text-center text-slate-400">No evidence recorded yet. Rows accrue automatically as candidates complete assessments and interviews are evaluated.</Card>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-2xl border border-slate-200 bg-surface overflow-hidden">
           <div className="grid grid-cols-[1.4fr_1fr_0.85fr_0.7fr_0.9fr] gap-2 px-4 py-2.5 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
             <span>Candidate</span><span>Competency</span><span>Source</span><span>Signal</span><span>Confidence</span>
           </div>
@@ -759,7 +759,7 @@ function InterviewerWorkspace({ id }) {
             {list.map((iv) => {
               const nm = nameOf(iv.candidate_id); const on = active && active.id === iv.id;
               return (
-                <button key={iv.id} onClick={() => setSel(iv.id)} className={`text-left rounded-xl border p-3 ${on ? "border-brand-500 ring-1 ring-brand-500 bg-white" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                <button key={iv.id} onClick={() => setSel(iv.id)} className={`text-left rounded-xl border p-3 ${on ? "border-brand-500 ring-1 ring-brand-500 bg-surface" : "border-slate-200 bg-surface hover:border-slate-300"}`}>
                   <div className="flex items-center gap-2.5">
                     <span className="grid place-items-center h-8 w-8 rounded-lg text-white text-[11px] font-bold" style={{ background: hueFor(nm) }}>{initials(nm)}</span>
                     <div className="min-w-0 flex-1"><div className="text-[12.5px] font-medium text-ink-900 truncate">{nm}</div><div className="text-[11px] text-slate-400 capitalize">{iv.stage} · {iv.mode}</div></div>
@@ -804,24 +804,24 @@ function WorkspacePanel({ iv, name, driveId, onRate, onDecide }) {
   }
   return (
     <div className="grid gap-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-200 bg-surface p-5">
         <div className="flex items-center gap-3">
           <span className="grid place-items-center h-11 w-11 rounded-xl text-white font-bold" style={{ background: hueFor(nm) }}>{initials(nm)}</span>
           <div className="flex-1"><div className="font-semibold text-ink-900">{nm}</div><div className="text-[12px] text-slate-500 capitalize">{iv.stage} interview · {iv.mode}</div></div>
           {iv.avg_rating != null && <span className="inline-flex items-center gap-1 text-[12px] text-slate-600"><Star size={14} className="text-amber-500" />{iv.avg_rating}/5</span>}
         </div>
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-200 bg-surface p-5">
         <h3 className="text-[13px] font-semibold text-ink-900 mb-2 flex items-center gap-2"><ShieldAlert size={15} className="text-slate-400" /> Prior evidence</h3>
         {ev.loading ? <div className="text-sm text-slate-400">Loading…</div> : ev.skills.length ? (
           <div className="space-y-2">{ev.skills.map((s, i) => <div key={i} className="flex items-center gap-3 rounded-lg border border-slate-100 p-2.5"><span className="h-2 w-2 rounded-full" style={{ background: bandHex(s.level === "strong" ? "good" : s.level === "weak" ? "risk" : "warn") }} /><div className="flex-1"><div className="text-[12.5px] font-semibold text-ink-900">{s.skill}</div><div className="text-[11px] text-slate-400">{s.evidence || "drive evaluation"}</div></div><Badge tone={s.level === "strong" ? "teal" : s.level === "weak" ? "rose" : "amber"}>{s.level || "—"}</Badge></div>)}</div>
         ) : <div className="text-[12.5px] text-slate-400">No prior evidence yet — this is the first structured signal for this candidate.</div>}
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-2xl border border-slate-200 bg-surface p-5">
         <h3 className="text-[13px] font-semibold text-ink-900 mb-3 flex items-center gap-2"><ClipboardList size={15} className="text-slate-400" /> Capture evaluation</h3>
         {iv.decision ? <div className="text-sm text-teal-600 flex items-center gap-2"><Check size={16} /> Decision recorded: <b className="capitalize">{iv.decision}</b></div> : (
           <div className="flex flex-wrap items-center gap-2">
-            <select value={comp} onChange={(e) => setComp(e.target.value)} className="h-8 px-2 rounded-md border border-slate-200 text-[12px] bg-white capitalize">
+            <select value={comp} onChange={(e) => setComp(e.target.value)} className="h-8 px-2 rounded-md border border-slate-200 text-[12px] bg-surface capitalize">
               {comps.length ? comps.map((c) => <option key={c.key} value={c.key}>{c.name}</option>) : <option value="technical">Technical</option>}
             </select>
             <span className="text-[11px] text-slate-400">rate</span>
@@ -984,8 +984,8 @@ function Config({ d, id, onChange }) {
         <div className="space-y-2 mb-4">
           {stages.map((s, i) => (
             <div key={i} className="rounded-md border border-slate-200 p-2.5 flex items-center gap-2">
-              <span className="grid place-items-center h-7 w-7 rounded-md bg-ink-900 text-white text-sm font-semibold shrink-0">{i + 1}</span>
-              <select value={s.type} onChange={(e) => updateStage(i, { type: e.target.value })} className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-white">{STAGE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+              <span className="grid place-items-center h-7 w-7 rounded-md bg-invert-900 text-white text-sm font-semibold shrink-0">{i + 1}</span>
+              <select value={s.type} onChange={(e) => updateStage(i, { type: e.target.value })} className="h-9 px-2 rounded-md border border-slate-200 text-sm bg-surface">{STAGE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select>
               <Input value={s.label} onChange={(e) => updateStage(i, { label: e.target.value })} placeholder="Label (e.g. Aptitude Test)" className="h-9 flex-1" />
               <label className="flex items-center gap-1 text-xs text-slate-500 shrink-0" title="Optional round"><input type="checkbox" checked={s.optional} onChange={(e) => updateStage(i, { optional: e.target.checked })} className="accent-brand-500" />opt</label>
               <div className="flex flex-col shrink-0"><button onClick={() => move(i, -1)} className="text-slate-300 hover:text-ink-900 leading-none"><ChevronUp size={14} /></button><button onClick={() => move(i, 1)} className="text-slate-300 hover:text-ink-900 leading-none"><ChevronDown size={14} /></button></div>

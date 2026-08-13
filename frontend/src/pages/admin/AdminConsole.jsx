@@ -36,7 +36,7 @@ export default function AdminConsole() {
             key={t}
             onClick={() => setTab(t)}
             className={`h-9 px-4 rounded-md text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-ink-900 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              tab === t ? "bg-invert-900 text-white" : "bg-surface border border-slate-200 text-slate-600 hover:bg-slate-50"
             }`}
           >
             {t}

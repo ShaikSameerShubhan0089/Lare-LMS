@@ -94,7 +94,7 @@ export default function AttendDrive() {
     <Shell>
       <Card className="p-8">
         <div className="flex items-center gap-3">
-          <span className="grid place-items-center h-11 w-11 rounded-md bg-ink-900 text-white">
+          <span className="grid place-items-center h-11 w-11 rounded-md bg-invert-900 text-white">
             <GraduationCap size={22} />
           </span>
           <div>
@@ -105,11 +105,11 @@ export default function AttendDrive() {
 
         <div className="mt-6 flex gap-1 rounded-lg bg-slate-100 p-1 text-sm">
           <button onClick={() => { setMode("register"); setErr(""); }}
-            className={`flex-1 h-9 rounded-md font-medium ${mode === "register" ? "bg-white shadow text-ink-900" : "text-slate-500"}`}>
+            className={`flex-1 h-9 rounded-md font-medium ${mode === "register" ? "bg-surface shadow text-ink-900" : "text-slate-500"}`}>
             New registration
           </button>
           <button onClick={() => { setMode("resume"); setErr(""); }}
-            className={`flex-1 h-9 rounded-md font-medium ${mode === "resume" ? "bg-white shadow text-ink-900" : "text-slate-500"}`}>
+            className={`flex-1 h-9 rounded-md font-medium ${mode === "resume" ? "bg-surface shadow text-ink-900" : "text-slate-500"}`}>
             I have a Student ID
           </button>
         </div>

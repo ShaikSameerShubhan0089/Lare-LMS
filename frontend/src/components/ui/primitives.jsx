@@ -17,7 +17,7 @@ const BTN = {
   },
   variant: {
     primary: "bg-brand-500 text-white hover:bg-brand-600 shadow-card",
-    secondary: "bg-white text-ink-900 border border-slate-200 hover:bg-slate-50",
+    secondary: "bg-surface text-ink-900 border border-slate-200 hover:bg-slate-50",
     ghost: "bg-transparent text-ink-700 hover:bg-slate-100",
     amber: "bg-amber-500 text-ink-950 hover:bg-amber-400 shadow-card",
     danger: "bg-rose-500 text-white hover:bg-rose-600",
@@ -31,7 +31,7 @@ export function Button({ variant = "primary", size = "md", className, as: As = "
 /* ---------- Card ---------- */
 export function Card({ className, children, ...p }) {
   return (
-    <div className={cx("bg-white rounded-lg border border-slate-100 shadow-card", className)} {...p}>
+    <div className={cx("bg-surface rounded-lg border border-slate-100 shadow-card", className)} {...p}>
       {children}
     </div>
   );
@@ -56,7 +56,7 @@ export function Input({ className, invalid, ...p }) {
   return (
     <input
       className={cx(
-        "w-full h-11 px-3.5 rounded-md border bg-white text-ink-900 placeholder:text-slate-400",
+        "w-full h-11 px-3.5 rounded-md border bg-surface text-ink-900 placeholder:text-slate-400",
         "transition-colors duration-200",
         invalid ? "border-rose-400" : "border-slate-200 hover:border-slate-300",
         className,

@@ -56,14 +56,14 @@ export default function InterviewsTab({ id }) {
             <div>
               <label className="block text-sm font-medium text-ink-900 mb-1.5">Stage</label>
               <select value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })}
-                className="w-full h-11 px-3 rounded-md border border-slate-200 bg-white text-ink-900">
+                className="w-full h-11 px-3 rounded-md border border-slate-200 bg-surface text-ink-900">
                 {["technical", "hr", "ppo"].map((s) => <option key={s}>{s}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-ink-900 mb-1.5">Mode</label>
               <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}
-                className="w-full h-11 px-3 rounded-md border border-slate-200 bg-white text-ink-900">
+                className="w-full h-11 px-3 rounded-md border border-slate-200 bg-surface text-ink-900">
                 {["online", "in_person"].map((m) => <option key={m}>{m}</option>)}
               </select>
             </div>

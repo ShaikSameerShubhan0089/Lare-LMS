@@ -95,7 +95,7 @@ export default function PeerMesh() {
           </h3>
           <div className="space-y-2">
             {[...activeMentor, ...outgoing.filter((s) => s.status === "accepted")].map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white border border-slate-100 p-3">
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface border border-slate-100 p-3">
                 <span className="text-sm text-ink-900">
                   <b>{s.topic}</b> · {s.teacher_id === id ? `you're mentoring ${s.learner_name}` : `${s.teacher_name} is mentoring you`}
                 </span>

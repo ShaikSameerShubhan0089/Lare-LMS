@@ -36,9 +36,9 @@ export default function WalletVerify() {
         </div>
 
         {state.loading ? (
-          <div className="rounded-2xl bg-white border border-slate-200 p-10 text-center text-slate-400">Verifying…</div>
+          <div className="rounded-2xl bg-surface border border-slate-200 p-10 text-center text-slate-400">Verifying…</div>
         ) : d?.valid ? (
-          <div className="rounded-2xl bg-white border border-teal-200 shadow-sm overflow-hidden">
+          <div className="rounded-2xl bg-surface border border-teal-200 shadow-sm overflow-hidden">
             <div className="bg-teal-500/10 p-6 flex items-center gap-3">
               <span className="grid place-items-center h-12 w-12 rounded-full bg-teal-500 text-white"><ShieldCheck size={26} /></span>
               <div>
@@ -78,7 +78,7 @@ export default function WalletVerify() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl bg-white border border-rose-200 shadow-sm p-8 text-center">
+          <div className="rounded-2xl bg-surface border border-rose-200 shadow-sm p-8 text-center">
             <span className="mx-auto grid place-items-center h-12 w-12 rounded-full bg-rose-500/10 text-rose-600"><ShieldX size={26} /></span>
             <p className="mt-3 font-display text-lg font-bold text-ink-900">Could not verify</p>
             <p className="mt-1 text-sm text-slate-500">{reasonText[d?.reason] || "This credential is not valid."}</p>

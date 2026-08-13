@@ -146,7 +146,7 @@ function ProblemCard({ p, onOpen }) {
   return (
     <button
       onClick={onOpen}
-      className="text-left rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-300 hover:shadow-sm transition group"
+      className="text-left rounded-xl border border-slate-200 bg-surface p-5 hover:border-brand-300 hover:shadow-sm transition group"
     >
       <div className="flex items-start justify-between gap-2">
         <span className="font-medium text-ink-900 group-hover:text-brand-700">{p.title}</span>

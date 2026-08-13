@@ -7,7 +7,7 @@ export function AuthLayout({ title, subtitle, children, footer }) {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-2">
       {/* Brand rail */}
-      <div className="hidden lg:flex flex-col justify-between bg-ink-900 text-white p-10 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-between bg-invert-900 text-white p-10 relative overflow-hidden">
         <div className="bg-grid absolute inset-0 opacity-[0.15]" />
         <Link to="/" className="relative flex items-center gap-4">
           <Logo dark size={92} />

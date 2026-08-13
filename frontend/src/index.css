@@ -3,8 +3,53 @@
 @tailwind utilities;
 
 @layer base {
+  /* Neutral/surface token values. Light = exact previous hex (identical render).
+     Dark = a considered navy-tinted dark palette. Toggled by `.dark` on <html>. */
   :root {
     color-scheme: light;
+    --c-surface: 255 255 255;
+    --c-surface-2: 248 250 252;
+    --c-invert-950: 11 27 51;
+    --c-invert-900: 19 41 75;
+    --c-invert-800: 24 47 82;
+    --c-ink-950: 11 27 51;
+    --c-ink-900: 19 41 75;
+    --c-ink-800: 24 47 82;
+    --c-ink-700: 30 58 102;
+    --c-slate-50: 248 250 252;
+    --c-slate-100: 241 245 249;
+    --c-slate-200: 226 232 240;
+    --c-slate-300: 203 213 225;
+    --c-slate-400: 148 163 184;
+    --c-slate-500: 100 116 139;
+    --c-slate-600: 71 85 105;
+    --c-slate-700: 51 65 85;
+    --c-slate-800: 30 41 59;
+    --c-slate-900: 15 23 42;
+    --c-slate-950: 2 6 23;
+  }
+  .dark {
+    color-scheme: dark;
+    --c-surface: 24 35 58;        /* elevated card */
+    --c-surface-2: 15 24 43;      /* nested / subtle */
+    --c-invert-950: 20 30 51;     /* dark surfaces stay dark, slightly elevated */
+    --c-invert-900: 42 58 87;     /* primary buttons — readable with white text */
+    --c-invert-800: 50 68 100;
+    --c-ink-950: 244 247 251;     /* headings / strong text flip light */
+    --c-ink-900: 232 238 247;
+    --c-ink-800: 214 223 238;
+    --c-ink-700: 194 206 226;
+    --c-slate-50: 14 24 42;       /* page background */
+    --c-slate-100: 22 34 56;      /* subtle panels / hovers */
+    --c-slate-200: 34 48 74;      /* borders */
+    --c-slate-300: 46 62 92;      /* stronger borders */
+    --c-slate-400: 130 144 168;   /* muted text / icons */
+    --c-slate-500: 152 166 190;   /* secondary text */
+    --c-slate-600: 174 186 206;
+    --c-slate-700: 198 208 224;
+    --c-slate-800: 220 227 239;   /* strong body text */
+    --c-slate-900: 236 240 247;
+    --c-slate-950: 245 248 252;
   }
   html {
     -webkit-font-smoothing: antialiased;
@@ -34,7 +79,7 @@
   select:focus-visible,
   textarea:focus-visible,
   [tabindex]:focus-visible {
-    @apply ring-2 ring-brand-400 ring-offset-2 ring-offset-white rounded-sm;
+    @apply ring-2 ring-brand-400 ring-offset-2 ring-offset-slate-50 rounded-sm;
   }
   button,
   a,

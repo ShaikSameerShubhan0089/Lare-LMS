@@ -225,7 +225,7 @@ function CreateAssessment({ onCreated }) {
           <Field label="Title"><Input value={meta.title} onChange={(e) => setMeta({ ...meta, title: e.target.value })} placeholder="Year 1 Aptitude Quiz" required /></Field>
           <Field label="Dimension / area">
             <select value={meta.dimension} onChange={(e) => setMeta({ ...meta, dimension: e.target.value })}
-              className="h-11 w-full px-3 rounded-md border border-slate-200 text-sm bg-white capitalize">
+              className="h-11 w-full px-3 rounded-md border border-slate-200 text-sm bg-surface capitalize">
               {DIMENSIONS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </Field>
@@ -252,7 +252,7 @@ function CreateAssessment({ onCreated }) {
           {questions.map((q, i) => (
             <div key={i} className="rounded-lg border border-slate-200 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <span className="grid place-items-center h-6 w-6 rounded bg-ink-900 text-white text-xs font-semibold shrink-0">{i + 1}</span>
+                <span className="grid place-items-center h-6 w-6 rounded bg-invert-900 text-white text-xs font-semibold shrink-0">{i + 1}</span>
                 <Input value={q.prompt} onChange={(e) => setQ(i, { prompt: e.target.value })} placeholder="Question text" className="h-9 flex-1" />
                 <select
                   value={q.difficulty}

@@ -40,7 +40,7 @@ export default function MyLearning() {
           {(tree?.years || []).map((year) => (
             <Card key={year.year_no} className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <span className="grid place-items-center h-8 w-8 rounded-md bg-ink-900 text-white font-display font-semibold text-sm">
+                <span className="grid place-items-center h-8 w-8 rounded-md bg-invert-900 text-white font-display font-semibold text-sm">
                   {year.year_no}
                 </span>
                 <div>

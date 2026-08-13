@@ -35,7 +35,7 @@ export default function Achievements() {
       />
 
       {/* Level hero */}
-      <Card className="p-6 bg-ink-900 text-white border-0 relative overflow-hidden mb-6">
+      <Card className="p-6 bg-invert-900 text-white border-0 relative overflow-hidden mb-6">
         <div className="bg-grid absolute inset-0 opacity-[0.12]" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>

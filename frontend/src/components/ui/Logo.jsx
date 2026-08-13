@@ -8,7 +8,7 @@ export function Logo({ className = "", dark = false, size = 64 }) {
         src="/brand/lare-cloud.png"
         alt="LARE Cloud Solutions"
         className={`object-contain rounded-lg ${
-          dark ? "bg-white p-1 shadow-sm ring-1 ring-black/5" : ""
+          dark ? "bg-surface p-1 shadow-sm ring-1 ring-black/5" : ""
         }`}
         style={{ height: size, width: size }}
       />

@@ -112,7 +112,7 @@ export default function Profile() {
         {/* Side card */}
         <div className="space-y-6">
           <Card className="p-6 text-center">
-            <span className="grid place-items-center h-20 w-20 rounded-full bg-ink-900 text-white text-2xl font-display font-bold mx-auto mb-3">
+            <span className="grid place-items-center h-20 w-20 rounded-full bg-invert-900 text-white text-2xl font-display font-bold mx-auto mb-3">
               {(form.full_name || user?.email || "?").slice(0, 2).toUpperCase()}
             </span>
             <p className="font-display font-semibold text-ink-900">{form.full_name}</p>

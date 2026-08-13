@@ -44,7 +44,7 @@ export default function Drives() {
             return (
               <Card key={d.id} className="p-6">
                 <div className="flex items-start justify-between">
-                  <span className="grid place-items-center h-11 w-11 rounded-md bg-ink-900 text-white">
+                  <span className="grid place-items-center h-11 w-11 rounded-md bg-invert-900 text-white">
                     <Building2 size={22} />
                   </span>
                   <Badge tone={d.status === "open" ? "teal" : "slate"}>{d.status}</Badge>

@@ -63,11 +63,11 @@ export default function Tutor() {
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-              <span className={`grid place-items-center h-8 w-8 rounded-full shrink-0 ${m.role === "user" ? "bg-ink-900 text-white" : "bg-brand-500/10 text-brand-600"}`}>
+              <span className={`grid place-items-center h-8 w-8 rounded-full shrink-0 ${m.role === "user" ? "bg-invert-900 text-white" : "bg-brand-500/10 text-brand-600"}`}>
                 {m.role === "user" ? <User size={16} /> : <Bot size={16} />}
               </span>
               <div className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm whitespace-pre-wrap ${
-                m.role === "user" ? "bg-ink-900 text-white" : "bg-slate-100 text-ink-900"
+                m.role === "user" ? "bg-invert-900 text-white" : "bg-slate-100 text-ink-900"
               }`}>
                 {m.content}
               </div>
