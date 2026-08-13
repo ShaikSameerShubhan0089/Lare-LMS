@@ -591,11 +591,19 @@ class DriveService:
             select(Registration).where(Registration.drive_id == did)
         ).scalars().all()
         names = _resolve_names([r.candidate_id for r in rows])
+        # Each candidate's real performance: average % across their round marks,
+        # so the console can rank by actual scores, not just pipeline stage.
+        pcts: dict[str, list[float]] = {}
+        for rs in s.execute(select(RoundScore).where(RoundScore.drive_id == did)).scalars().all():
+            if rs.max_marks:
+                pcts.setdefault(rs.candidate_id, []).append(rs.marks * 100.0 / rs.max_marks)
+        scores = {cid: round(sum(v) / len(v), 1) for cid, v in pcts.items() if v}
         out = []
         for r in rows:
             info = names.get(r.candidate_id) or {}
             out.append({"candidate_id": r.candidate_id, "status": r.status,
                         "eligible": r.eligible, "current_round": r.current_round,
+                        "score": scores.get(r.candidate_id),
                         "candidate_name": info.get("name"),
                         "candidate_email": info.get("email"),
                         "candidate_roll": info.get("roll")})

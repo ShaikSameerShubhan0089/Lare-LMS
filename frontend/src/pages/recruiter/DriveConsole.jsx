@@ -129,6 +129,10 @@ function readiness(r, rounds) {
   if (r.eligible === "no") return 8;
   if (r.status === "selected") return 96;
   if (r.status === "rejected") return 12;
+  // Prefer the candidate's REAL performance (avg % across their round marks) when
+  // it exists — that differentiates candidates by how they actually did.
+  if (r.score != null) return Math.max(0, Math.min(100, Math.round(r.score)));
+  // Fallback (no marks recorded yet): a coarse pipeline-stage heuristic.
   let v = 42;
   v += rounds > 0 ? Math.round(((r.current_round || 0) / rounds) * 34) : 0;
   v += r.status === "in_round" ? 12 : r.status === "shortlisted" ? 6 : 0;
