@@ -45,6 +45,11 @@ SERVICE_URLS: dict[str, str] = {
     "lms-ai": os.getenv("AI_ORCH_URL", "http://127.0.0.1:8024"),
     "lms-tutor": os.getenv("AI_TUTOR_URL", "http://127.0.0.1:8025"),
     "platform-org": os.getenv("ORG_URL", "http://127.0.0.1:8026"),
+    "drive-evidence": os.getenv("EVIDENCE_URL", "http://127.0.0.1:8027"),
+    "drive-competency": os.getenv("COMPETENCY_URL", "http://127.0.0.1:8028"),
+    "drive-decision": os.getenv("DECISION_URL", "http://127.0.0.1:8029"),
+    "drive-action": os.getenv("ACTION_URL", "http://127.0.0.1:8030"),
+    "drive-recruit-ai": os.getenv("RECRUIT_AI_URL", "http://127.0.0.1:8031"),
 }
 
 

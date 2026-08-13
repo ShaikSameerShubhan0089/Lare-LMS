@@ -28,4 +28,8 @@ ai_orchestration	ai_orchestration	8024
 ai_tutor	ai_tutor	8025
 organization	organization	8026
 evidence	evidence	8027
+competency	competency	8028
+decision	decision	8029
+action	action	8030
+recruit_ai	recruit_ai	8031
 gateway	gateway	8000
