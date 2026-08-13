@@ -16,8 +16,12 @@ from lare_common.db import Database  # noqa: E402
 def cmd_init_db():
     cfg = EvidenceConfig()
     import app.models  # noqa: F401
-    Database(cfg.DATABASE_URL, echo=cfg.SQL_ECHO, schema=cfg.DB_SCHEMA).create_all()
-    print(f"[init-db] tables created on {cfg.DATABASE_URL}")
+    from app.harden import install_immutability
+    db = Database(cfg.DATABASE_URL, echo=cfg.SQL_ECHO, schema=cfg.DB_SCHEMA)
+    db.create_all()
+    hardened = install_immutability(db)
+    print(f"[init-db] tables created on {cfg.DATABASE_URL}"
+          f"{' (append-only trigger installed)' if hardened else ''}")
 
 
 def cmd_serve():

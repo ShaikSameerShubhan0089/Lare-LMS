@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from lare_common.auth_context import current_identity, require_roles
 from lare_common.errors import BadRequest
 from lare_common.responses import created, ok
+from lare_common.service_client import ServiceClient
 
 from .schemas import EvidenceIn
 from .service import EvidenceService
@@ -20,6 +21,8 @@ bp = Blueprint("evidence", __name__)
 
 MANAGE = ("super_admin", "company_admin", "recruiter", "trainer")
 READ = ("super_admin", "company_admin", "recruiter", "college_admin", "trainer")
+
+_client = ServiceClient("drive-evidence", default_roles=["recruiter"])
 
 
 def _svc() -> EvidenceService:
@@ -77,6 +80,20 @@ def drive_conflicts(did):
 def resolve_conflict(cid):
     with _db().session() as s:
         return ok(_svc().resolve_conflict(s, cid))
+
+
+@bp.post("/drive/v1/evidence/backfill/<did>")
+@require_roles(*MANAGE)
+def backfill(did):
+    ident = current_identity()
+    try:
+        r = _client.get("drive-core", f"/drive/v1/drives/{did}/rounds/1/scores", user_id=ident.user_id)
+        rows = (r or {}).get("data") or []
+    except Exception:  # noqa: BLE001 — best effort
+        rows = []
+    with _db().session() as s:
+        res = _svc().backfill(s, did, rows)
+    return ok(res)
 
 
 @bp.get("/drive/v1/evidence/candidate/<cid>")

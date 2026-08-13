@@ -6,15 +6,44 @@ insight shape is LLM-ready; today it is narrated by rules (mode="derived").
 """
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import delete, select
 
 from .models import Calibration, Insight
 
 
 class RecruitAiService:
-    def __init__(self, ready_confidence: float = 75.0, coverage_floor: float = 60.0):
+    def __init__(self, ready_confidence: float = 75.0, coverage_floor: float = 60.0, ai=None):
         self.ready_confidence = ready_confidence
         self.coverage_floor = coverage_floor
+        self.ai = ai  # optional lare_common.ai client; narrates when live
+
+    def _narrate(self, derived):
+        """When a live AI provider is configured, sharpen each insight's impact
+        line. Deterministic structure is preserved; only prose is rewritten.
+        Falls back to the derived text (mode 'derived') on stub/failure."""
+        if not derived or not self.ai or getattr(self.ai, "mode", "stub") == "stub":
+            return derived, "derived", "rule-based"
+        system = (
+            "You are a recruitment operations analyst. For each insight, rewrite ONLY the "
+            "'impact' as one sharp, specific sentence for a hiring lead. Do not invent numbers "
+            "or names. Return JSON {\"items\":[{\"title\":str,\"impact\":str}]} preserving order and titles."
+        )
+        payload = {"items": [{"title": d["title"], "observation": d["observation"], "impact": d["impact"]} for d in derived]}
+        try:
+            parsed, res = self.ai.complete_json(
+                system=system, messages=[{"role": "user", "content": json.dumps(payload)}],
+                fallback={"items": []})
+        except Exception:  # noqa: BLE001
+            return derived, "derived", "rule-based"
+        if getattr(res, "stub", True) or not parsed.get("items"):
+            return derived, "derived", "rule-based"
+        by_title = {it.get("title"): it.get("impact") for it in parsed["items"] if it.get("title")}
+        for d in derived:
+            if by_title.get(d["title"]):
+                d["impact"] = by_title[d["title"]]
+        return derived, "live", getattr(res, "model", "llm")
 
     # ---------- insights (O/R/I/A) ----------
     def _derive(self, queue, conflicts):
@@ -61,10 +90,11 @@ class RecruitAiService:
 
     def generate(self, s, drive_id, queue, conflicts):
         derived = self._derive(queue, conflicts)
+        derived, mode, model = self._narrate(derived)
         s.execute(delete(Insight).where(Insight.drive_id == drive_id))
         rows = []
         for d in derived:
-            row = Insight(drive_id=drive_id, **d)
+            row = Insight(drive_id=drive_id, mode=mode, model=model, **d)
             s.add(row)
             rows.append(row)
         s.flush()

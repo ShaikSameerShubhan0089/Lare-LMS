@@ -97,6 +97,31 @@ class EvidenceService:
         out.sort(key=lambda x: x["competency_key"])
         return out
 
+    def backfill(self, s, drive_id, score_rows):
+        """Emit assessment evidence from historical Round 1 marks. Idempotent:
+        a candidate already backfilled for this drive is skipped."""
+        appended = skipped = 0
+        for row in score_rows or []:
+            cand = row.get("candidate_id")
+            pct = row.get("percentage")
+            if not cand or pct is None:
+                skipped += 1
+                continue
+            ref = "round-1-backfill"
+            exists = s.scalar(select(Evidence.id).where(
+                Evidence.drive_id == drive_id, Evidence.candidate_id == cand,
+                Evidence.source_ref == ref))
+            if exists:
+                skipped += 1
+                continue
+            self.append(
+                s, drive_id=drive_id, candidate_id=cand, competency_key="overall",
+                source_type="assessment", source_ref=ref, signal=float(pct),
+                confidence="high", rationale="Backfilled from Round 1 written test",
+                round_key="round-1", actor_id="backfill")
+            appended += 1
+        return {"appended": appended, "skipped": skipped, "total": len(score_rows or [])}
+
     def conflicts(self, s, drive_id):
         rows = s.scalars(select(EvidenceConflict).where(
             EvidenceConflict.drive_id == drive_id,
