@@ -26,6 +26,9 @@ def install_immutability(db) -> bool:
         f"DROP TRIGGER IF EXISTS evidence_no_mutate ON {tbl};",
         f"CREATE TRIGGER evidence_no_mutate BEFORE UPDATE OR DELETE ON {tbl} "
         f"FOR EACH ROW EXECUTE FUNCTION {fn}();",
+        # Second layer: remove UPDATE/DELETE from PUBLIC. The trigger is the hard
+        # guard (a table-owner role bypasses grants), but this closes non-owner paths.
+        f"REVOKE UPDATE, DELETE ON {tbl} FROM PUBLIC;",
     ]
     try:
         with db.engine.begin() as c:
