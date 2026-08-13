@@ -142,7 +142,12 @@ export default function SkillMap({ candidateId }) {
               <h3 className="font-display font-semibold text-ink-900 mb-1">Your skill profile</h3>
               <p className="text-xs text-slate-400 mb-2">Mastery across every mapped topic — the bigger the shape, the more well-rounded.</p>
               {topics.length >= 3 ? (
-                <RadarChart data={topics.map((t) => ({ label: t.name, value: t.mastery }))} color="#2563EB" />
+                <>
+                  <RadarChart data={topics.slice(0, 8).map((t) => ({ label: t.name, value: t.mastery }))} color="#2563EB" />
+                  {topics.length > 8 && (
+                    <p className="text-[11px] text-slate-400 text-center -mt-1">Top 8 shown · all {topics.length} topics below</p>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-wrap gap-x-8 gap-y-4 justify-center py-2">
                   {topics.map((t) => <GaugeCell key={t.name} name={t.name} pct={t.mastery} sub={`${t.correct}/${t.attempted}`} />)}
