@@ -117,7 +117,7 @@ export default function DriveConsole() {
       {activeTab === "interviews" && <InterviewsTab id={id} />}
       {activeTab === "rounds" && <RoundsTab id={id} />}
       {activeTab === "evidence" && <EvidenceLedger id={id} />}
-      {activeTab === "decisions" && <ResultsTab id={id} />}
+      {activeTab === "decisions" && <DecisionsView id={id} />}
       {activeTab === "analytics" && <AnalyticsTab id={id} />}
       {activeTab === "configure" && <ConfigureView d={d} id={id} onChange={setDrive} />}
     </div>
@@ -156,6 +156,10 @@ function CommandCenter({ d, id, rounds, go }) {
   const funnel = useAsync(() => withFallback(api.funnel(id), { total: 0, by_status: {} }), [id]);
   const regsA = useAsync(() => withFallback(api.driveRegistrations(id), []), [id]);
   const ivA = useAsync(() => withFallback(api.driveInterviews(id), []), [id]);
+  // Drive-OS intelligence (evidence-backed). Non-blocking: the console renders
+  // even if these peers are slow/unavailable, and falls back to derived signals.
+  const insightsA = useAsync(() => withFallback(api.driveInsights(id), []), [id]);
+  const actionsA = useAsync(() => withFallback(api.driveActions(id), []), [id]);
   if (funnel.loading || regsA.loading) return <Loading />;
 
   const f = funnel.data || { total: 0, by_status: {} };
@@ -186,6 +190,23 @@ function CommandCenter({ d, id, rounds, go }) {
 
   const top = [...regs].filter((r) => r.status !== "rejected").sort((a, b) => readiness(b, rounds) - readiness(a, rounds)).slice(0, 4);
 
+  // Evidence-backed intelligence from the Drive-OS services (action + recruit-ai).
+  // When present it leads; the funnel-derived signals above always remain as a floor.
+  const TARGET = { calibration: "analytics" };
+  const ACT_ICON = { evidence_conflict: ShieldAlert, panel_divergent: GitBranch, ready_decision: Trophy, coverage_gap: FileSearch };
+  const ACT_JUMP = { evidence_conflict: "evidence", panel_divergent: "candidates", ready_decision: "decisions", coverage_gap: "candidates" };
+  const realActions = (actionsA.data || []).map((a) => ({
+    priority: a.priority, tone: a.priority === "high" ? "warn" : a.kind === "ready_decision" ? "teal" : "brand",
+    icon: ACT_ICON[a.kind] || Command, title: a.title, detail: a.detail,
+    actions: [{ label: "Open", primary: true, onClick: () => go(ACT_JUMP[a.kind] || "candidates") }],
+  }));
+  const realObs = (insightsA.data || []).map((i) => ({
+    severity: i.severity, title: i.title, observation: i.observation, reason: i.reason, impact: i.impact,
+    action: i.recommended_action?.target ? { label: i.recommended_action.label, onClick: () => go(TARGET[i.recommended_action.target] || i.recommended_action.target) } : undefined,
+  }));
+  const mergedActions = [...realActions, ...actions];
+  const observations = realObs.length ? realObs : obs;
+
   return (
     <div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -208,13 +229,13 @@ function CommandCenter({ d, id, rounds, go }) {
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
               <h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><Command size={16} className="text-slate-400" /> Needs attention</h3>
-              <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">ranked by impact</span>
+              <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{realActions.length ? "evidence-backed + derived" : "ranked by impact"}</span>
             </div>
-            <Attention items={actions} />
+            <Attention items={mergedActions} />
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100"><h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><Compass size={16} className="text-slate-400" /> Drive observations</h3></div>
-            <div className="p-4 grid gap-3">{obs.map((o, i) => <AIObservation key={i} {...o} />)}</div>
+            <div className="px-4 py-3 border-b border-slate-100"><h3 className="text-[13.5px] font-semibold text-ink-900 flex items-center gap-2"><Compass size={16} className="text-slate-400" /> {realObs.length ? "Evidence-backed insights" : "Drive observations"}</h3></div>
+            <div className="p-4 grid gap-3">{observations.map((o, i) => <AIObservation key={i} {...o} />)}</div>
           </div>
         </div>
 
@@ -482,6 +503,62 @@ function ComparePanel({ cands, rounds, onClose }) {
         </div>
         <div className="p-4 border-t border-slate-100 text-[11.5px] text-slate-400">Comparison uses live registration + evaluation‑twin data. Deeper per‑competency evidence needs the evidence service (Phase 4).</div>
       </Card>
+    </div>
+  );
+}
+
+/* ---------- Decision Intelligence (evidence-backed queue + offers) ---------- */
+function DecisionsView({ id }) {
+  const qA = useAsync(() => withFallback(api.decisionQueue(id), []), [id]);
+  const [decided, setDecided] = useState({});
+  const queue = (qA.data || []).filter((x) => !x.decision && !decided[x.candidate_id]);
+
+  async function decide(cid, verdict) {
+    try { await api.recordDecision({ drive_id: id, candidate_id: cid, verdict }); } catch { /* keep local */ }
+    setDecided((d) => ({ ...d, [cid]: verdict }));
+  }
+
+  return (
+    <div className="grid gap-6">
+      <div>
+        <div className="mb-3">
+          <h2 className="font-display text-lg font-semibold text-ink-900">Decision Intelligence</h2>
+          <p className="text-[12.5px] text-slate-500">Finalists ranked by evidence‑backed decision confidence — coverage, panel agreement, and what's missing. Recording a decision cites the exact evidence (immutable lineage).</p>
+        </div>
+        {qA.loading ? <Loading /> : queue.length === 0 ? (
+          <Card className="p-8 text-center text-slate-400">No candidates are decision‑ready yet. Confidence accrues as evidence lands from assessments and interviews.</Card>
+        ) : (
+          <div className="grid gap-2">
+            {queue.map((q) => (
+              <div key={q.candidate_id} className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-wrap items-center gap-4">
+                <span className="grid place-items-center h-11 w-11 rounded-xl text-white font-bold shrink-0" style={{ background: hueFor(q.candidate_id) }}>{initials(q.candidate_id)}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-ink-900 truncate">{q.candidate_id}</div>
+                  <div className="text-[11.5px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                    {q.coverage_pct != null && <span>Coverage {q.coverage_pct}%</span>}
+                    <span>Agreement <b className="capitalize">{q.panel_agreement}</b></span>
+                    <span>{q.evidence_count} evidence</span>
+                    {q.missing_competencies?.length > 0 && <span className="text-amber-600">Missing: {q.missing_competencies.join(", ")}</span>}
+                  </div>
+                </div>
+                <div className="text-center px-2 shrink-0">
+                  <div className="font-display text-2xl font-bold tabular-nums" style={{ color: bandHex(band(q.confidence || 0)) }}>{Math.round(q.confidence || 0)}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-400">confidence</div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="sm" variant="secondary" onClick={() => decide(q.candidate_id, "reject")}><X size={14} /> Reject</Button>
+                  <Button size="sm" variant="ghost" onClick={() => decide(q.candidate_id, "hold")}>Hold</Button>
+                  <Button size="sm" onClick={() => decide(q.candidate_id, "advance")}><Check size={14} /> Advance</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <div className="mb-3"><h2 className="font-display text-lg font-semibold text-ink-900">Results &amp; Offers</h2></div>
+        <ResultsTab id={id} />
+      </div>
     </div>
   );
 }

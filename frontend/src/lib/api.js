@@ -308,6 +308,25 @@ export const api = {
   candidateEvidence: (candidateId, driveId) => request(`/drive/v1/evidence/candidate/${candidateId}${driveId ? `?drive_id=${driveId}` : ""}`),
   resolveEvidenceConflict: (conflictId) => request(`/drive/v1/evidence/conflicts/${conflictId}/resolve`, { method: "POST" }),
 
+  // ---- Competency models ----
+  competencyCatalogue: () => request("/drive/v1/competency/catalogue"),
+  setEvaluationModel: (body) => request("/drive/v1/competency/models", { method: "POST", body }),
+  evaluationModel: (driveId) => request(`/drive/v1/competency/models/${driveId}`),
+
+  // ---- Decision intelligence ----
+  recordDecision: (body) => request("/drive/v1/decisions", { method: "POST", body }),
+  driveDecisions: (driveId) => request(`/drive/v1/decisions/drive/${driveId}`),
+  decisionQueue: (driveId) => request(`/drive/v1/decisions/drive/${driveId}/queue`),
+  candidateDecisions: (candidateId, driveId) => request(`/drive/v1/decisions/candidate/${candidateId}${driveId ? `?drive_id=${driveId}` : ""}`),
+
+  // ---- Action (attention) engine ----
+  driveActions: (driveId) => request(`/drive/v1/actions/drive/${driveId}`),
+  resolveAction: (actionId, status) => request(`/drive/v1/actions/${actionId}/resolve`, { method: "POST", body: { status: status || "resolved" } }),
+
+  // ---- Recruit-AI insights + calibration ----
+  driveInsights: (driveId) => request(`/drive/v1/insights/drive/${driveId}`),
+  driveCalibration: (driveId) => request(`/drive/v1/calibration/drive/${driveId}`),
+
   // ---- Evaluation / Result (recruiter) ----
   computeRanks: (exam_id) => request("/drive/v1/evaluations/rank", { method: "POST", body: { exam_id } }),
   examRanks: (examId) => request(`/drive/v1/evaluations/exam/${examId}/ranks`),
