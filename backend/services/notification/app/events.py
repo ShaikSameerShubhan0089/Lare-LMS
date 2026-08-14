@@ -3,6 +3,8 @@ into the recipient's inbox. Idempotent on the event id, so redelivery (Redis
 consumer redelivery or an HTTP retry) never duplicates."""
 from __future__ import annotations
 
+from .service import SIGNATURE  # one shared company signature on every email
+
 
 class _Safe(dict):
     def __missing__(self, key):
@@ -73,8 +75,7 @@ def register_handlers(bus, db, svc) -> None:
                 f"certificates, and a recent passport-size photograph.\n\n"
                 f"Once again, congratulations on this achievement. We look forward to "
                 f"welcoming you aboard.\n\n"
-                f"{contact_line}\n\n"
-                f"Warm regards,\nPlacement & Recruitment Team\n{company}")
+                f"{contact_line}" + SIGNATURE)
         elif outcome == "rejected":
             subject = f"Update on your application — {drive_title}"
             inapp = f"Update on {drive_title}: you have not progressed beyond {round_label}."
@@ -92,8 +93,7 @@ def register_handlers(bus, db, svc) -> None:
                 f"— your profile will remain on record, and we would be happy to "
                 f"consider you again. We wish you the very best in your career and "
                 f"upcoming endeavours.\n\n"
-                f"{contact_line}\n\n"
-                f"Warm regards,\nPlacement & Recruitment Team\n{company}")
+                f"{contact_line}" + SIGNATURE)
         else:  # shortlisted
             nxt = p.get("next_label") or "the next round"
             subject = f"Congratulations! You are shortlisted for {nxt} — {drive_title}"
@@ -113,8 +113,7 @@ def register_handlers(bus, db, svc) -> None:
                 f"your identity proof handy, and ensure a stable internet connection if "
                 f"the round is conducted online.\n\n"
                 f"Congratulations once again, and all the very best for {nxt}!\n\n"
-                f"{contact_line}\n\n"
-                f"Warm regards,\nPlacement & Recruitment Team\n{company}")
+                f"{contact_line}" + SIGNATURE)
 
         with db.session() as s:
             svc.notify_inapp(s, user_id=user_id, template_key="round.shortlisted",
@@ -145,8 +144,7 @@ def register_handlers(bus, db, svc) -> None:
             + (f"Quick win to start with: {quick_win}\n\n" if quick_win else "")
             + f"Open LARE Learn -> My Skill Map to see the full plan, a 2-minute explainer of "
             f"your top gap, and 3 practice problems. Small, steady effort adds up fast — "
-            f"you've got this!\n\n"
-            f"— Your LARE study coach")
+            f"you've got this!" + SIGNATURE)
         with db.session() as s:
             svc.notify_inapp(s, user_id=user_id, template_key="coach.nudge",
                              subject=subject, body=inapp, dedupe_key=event.id)
