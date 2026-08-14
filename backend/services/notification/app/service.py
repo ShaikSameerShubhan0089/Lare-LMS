@@ -34,26 +34,50 @@ def _render(text: str | None, variables: dict) -> str | None:
         return text  # malformed template — fail safe
 
 
+# Company signature appended to every platform (LARE-branded) email.
+SIGNATURE = (
+    "\n\nWarm regards,\n"
+    "Human Resources and Marketing Department\n"
+    "Lare Consulting and Technology PVT. ltd\n"
+    "web.lareitcloudsolution.com\n"
+    "info.market@lareitcloudsolutions.com"
+)
+
 # Security emails the Auth service relies on. Without these rows, /notify/v1/send
 # raises template_not_found and password-reset / OTP / verify emails silently
 # never go out. `critical=True` so they ignore channel opt-outs. Merge vars come
 # from Auth's _deliver(): {email, code, token}.
 DEFAULT_EMAIL_TEMPLATES = [
-    ("password_reset", "Reset your LARE password",
-     "Hi,\n\nWe received a request to reset your LARE password. Use this code:\n\n"
-     "    {token}\n\nEnter it on the password-reset page. It expires in 30 minutes.\n"
-     "If you didn't request this, you can safely ignore this email.\n\n— LARE"),
-    ("otp", "Your LARE sign-in code",
-     "Hi,\n\nYour LARE sign-in code is:\n\n    {code}\n\nIt expires in 10 minutes.\n"
-     "If you didn't request it, ignore this email.\n\n— LARE"),
-    ("email_verify", "Verify your LARE email",
-     "Hi,\n\nUse this code to verify your email address:\n\n    {token}\n\n"
-     "If you didn't create a LARE account, ignore this email.\n\n— LARE"),
+    ("password_reset", "Reset your LARE account password",
+     "Dear User,\n\n"
+     "We received a request to reset the password for your LARE account. "
+     "Please use the secure code below to continue:\n\n"
+     "    {token}\n\n"
+     "Enter this code on the password reset page to set a new password. For your "
+     "security, the code expires in 30 minutes and can be used only once.\n\n"
+     "If you did not request a password reset, no action is required — you can "
+     "safely ignore this email and your password will remain unchanged." + SIGNATURE),
+    ("otp", "Your LARE one-time sign-in code",
+     "Dear User,\n\n"
+     "Use the one-time code below to sign in to your LARE account:\n\n"
+     "    {code}\n\n"
+     "This code expires in 10 minutes and can be used only once. For your "
+     "security, please do not share it with anyone — LARE will never ask you for "
+     "this code.\n\n"
+     "If you did not attempt to sign in, you can safely ignore this email." + SIGNATURE),
+    ("email_verify", "Verify your LARE email address",
+     "Dear User,\n\n"
+     "Welcome to LARE. Please confirm your email address using the secure code "
+     "below:\n\n"
+     "    {token}\n\n"
+     "Entering this code verifies your email and activates your account.\n\n"
+     "If you did not create a LARE account, you can safely ignore this email." + SIGNATURE),
 ]
 
 
 def ensure_default_templates(db) -> None:
-    """Idempotently create the auth security email templates at startup."""
+    """Upsert the auth security email templates at startup, so branded copy/subjects
+    stay current on every deploy (they already exist as rows after first seed)."""
     try:
         with db.session() as s:
             for key, subject, body in DEFAULT_EMAIL_TEMPLATES:
@@ -63,7 +87,12 @@ def ensure_default_templates(db) -> None:
                 if existing is None:
                     s.add(Template(id=new_id(), key=key, channel="email", locale="en",
                                    subject=subject, body=body, critical=True, active=True))
-        log.info("default email templates ensured")
+                else:
+                    existing.subject = subject
+                    existing.body = body
+                    existing.critical = True
+                    existing.active = True
+        log.info("default email templates ensured (upserted)")
     except Exception:  # noqa: BLE001 — never block startup on this
         log.exception("could not ensure default email templates")
 
