@@ -44,6 +44,13 @@ export function AuthProvider({ children }) {
     await login(email, password, product);
   };
 
+  // Passwordless sign-in: verify the emailed code and start the session.
+  const loginOtp = async (email, code, product = "learn") => {
+    const t = await api.verifyOtp(email, code, product);
+    tokens.set(t);
+    setUser(await api.me());
+  };
+
   const logout = async () => {
     try {
       if (tokens.refresh) await api.logout(tokens.refresh);
@@ -55,7 +62,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, register, logout, reload: loadMe }}>
+    <AuthCtx.Provider value={{ user, loading, login, loginOtp, register, logout, reload: loadMe }}>
       {children}
     </AuthCtx.Provider>
   );

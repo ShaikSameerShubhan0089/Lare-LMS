@@ -162,10 +162,10 @@ export const api = {
     request("/auth/v1/password/forgot", { method: "POST", auth: false, body: { email, product } }),
   resetPassword: (token, new_password) =>
     request("/auth/v1/password/reset", { method: "POST", auth: false, body: { token, new_password } }),
-  requestOtp: (email) =>
-    request("/auth/v1/otp/request", { method: "POST", auth: false, body: { email } }),
-  verifyOtp: (email, code) =>
-    request("/auth/v1/otp/verify", { method: "POST", auth: false, body: { email, code, device: "web" } }),
+  requestOtp: (email, product = "learn") =>
+    request("/auth/v1/otp/request", { method: "POST", auth: false, body: { email, product } }),
+  verifyOtp: (email, code, product = "learn") =>
+    request("/auth/v1/otp/verify", { method: "POST", auth: false, body: { email, code, device: "web", product } }),
   requestEmailVerify: () => request("/auth/v1/email/verify/request", { method: "POST" }),
   confirmEmail: (token) =>
     request("/auth/v1/email/confirm", { method: "POST", auth: false, body: { token } }),

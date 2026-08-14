@@ -34,6 +34,40 @@ def _render(text: str | None, variables: dict) -> str | None:
         return text  # malformed template — fail safe
 
 
+# Security emails the Auth service relies on. Without these rows, /notify/v1/send
+# raises template_not_found and password-reset / OTP / verify emails silently
+# never go out. `critical=True` so they ignore channel opt-outs. Merge vars come
+# from Auth's _deliver(): {email, code, token}.
+DEFAULT_EMAIL_TEMPLATES = [
+    ("password_reset", "Reset your LARE password",
+     "Hi,\n\nWe received a request to reset your LARE password. Use this code:\n\n"
+     "    {token}\n\nEnter it on the password-reset page. It expires in 30 minutes.\n"
+     "If you didn't request this, you can safely ignore this email.\n\n— LARE"),
+    ("otp", "Your LARE sign-in code",
+     "Hi,\n\nYour LARE sign-in code is:\n\n    {code}\n\nIt expires in 10 minutes.\n"
+     "If you didn't request it, ignore this email.\n\n— LARE"),
+    ("email_verify", "Verify your LARE email",
+     "Hi,\n\nUse this code to verify your email address:\n\n    {token}\n\n"
+     "If you didn't create a LARE account, ignore this email.\n\n— LARE"),
+]
+
+
+def ensure_default_templates(db) -> None:
+    """Idempotently create the auth security email templates at startup."""
+    try:
+        with db.session() as s:
+            for key, subject, body in DEFAULT_EMAIL_TEMPLATES:
+                existing = s.execute(select(Template).where(
+                    Template.key == key, Template.channel == "email",
+                    Template.locale == "en")).scalar_one_or_none()
+                if existing is None:
+                    s.add(Template(id=new_id(), key=key, channel="email", locale="en",
+                                   subject=subject, body=body, critical=True, active=True))
+        log.info("default email templates ensured")
+    except Exception:  # noqa: BLE001 — never block startup on this
+        log.exception("could not ensure default email templates")
+
+
 class NotificationService:
     def __init__(self, email_provider: str = "null", sms_provider: str = "null"):
         from .providers import get_email_provider, get_sms_provider
