@@ -50,7 +50,7 @@ def jwks():
 def register():
     data = _parse(RegisterIn, request.get_json(silent=True))
     with _db().session() as s:
-        user = _svc().register(s, data.email, data.password, data.full_name)
+        user = _svc().register(s, data.email, data.password, data.full_name, data.product)
         # Self-registration on a campus platform defaults to the student role.
         _svc().assign_role(s, user.id, "student", None)
         # Issue an email-verification token (delivered via Notification in prod).
@@ -99,7 +99,7 @@ def drive_token():
 def otp_request():
     data = _parse(OtpRequestIn, request.get_json(silent=True))
     with _db().session() as s:
-        code = _svc().request_otp(s, data.email)
+        code = _svc().request_otp(s, data.email, data.product)
     if code:
         _deliver("otp", data.email, code)
     resp = {"sent": True}  # uniform response (no user enumeration)
@@ -112,7 +112,7 @@ def otp_request():
 def otp_verify():
     data = _parse(OtpVerifyIn, request.get_json(silent=True))
     with _db().session() as s:
-        return ok(_svc().verify_otp(s, data.email, data.code, data.device))
+        return ok(_svc().verify_otp(s, data.email, data.code, data.device, data.product))
 
 
 # ---- password reset ----
@@ -120,7 +120,7 @@ def otp_verify():
 def password_forgot():
     data = _parse(PasswordForgotIn, request.get_json(silent=True))
     with _db().session() as s:
-        token = _svc().request_password_reset(s, data.email)
+        token = _svc().request_password_reset(s, data.email, data.product)
     if token:
         _deliver("password_reset", data.email, token)
     resp = {"sent": True}
@@ -160,7 +160,7 @@ def email_confirm():
 def login():
     data = _parse(LoginIn, request.get_json(silent=True))
     with _db().session() as s:
-        tokens = _svc().login(s, data.email, data.password, data.device)
+        tokens = _svc().login(s, data.email, data.password, data.device, data.product)
     return ok(tokens)
 
 

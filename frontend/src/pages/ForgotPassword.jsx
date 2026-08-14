@@ -1,13 +1,17 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, KeyRound, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Card, Button, Field, Input } from "../components/ui/primitives.jsx";
 import { Logo } from "../components/ui/Logo.jsx";
 import { api } from "../lib/api.js";
 
 // Two-step self-service reset: request a token by email, then set a new password.
+// `?app=learn|hire` scopes the reset to that product's account (separate logins).
 export default function ForgotPassword() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const product = params.get("app") === "hire" ? "hire" : "learn";
+  const loginTo = product === "hire" ? "/hire/login" : "/learn/login";
   const [step, setStep] = useState("request"); // request | reset | done
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -20,7 +24,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setErr(null); setBusy(true);
     try {
-      const r = await api.forgotPassword(email);
+      const r = await api.forgotPassword(email, product);
       if (r?.dev_reset_token) setDevToken(r.dev_reset_token); // dev convenience
       setStep("reset");
     } catch {
@@ -34,7 +38,7 @@ export default function ForgotPassword() {
     try {
       await api.resetPassword(token, pw);
       setStep("done");
-      setTimeout(() => nav("/login"), 1800);
+      setTimeout(() => nav(loginTo), 1800);
     } catch (ex) {
       setErr(ex.message || "Reset failed — check your token.");
     } finally { setBusy(false); }
@@ -94,7 +98,7 @@ export default function ForgotPassword() {
             </div>
           )}
 
-          <Link to="/login" className="mt-6 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-ink-900">
+          <Link to={loginTo} className="mt-6 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-ink-900">
             <ArrowLeft size={14} /> Back to sign in
           </Link>
         </Card>

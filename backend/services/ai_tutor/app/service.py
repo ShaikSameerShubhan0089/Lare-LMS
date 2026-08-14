@@ -24,7 +24,7 @@ def _ai_complete(prompt_key: str, variables: dict, *, actor_id: str,
             "want_json": want_json, "history": history or [],
             "json_fallback": json_fallback}
     try:
-        resp = _AI.post("lms-ai", "/ai/v1/complete", body, user_id=actor_id)
+        resp = _AI.post("platform-ai", "/ai/v1/complete", body, user_id=actor_id)
         return (resp or {}).get("data") or {}
     except Exception:  # noqa: BLE001
         return {"mode": "offline", "model": "none",

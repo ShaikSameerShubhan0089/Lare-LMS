@@ -33,15 +33,15 @@ export function AuthProvider({ children }) {
     loadMe();
   }, [loadMe]);
 
-  const login = async (email, password) => {
-    const t = await api.login(email, password);
+  const login = async (email, password, product = "learn") => {
+    const t = await api.login(email, password, product);
     tokens.set(t);
     setUser(await api.me());
   };
 
-  const register = async (email, password, full_name) => {
-    await api.register(email, password, full_name);
-    await login(email, password);
+  const register = async (email, password, full_name, product = "learn") => {
+    await api.register(email, password, full_name, product);
+    await login(email, password, product);
   };
 
   const logout = async () => {

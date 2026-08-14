@@ -5,20 +5,24 @@ import { AuthLayout } from "./AuthLayout.jsx";
 import { Button, Field, Input } from "../components/ui/primitives.jsx";
 import { useAuth } from "../lib/auth.jsx";
 
-export default function Login() {
+const NAME = { learn: "LARE Learn", hire: "LARE Hire" };
+
+export default function Login({ product = "learn" }) {
   const { login } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const home = product === "hire" ? "/drive" : "/lms";
+  const registerTo = product === "hire" ? "/hire/register" : "/learn/register";
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      await login(form.email, form.password);
-      nav("/apps");
+      await login(form.email, form.password, product);
+      nav(home);
     } catch (err) {
       setError(err.message || "Sign in failed");
     } finally {
@@ -28,13 +32,14 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Sign in to continue your journey."
+      product={product}
+      title={`Sign in to ${NAME[product]}`}
+      subtitle="Separate account per app — this signs you into this product only."
       footer={
         <>
           New here?{" "}
-          <Link to="/register" className="font-semibold text-brand-600 hover:underline">
-            Create an account
+          <Link to={registerTo} className="font-semibold text-brand-600 hover:underline">
+            Create a {NAME[product]} account
           </Link>
         </>
       }
@@ -68,7 +73,7 @@ export default function Login() {
           />
         </Field>
         <div className="flex justify-end -mt-1">
-          <Link to="/forgot-password" className="text-sm text-brand-600 hover:underline">
+          <Link to={`/forgot-password?app=${product}`} className="text-sm text-brand-600 hover:underline">
             Forgot password?
           </Link>
         </div>

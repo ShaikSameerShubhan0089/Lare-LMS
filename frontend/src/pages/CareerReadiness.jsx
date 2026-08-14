@@ -4,7 +4,7 @@ import {
   Compass, Target, ArrowRight, CheckCircle2, TrendingUp, Brain, Code2,
 } from "lucide-react";
 import { Card, Badge, Button } from "../components/ui/primitives.jsx";
-import { RadialGauge, MasteryBar } from "../components/drive/charts.jsx";
+import { RadialGauge, MasteryBar } from "../components/charts.jsx";
 import { PageHeader, Loading, EmptyState } from "../components/ui/states.jsx";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";

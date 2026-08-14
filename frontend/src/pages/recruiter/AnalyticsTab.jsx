@@ -4,7 +4,7 @@ import { Card, Button } from "../../components/ui/primitives.jsx";
 import { Loading } from "../../components/ui/states.jsx";
 import { api, withFallback } from "../../lib/api.js";
 import { band, bandHex, initials, hueFor } from "../../components/drive/grammar.jsx";
-import { RadialGauge, Funnel, AreaChart, Donut } from "../../components/drive/charts.jsx";
+import { RadialGauge, Funnel, AreaChart, Donut } from "../../components/charts.jsx";
 
 // World-class drive analytics — a real recruitment intelligence dashboard.
 // Everything derives from live data (analytics + funnel + registrations); no mocks.

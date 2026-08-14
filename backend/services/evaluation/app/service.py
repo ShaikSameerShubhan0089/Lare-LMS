@@ -99,7 +99,7 @@ class EvaluationService:
         attempts = 3
         for i in range(attempts):
             try:
-                resp = _CODE.post("drive-coding", "/drive/v1/coding/run-adhoc",
+                resp = _CODE.post("platform-coding", "/drive/v1/coding/run-adhoc",
                                   {"language": language, "code": code, "cases": cases})
                 d = (resp or {}).get("data") or {}
                 # A valid 200 response (even compile_failed) is a real result.

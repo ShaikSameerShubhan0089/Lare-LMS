@@ -42,7 +42,7 @@ def _coding_skills(learner_id: str) -> dict:
     Best-effort: if the coding service is down, the Twin still returns written
     assessment data."""
     try:
-        resp = _CODING.get("drive-coding",
+        resp = _CODING.get("platform-coding",
                            "/lms/v1/practice/skills/{}".format(learner_id))
         return resp or {}
     except Exception:  # noqa: BLE001 — coding is additive; never fail the Twin

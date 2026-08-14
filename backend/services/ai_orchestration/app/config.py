@@ -4,7 +4,7 @@ from lare_common.config import BaseConfig
 
 
 class AIConfig(BaseConfig):
-    SERVICE_NAME = os.getenv("SERVICE_NAME", "lms-ai")
+    SERVICE_NAME = os.getenv("SERVICE_NAME", "platform-ai")
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///ai_orchestration.sqlite3")
     DB_SCHEMA = os.getenv("DB_SCHEMA", "lms_ai") or None
 

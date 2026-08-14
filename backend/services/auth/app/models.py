@@ -34,9 +34,14 @@ role_permissions = Table(
 
 class User(Base):
     __tablename__ = "users"
+    # LARE Learn and LARE Hire are separate products with separate accounts: the
+    # same email may exist once per product, each with its own password. Identity
+    # is therefore unique on (email, product), not email alone.
+    __table_args__ = (UniqueConstraint("email", "product", name="uq_users_email_product"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    product: Mapped[str] = mapped_column(String(16), default="learn", nullable=False, index=True)  # learn|hire
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(32), default="active")  # active|locked|disabled

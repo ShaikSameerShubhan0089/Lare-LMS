@@ -61,6 +61,9 @@ class AuthService:
             issuer=self.cfg.JWT_ISSUER,
             audience=self.cfg.JWT_AUDIENCE,
             ttl_minutes=self.cfg.ACCESS_TOKEN_TTL_MIN,
+            # Product scope — the Gateway uses this to keep a Learn session out of
+            # Hire and vice versa. The two products are separate accounts.
+            extra={"product": getattr(user, "product", "learn")},
         )
         raw_refresh = random_token()
         rt = RefreshToken(
@@ -80,13 +83,18 @@ class AuthService:
 
     # ---------- use cases ----------
     def register(self, s: Session, email: str, password: str,
-                 full_name: str | None) -> User:
-        exists = s.execute(select(User).where(User.email == email.lower())).scalar_one_or_none()
+                 full_name: str | None, product: str = "learn") -> User:
+        # Accounts are per-product: the same email may register once for Learn and
+        # once for Hire, each with its own password. Uniqueness is (email, product).
+        exists = s.execute(
+            select(User).where(User.email == email.lower(), User.product == product)
+        ).scalar_one_or_none()
         if exists:
             raise Conflict("Email already registered", code="email_taken")
         user = User(
             id=new_id(),
             email=email.lower(),
+            product=product,
             password_hash=hash_password(password, rounds=self.cfg.BCRYPT_ROUNDS),
             full_name=full_name,
             tenant_id=self.cfg.DEFAULT_TENANT_ID,
@@ -101,10 +109,13 @@ class AuthService:
         credential, so there is no password. Reuses the platform JWT so the exam /
         proctor / evaluation services accept the session unchanged."""
         email = email.lower().strip()
-        user = s.execute(select(User).where(User.email == email)).scalar_one_or_none()
+        # Campus Drive registration is a LARE Hire account (passwordless, Student-ID).
+        user = s.execute(
+            select(User).where(User.email == email, User.product == "hire")
+        ).scalar_one_or_none()
         if user is None:
             user = User(
-                id=new_id(), email=email,
+                id=new_id(), email=email, product="hire",
                 # Random unusable password — this account only logs in via Student ID.
                 password_hash=hash_password(secrets.token_urlsafe(24),
                                             rounds=self.cfg.BCRYPT_ROUNDS),
@@ -121,8 +132,11 @@ class AuthService:
         return {"user_id": user.id, "email": user.email,
                 "full_name": user.full_name, **tokens}
 
-    def login(self, s: Session, email: str, password: str, device: str | None) -> dict:
-        user = s.execute(select(User).where(User.email == email.lower())).scalar_one_or_none()
+    def login(self, s: Session, email: str, password: str, device: str | None,
+              product: str = "learn") -> dict:
+        user = s.execute(
+            select(User).where(User.email == email.lower(), User.product == product)
+        ).scalar_one_or_none()
         # Uniform failure to avoid user enumeration.
         if not user:
             raise Unauthorized("Invalid credentials", code="invalid_credentials")
@@ -236,23 +250,30 @@ class AuthService:
             raise Unauthorized("User not found", code="user_not_found")
         return user
 
-    def request_otp(self, s: Session, email: str) -> str | None:
+    def request_otp(self, s: Session, email: str, product: str = "learn") -> str | None:
         """Issue a 6-digit login OTP. Returns the code (delivered via
         Notification in prod; returned in dev for testing). No user enumeration."""
-        user = s.execute(select(User).where(User.email == email.lower())).scalar_one_or_none()
+        user = s.execute(
+            select(User).where(User.email == email.lower(), User.product == product)
+        ).scalar_one_or_none()
         if not user:
             return None
         return self._issue_verification(s, user, "otp", ttl_min=10, numeric=True)
 
-    def verify_otp(self, s: Session, email: str, code: str, device: str | None) -> dict:
-        user = s.execute(select(User).where(User.email == email.lower())).scalar_one_or_none()
+    def verify_otp(self, s: Session, email: str, code: str, device: str | None,
+                   product: str = "learn") -> dict:
+        user = s.execute(
+            select(User).where(User.email == email.lower(), User.product == product)
+        ).scalar_one_or_none()
         if not user:
             raise Unauthorized("Invalid credentials", code="invalid_credentials")
         self._consume_verification(s, "otp", code, user_id=user.id)
         return self._issue_tokens(s, user, device)
 
-    def request_password_reset(self, s: Session, email: str) -> str | None:
-        user = s.execute(select(User).where(User.email == email.lower())).scalar_one_or_none()
+    def request_password_reset(self, s: Session, email: str, product: str = "learn") -> str | None:
+        user = s.execute(
+            select(User).where(User.email == email.lower(), User.product == product)
+        ).scalar_one_or_none()
         if not user:
             return None  # silent: no enumeration
         return self._issue_verification(s, user, "password_reset", ttl_min=30, numeric=False)
@@ -298,6 +319,7 @@ class AuthService:
             "email_verified": user.email_verified,
             "mfa_enabled": user.mfa_enabled,
             "tenant_id": user.tenant_id,
+            "product": getattr(user, "product", "learn"),
             "roles": self._role_names(s, user),
         }
 

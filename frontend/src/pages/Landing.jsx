@@ -94,10 +94,13 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl h-full px-5 flex items-center justify-between">
           <Logo size={84} />
           <nav className="flex items-center gap-2">
-            <Button as={Link} to="/login" variant="ghost" size="sm">
-              Sign in
+            <Button as={Link} to="/learn/login" variant="ghost" size="sm">
+              Learn login
             </Button>
-            <Button as={Link} to="/register" size="sm">
+            <Button as={Link} to="/hire/login" variant="ghost" size="sm">
+              Hire login
+            </Button>
+            <Button as={Link} to="/learn/register" size="sm">
               Get started
             </Button>
           </nav>
@@ -123,14 +126,14 @@ export default function Landing() {
               <span className="text-ink-900 font-medium"> Learn. Prove it. Get hired.</span>
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button as={Link} to="/drive/attend" size="lg" variant="amber">
-                Attend Drive <ArrowRight size={18} />
-              </Button>
-              <Button as={Link} to="/register" size="lg">
+              <Button as={Link} to="/learn/register" size="lg">
                 Start learning
               </Button>
-              <Button as={Link} to="/login" variant="secondary" size="lg">
-                College / TPO login
+              <Button as={Link} to="/hire/login" variant="amber" size="lg">
+                Enter LARE Hire <ArrowRight size={18} />
+              </Button>
+              <Button as={Link} to="/drive/attend" variant="secondary" size="lg">
+                Attend a drive
               </Button>
             </div>
             <div className="mt-8 flex items-center gap-6 text-sm text-slate-500">
@@ -273,7 +276,10 @@ export default function Landing() {
                 <li key={t} className="flex items-start gap-2.5 text-[13.5px] text-slate-600"><Ic size={16} className="text-brand-500 mt-0.5 shrink-0" />{t}</li>
               ))}
             </ul>
-            <Button as={Link} to="/register" variant="secondary" className="mt-6 w-full justify-center">Start learning <ArrowRight size={16} /></Button>
+            <div className="mt-6 flex gap-2">
+              <Button as={Link} to="/learn/register" className="flex-1 justify-center">Start learning <ArrowRight size={16} /></Button>
+              <Button as={Link} to="/learn/login" variant="secondary" className="justify-center">Sign in</Button>
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.08 }}
@@ -287,7 +293,10 @@ export default function Landing() {
                 <li key={t} className="flex items-start gap-2.5 text-[13.5px] text-slate-600"><Ic size={16} className="text-amber-600 mt-0.5 shrink-0" />{t}</li>
               ))}
             </ul>
-            <Button as={Link} to="/drive/attend" variant="amber" className="mt-6 w-full justify-center">Attend a drive <ArrowRight size={16} /></Button>
+            <div className="mt-6 flex gap-2">
+              <Button as={Link} to="/hire/login" variant="amber" className="flex-1 justify-center">Hire login <ArrowRight size={16} /></Button>
+              <Button as={Link} to="/drive/attend" variant="secondary" className="justify-center">Attend a drive</Button>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -379,8 +388,8 @@ export default function Landing() {
           </h2>
           <p className="mt-4 text-slate-300 max-w-xl mx-auto">One evidence-driven platform for students, colleges and recruiters — from first-year foundation to signed offer.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button as={Link} to="/register" size="lg" variant="amber">Get started <ArrowRight size={18} /></Button>
-            <Link to="/login" className="inline-flex items-center gap-2 h-12 px-6 rounded-lg border border-white/25 text-white font-semibold hover:bg-white/10 transition-colors">College / TPO login</Link>
+            <Button as={Link} to="/learn/register" size="lg" variant="amber">Start with Learn <ArrowRight size={18} /></Button>
+            <Link to="/hire/login" className="inline-flex items-center gap-2 h-12 px-6 rounded-lg border border-white/25 text-white font-semibold hover:bg-white/10 transition-colors">Enter LARE Hire</Link>
           </div>
         </div>
       </section>

@@ -23,15 +23,17 @@ class GatewayConfig(BaseConfig):
         "drive-exam": os.getenv("EXAM_URL", "http://127.0.0.1:8013"),
         "drive-submission": os.getenv("SUBMISSION_URL", "http://127.0.0.1:8014"),
         "drive-anticheat": os.getenv("ANTICHEAT_URL", "http://127.0.0.1:8015"),
-        "drive-coding": os.getenv("CODING_URL", "http://127.0.0.1:8016"),
         "drive-evaluation": os.getenv("EVALUATION_URL", "http://127.0.0.1:8017"),
         "drive-interview": os.getenv("INTERVIEW_URL", "http://127.0.0.1:8018"),
         "drive-result": os.getenv("RESULT_URL", "http://127.0.0.1:8019"),
+        # Shared platform code-execution engine (like files/AI). Used independently
+        # by LMS practice and Hire coding rounds — it calls neither product.
+        "platform-coding": os.getenv("CODING_URL", "http://127.0.0.1:8016"),
         "lare-notify": os.getenv("NOTIFY_URL", "http://127.0.0.1:8020"),
         "lare-files": os.getenv("FILES_URL", "http://127.0.0.1:8021"),
         "lare-analytics": os.getenv("ANALYTICS_URL", "http://127.0.0.1:8022"),
         "lare-audit": os.getenv("AUDIT_URL", "http://127.0.0.1:8023"),
-        "lms-ai": os.getenv("AI_ORCH_URL", "http://127.0.0.1:8024"),
+        "platform-ai": os.getenv("AI_ORCH_URL", "http://127.0.0.1:8024"),  # governed AI egress (both products)
         "lms-tutor": os.getenv("AI_TUTOR_URL", "http://127.0.0.1:8025"),
         "platform-org": os.getenv("ORG_URL", "http://127.0.0.1:8026"),
         "drive-evidence": os.getenv("EVIDENCE_URL", "http://127.0.0.1:8027"),
@@ -62,7 +64,7 @@ class GatewayConfig(BaseConfig):
         "/lms/v1/assessments": "lms-assessment",
         "/lms/v1/attempts": "lms-assessment",
         "/lms/v1/answers": "lms-assessment",
-        "/lms/v1/practice": "drive-coding",
+        "/lms/v1/practice": "platform-coding",  # shared code-runner, not a Hire service
         "/lms/v1/careers": "lms-assessment",
         "/lms/v1/reviews": "lms-assessment",
         "/lms/v1/wallet": "lms-assessment",
@@ -93,7 +95,7 @@ class GatewayConfig(BaseConfig):
         "/drive/v1/exam-sessions": "drive-exam",
         "/drive/v1/submissions": "drive-submission",
         "/drive/v1/proctor": "drive-anticheat",
-        "/drive/v1/coding": "drive-coding",
+        "/drive/v1/coding": "platform-coding",  # shared code-runner (platform infra)
         "/drive/v1/evaluations": "drive-evaluation",
         "/drive/v1/interviews": "drive-interview",
         "/drive/v1/results": "drive-result",
@@ -106,7 +108,7 @@ class GatewayConfig(BaseConfig):
         "/audit/": "lare-audit",
         # --- AI (longest-prefix: tutor beats the generic /ai/ orchestration) ---
         "/ai/v1/tutor": "lms-tutor",
-        "/ai/": "lms-ai",
+        "/ai/": "platform-ai",
         # --- Organization layer ---
         "/org/": "platform-org",
     }

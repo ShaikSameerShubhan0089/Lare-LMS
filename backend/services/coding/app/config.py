@@ -9,7 +9,10 @@ def _bool(name, default):
 
 
 class CodingConfig(BaseConfig):
-    SERVICE_NAME = os.getenv("SERVICE_NAME", "drive-coding")
+    # Shared PLATFORM code-execution engine — used independently by LMS practice
+    # and Hire coding rounds. It belongs to neither product. (DB_SCHEMA keeps its
+    # original name to avoid a data migration; only the service label changed.)
+    SERVICE_NAME = os.getenv("SERVICE_NAME", "platform-coding")
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///coding.sqlite3")
     DB_SCHEMA = os.getenv("DB_SCHEMA", "drive_coding") or None
     # Executor mode: 'subprocess' (dev), 'sandbox' (prod: nsjail/bubblewrap),

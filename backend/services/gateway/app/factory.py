@@ -79,12 +79,26 @@ def build_app() -> Flask:
             if claims.get("type") != "access":
                 return jsonify(error_payload("unauthorized", "Not an access token")), 401
 
+            # Product isolation: a LARE Learn session may reach only /lms/* (+ the
+            # shared platform routes); a LARE Hire session only /drive/*. The two
+            # are separate accounts, so a token minted for one product must not act
+            # in the other. Tokens issued before this rollout have no product claim
+            # — those are allowed through (they age out as users re-log in).
+            needed_product = ("learn" if full.startswith("/lms/")
+                              else "hire" if full.startswith("/drive/") else None)
+            token_product = claims.get("product")
+            if needed_product and token_product and token_product != needed_product:
+                return jsonify(error_payload(
+                    "wrong_product",
+                    "This account cannot access the other product")), 403
+
             g.identity_claims = claims
             injected = {
                 "X-User-Id": claims["sub"],
                 "X-Roles": ",".join(claims.get("roles", [])),
                 "X-Tenant-Id": claims.get("tenant_id", "lare"),
                 "X-College-Ids": ",".join(claims.get("college_ids", [])),
+                "X-Product": token_product or "",
             }
 
         if not limiter.allow(_client_key(), limit):

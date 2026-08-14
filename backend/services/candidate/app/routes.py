@@ -80,7 +80,7 @@ def set_resume():
 def _ai_complete(prompt_key, variables, fallback, user_id):
     """Call the governed AI Orchestration egress; degrade to fallback."""
     try:
-        resp = _CLIENT.post("lms-ai", "/ai/v1/complete", {
+        resp = _CLIENT.post("platform-ai", "/ai/v1/complete", {
             "prompt_key": prompt_key, "want_json": True, "purpose": "resume",
             "variables": variables, "json_fallback": fallback},
             roles=["recruiter"], user_id=user_id)

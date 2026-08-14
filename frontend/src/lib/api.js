@@ -150,14 +150,16 @@ async function request(path, opts = {}) {
 
 export const api = {
   // ---- auth ----
-  register: (email, password, full_name) =>
-    request("/auth/v1/register", { method: "POST", auth: false, body: { email, password, full_name } }),
-  login: (email, password) =>
-    request("/auth/v1/login", { method: "POST", auth: false, body: { email, password, device: "web" } }),
+  // `product` scopes the account to one app — "learn" or "hire". Accounts are
+  // separate per product (same email may exist in both with different passwords).
+  register: (email, password, full_name, product = "learn") =>
+    request("/auth/v1/register", { method: "POST", auth: false, body: { email, password, full_name, product } }),
+  login: (email, password, product = "learn") =>
+    request("/auth/v1/login", { method: "POST", auth: false, body: { email, password, device: "web", product } }),
   refresh: (refresh_token) =>
     request("/auth/v1/refresh", { method: "POST", auth: false, body: { refresh_token } }),
-  forgotPassword: (email) =>
-    request("/auth/v1/password/forgot", { method: "POST", auth: false, body: { email } }),
+  forgotPassword: (email, product = "learn") =>
+    request("/auth/v1/password/forgot", { method: "POST", auth: false, body: { email, product } }),
   resetPassword: (token, new_password) =>
     request("/auth/v1/password/reset", { method: "POST", auth: false, body: { token, new_password } }),
   requestOtp: (email) =>

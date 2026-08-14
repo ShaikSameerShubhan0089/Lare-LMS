@@ -5,12 +5,20 @@ import { AuthLayout } from "./AuthLayout.jsx";
 import { Button, Field, Input } from "../components/ui/primitives.jsx";
 import { useAuth } from "../lib/auth.jsx";
 
-export default function Register() {
+const NAME = { learn: "LARE Learn", hire: "LARE Hire" };
+const BLURB = {
+  learn: "Start your four-year journey with LARE Learn.",
+  hire: "Create your LARE Hire account to run recruitment drives.",
+};
+
+export default function Register({ product = "learn" }) {
   const { register } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState({ full_name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const home = product === "hire" ? "/drive" : "/lms";
+  const loginTo = product === "hire" ? "/hire/login" : "/learn/login";
 
   const submit = async (e) => {
     e.preventDefault();
@@ -21,8 +29,8 @@ export default function Register() {
     }
     setBusy(true);
     try {
-      await register(form.email, form.password, form.full_name);
-      nav("/apps");
+      await register(form.email, form.password, form.full_name, product);
+      nav(home);
     } catch (err) {
       setError(err.message || "Registration failed");
     } finally {
@@ -32,12 +40,13 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Start your four-year journey with LARE."
+      product={product}
+      title={`Create your ${NAME[product]} account`}
+      subtitle={BLURB[product]}
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-brand-600 hover:underline">
+          <Link to={loginTo} className="font-semibold text-brand-600 hover:underline">
             Sign in
           </Link>
         </>

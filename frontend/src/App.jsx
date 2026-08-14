@@ -5,7 +5,6 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import AttendDrive from "./pages/AttendDrive.jsx";
-import AppChooser from "./pages/AppChooser.jsx";
 import Settings from "./pages/Settings.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import MyLearning from "./pages/MyLearning.jsx";
@@ -28,6 +27,7 @@ import LessonViewer from "./pages/LessonViewer.jsx";
 import Analytics from "./pages/Analytics.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Profile from "./pages/Profile.jsx";
+import LearnProfile from "./pages/LearnProfile.jsx";
 import RecruiterDrives from "./pages/recruiter/RecruiterDrives.jsx";
 import DriveConsole from "./pages/recruiter/DriveConsole.jsx";
 import QuestionBank from "./pages/recruiter/QuestionBank.jsx";
@@ -47,7 +47,8 @@ function Protected({ children, product, bare, roles }) {
   const { user, loading } = useAuth();
   if (loading)
     return <div className="min-h-screen grid place-items-center text-slate-400">Loading…</div>;
-  if (!user) return <Navigate to="/login" replace />;
+  // Separate logins per product — bounce to the matching one.
+  if (!user) return <Navigate to={product === "drive" ? "/hire/login" : "/learn/login"} replace />;
   if (roles?.length && !(user.roles || []).some((r) => roles.includes(r)))
     return <Navigate to={product === "lms" ? "/lms" : "/drive"} replace />;
   if (bare) return children;
@@ -72,16 +73,19 @@ export default function App() {
     <Routes>
       {/* Public */}
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      {/* Separate logins per product (separate accounts). /login & /register keep
+          working as the Learn defaults. */}
+      <Route path="/login" element={<Login product="learn" />} />
+      <Route path="/register" element={<Register product="learn" />} />
+      <Route path="/learn/login" element={<Login product="learn" />} />
+      <Route path="/learn/register" element={<Register product="learn" />} />
+      <Route path="/hire/login" element={<Login product="hire" />} />
+      <Route path="/hire/register" element={<Register product="hire" />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       {/* Public, no-login Drive registration */}
       <Route path="/drive/attend" element={<AttendDrive />} />
       <Route path="/verify/wallet/:verifyId" element={<WalletVerify />} />
       <Route path="/verify/:verifyId" element={<CertificateVerify />} />
-
-      {/* Post-login app chooser (two standalone apps, one platform) */}
-      <Route path="/apps" element={<Protected bare><AppChooser /></Protected>} />
 
       {/* ================= LARE Learn (LMS) ================= */}
       <Route path="/lms" element={lms(<Dashboard />)} />
@@ -105,7 +109,7 @@ export default function App() {
       <Route path="/lms/curriculum" element={lmsStaff(<CurriculumStudio />)} />
       <Route path="/lms/trainer" element={lmsStaff(<TrainerConsole />)} />
       <Route path="/lms/notifications" element={lms(<Notifications />)} />
-      <Route path="/lms/profile" element={lms(<Profile />)} />
+      <Route path="/lms/profile" element={lms(<LearnProfile />)} />
       <Route path="/lms/settings" element={lms(<Settings />)} />
 
       {/* ================= LARE Hire (Drive) ================= */}
@@ -119,8 +123,9 @@ export default function App() {
       <Route path="/drive/profile" element={drive(<Profile />)} />
       <Route path="/drive/settings" element={drive(<Settings />)} />
 
-      {/* Back-compat: old /app/* → chooser */}
-      <Route path="/app/*" element={<Navigate to="/apps" replace />} />
+      {/* Back-compat: the old chooser is gone — send to the home page. */}
+      <Route path="/apps" element={<Navigate to="/" replace />} />
+      <Route path="/app/*" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

@@ -6,6 +6,8 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "check:isolation": "node ../scripts/check-isolation.mjs",
+    "prebuild": "node ../scripts/check-isolation.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

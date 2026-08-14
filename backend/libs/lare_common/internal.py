@@ -34,7 +34,8 @@ SERVICE_URLS: dict[str, str] = {
     "drive-exam": os.getenv("EXAM_URL", "http://127.0.0.1:8013"),
     "drive-submission": os.getenv("SUBMISSION_URL", "http://127.0.0.1:8014"),
     "drive-anticheat": os.getenv("ANTICHEAT_URL", "http://127.0.0.1:8015"),
-    "drive-coding": os.getenv("CODING_URL", "http://127.0.0.1:8016"),
+    # Shared platform code-execution engine (both products use it independently).
+    "platform-coding": os.getenv("CODING_URL", "http://127.0.0.1:8016"),
     "drive-evaluation": os.getenv("EVALUATION_URL", "http://127.0.0.1:8017"),
     "drive-interview": os.getenv("INTERVIEW_URL", "http://127.0.0.1:8018"),
     "drive-result": os.getenv("RESULT_URL", "http://127.0.0.1:8019"),
@@ -42,7 +43,7 @@ SERVICE_URLS: dict[str, str] = {
     "lare-files": os.getenv("FILES_URL", "http://127.0.0.1:8021"),
     "lare-analytics": os.getenv("ANALYTICS_URL", "http://127.0.0.1:8022"),
     "lare-audit": os.getenv("AUDIT_URL", "http://127.0.0.1:8023"),
-    "lms-ai": os.getenv("AI_ORCH_URL", "http://127.0.0.1:8024"),
+    "platform-ai": os.getenv("AI_ORCH_URL", "http://127.0.0.1:8024"),  # governed AI egress (both products)
     "lms-tutor": os.getenv("AI_TUTOR_URL", "http://127.0.0.1:8025"),
     "platform-org": os.getenv("ORG_URL", "http://127.0.0.1:8026"),
     "drive-evidence": os.getenv("EVIDENCE_URL", "http://127.0.0.1:8027"),

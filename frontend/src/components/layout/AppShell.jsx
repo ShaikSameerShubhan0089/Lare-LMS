@@ -16,8 +16,6 @@ import {
   GraduationCap,
   BookMarked,
   Settings as SettingsIcon,
-  LayoutGrid,
-  ArrowLeftRight,
   LogOut,
   Menu,
   Bell,
@@ -184,19 +182,15 @@ export function AppShell({ children, product = "lms" }) {
           )}
         </nav>
 
-        {/* App switcher + shared */}
+        {/* Settings + sign out. LARE Learn and LARE Hire are separate accounts,
+            so there is no in-session product switch — signing into the other
+            product means logging in with that account from the home page. */}
         <div className="px-3 py-2 border-t border-white/10 space-y-1">
-          <button onClick={() => nav(cfg.switchTo.to)} className={linkClass({ isActive: false }) + " w-full"}>
-            <ArrowLeftRight size={19} strokeWidth={1.75} /> {cfg.switchTo.label}
-          </button>
-          <button onClick={() => nav("/apps")} className={linkClass({ isActive: false }) + " w-full"}>
-            <LayoutGrid size={19} strokeWidth={1.75} /> All apps
-          </button>
           <NavLink to={`${cfg.base}/settings`} onClick={() => setOpen(false)} className={linkClass}>
             <SettingsIcon size={19} strokeWidth={1.75} /> Settings
           </NavLink>
           <button
-            onClick={async () => { await logout(); nav("/login"); }}
+            onClick={async () => { await logout(); nav(cfg.key === "drive" ? "/hire/login" : "/learn/login"); }}
             className={linkClass({ isActive: false }) + " w-full"}
           >
             <LogOut size={19} strokeWidth={1.75} /> Sign out
