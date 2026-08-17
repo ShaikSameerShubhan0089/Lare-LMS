@@ -44,6 +44,10 @@ class ExamEngine:
             raise NotFound("Exam not found", code="exam_not_found")
         return e
 
+    def delete_exam(self, s: Session, eid: str) -> None:
+        s.delete(self.get_exam(s, eid))
+        s.flush()
+
     def list_exams(self, s: Session, drive_id: str | None = None) -> list[dict]:
         q = select(Exam)
         if drive_id:

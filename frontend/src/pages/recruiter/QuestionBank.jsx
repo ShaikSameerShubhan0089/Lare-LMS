@@ -507,6 +507,13 @@ function PaperViewer() {
     finally { setBusy(false); }
   }
 
+  async function del(eid) {
+    if (!window.confirm("Delete this question paper? This cannot be undone.")) return;
+    await api.deleteExam(eid).catch(() => {});
+    setExams((xs) => xs.filter((x) => x.id !== eid));
+    setPaper(null);
+  }
+
   return (
     <Card className="p-6">
       <h2 className="font-display font-semibold text-ink-900 mb-1 flex items-center gap-2">
@@ -527,9 +534,16 @@ function PaperViewer() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {rExams.map((ex) => (
-                    <Button key={ex.id} size="sm" variant="secondary" onClick={() => view(ex.id)}>
-                      <ClipboardList size={14} /> {ex.title} ({ex.sections} sec)
-                    </Button>
+                    <div key={ex.id} className="inline-flex items-center rounded-md border border-slate-200 overflow-hidden">
+                      <button onClick={() => view(ex.id)}
+                        className="h-8 px-3 text-sm text-slate-600 hover:bg-slate-50 inline-flex items-center gap-1.5">
+                        <ClipboardList size={14} /> {ex.title} ({ex.sections} sec)
+                      </button>
+                      <button onClick={() => del(ex.id)} title="Delete this paper"
+                        className="h-8 px-2 border-l border-slate-200 text-slate-300 hover:text-rose-500 hover:bg-rose-50">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>

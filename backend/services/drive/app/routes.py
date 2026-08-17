@@ -246,6 +246,15 @@ def list_drives():
         return ok([_svc().out(d) for d in drives])
 
 
+@bp.get("/drive/v1/drives/<did>/my-round")
+@require_roles(*READ)
+def my_round(did):
+    """The calling candidate's current round + the drive pipeline (for gating
+    which round's assessment is visible)."""
+    with _db().session() as s:
+        return ok(_svc().candidate_round(s, did, current_identity().user_id))
+
+
 @bp.get("/drive/v1/opportunities")
 @require_roles(*READ)
 def opportunities():

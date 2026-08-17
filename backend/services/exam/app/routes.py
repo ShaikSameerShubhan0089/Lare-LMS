@@ -96,6 +96,14 @@ def get_exam(eid):
         return ok(_svc().exam_out(exam))
 
 
+@bp.delete("/drive/v1/exams/<eid>")
+@require_roles(*MANAGE)
+def delete_exam(eid):
+    with _db().session() as s:
+        _svc().delete_exam(s, eid)
+        return ok({"deleted": True})
+
+
 @bp.get("/drive/v1/exams/<eid>/paper")
 @require_roles(*MANAGE)
 def exam_paper(eid):

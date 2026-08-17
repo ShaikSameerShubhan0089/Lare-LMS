@@ -243,6 +243,7 @@ export const api = {
   // ---- Drive (candidate) ----
   drives: (status) => request(`/drive/v1/drives${status ? `?status=${status}` : ""}`),
   drive: (id) => request(`/drive/v1/drives/${id}`),
+  myRound: (driveId) => request(`/drive/v1/drives/${driveId}/my-round`),
 
   // ---- Drive (recruiter/admin management) ----
   createDrive: (body) => request("/drive/v1/drives", { method: "POST", body }),
@@ -414,6 +415,7 @@ export const api = {
   createBlueprint: (body) => request("/drive/v1/blueprints", { method: "POST", body }),
   generatePaper: (id) => request(`/drive/v1/blueprints/${id}/generate-paper`, { method: "POST" }),
   createExam: (body) => request("/drive/v1/exams", { method: "POST", body }),
+  deleteExam: (id) => request(`/drive/v1/exams/${id}`, { method: "DELETE" }),
   upsertEvalKey: (body) => request("/drive/v1/evaluations/keys", { method: "POST", body }),
   generateQuestions: (body) => request("/drive/v1/questions/generate", { method: "POST", body }),
 

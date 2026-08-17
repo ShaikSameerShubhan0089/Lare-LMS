@@ -892,6 +892,25 @@ class DriveService:
     def round_out(r: Round) -> dict:
         return {"id": r.id, "order": r.order, "type": r.type, "service_ref": r.service_ref}
 
+    def candidate_round(self, s: Session, did: str, user_id: str) -> dict:
+        """A candidate's progress in a drive: their current round + the pipeline.
+        The learning surface uses this to reveal only the round they've qualified
+        for (a later round's exam stays hidden until they clear the earlier one)."""
+        drive = self.get(s, did)
+        reg = s.execute(
+            select(Registration).where(Registration.drive_id == did,
+                                        Registration.candidate_id == user_id)
+        ).scalar_one_or_none()
+        current = reg.current_round if reg else 0
+        return {
+            "current_round": current,
+            # round 1 is available to every registered candidate; otherwise it's
+            # the round they've been advanced to.
+            "eligible_round": current if current and current >= 1 else 1,
+            "rounds": [{"id": r.id, "order": r.order, "type": r.type, "label": r.label}
+                       for r in sorted(drive.rounds or [], key=lambda x: x.order)],
+        }
+
     # ---------- Drive Access Gate ----------
     def _gen_drive_code(self, s: Session, drive_title: str) -> str:
         base = "".join(ch for ch in (drive_title or "DRIVE").upper() if ch.isalnum())[:5] or "DRIVE"

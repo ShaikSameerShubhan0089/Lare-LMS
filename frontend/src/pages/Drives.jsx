@@ -15,6 +15,7 @@ export default function Drives() {
   const nav = useNavigate();
   const drives = useAsync(() => withFallback(api.drives("open"), demoDrives), []);
   const [exams, setExams] = useState({}); // drive_id -> [exam]
+  const [prog, setProg] = useState({});   // drive_id -> { eligible_round, rounds }
 
   const list = drives.data || [];
 
@@ -24,8 +25,23 @@ export default function Drives() {
         list.map(async (d) => [d.id, await api.listExams(d.id).catch(() => [])]),
       );
       setExams(Object.fromEntries(entries));
+      const pr = await Promise.all(
+        list.map(async (d) => [d.id, await api.myRound(d.id).catch(() => null)]),
+      );
+      setProg(Object.fromEntries(pr.filter(([, v]) => v)));
     })();
   }, [drives.data]);
+
+  // Only the round the candidate has qualified for is visible — a later round's
+  // assessment stays hidden until they clear the earlier one.
+  function visibleExams(driveId) {
+    const all = exams[driveId] || [];
+    const p = prog[driveId];
+    if (!p) return all;
+    const order = {};
+    (p.rounds || []).forEach((r) => { order[r.id] = r.order; });
+    return all.filter((ex) => !ex.round_id || order[ex.round_id] === p.eligible_round);
+  }
 
   if (drives.loading) return <Loading />;
 
@@ -47,7 +63,7 @@ export default function Drives() {
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           {list.map((d) => {
-            const driveExams = exams[d.id] || [];
+            const driveExams = visibleExams(d.id);
             return (
               <Card key={d.id} className="p-6">
                 <div className="flex items-start justify-between">
