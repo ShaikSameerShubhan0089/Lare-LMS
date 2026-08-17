@@ -524,8 +524,13 @@ function PaperViewer() {
 
       {exams.length > 0 && (
         <div className="mt-4 space-y-3">
-          {[...rounds, { id: null, label: "Other papers", type: "" }].map((r) => {
-            const rExams = exams.filter((e) => (e.round_id || null) === (r.id || null));
+          {[...rounds, { id: null, label: "Other / unlinked papers", type: "" }].map((r) => {
+            const roundIds = new Set(rounds.map((x) => x.id));
+            // The catch-all group also collects orphans: a round_id that no longer
+            // matches any round in the pipeline (e.g. after re-saving it).
+            const rExams = r.id
+              ? exams.filter((e) => e.round_id === r.id)
+              : exams.filter((e) => !e.round_id || !roundIds.has(e.round_id));
             if (!rExams.length) return null;
             return (
               <div key={r.id || "other"}>

@@ -40,7 +40,12 @@ export default function Drives() {
     if (!p) return all;
     const order = {};
     (p.rounds || []).forEach((r) => { order[r.id] = r.order; });
-    return all.filter((ex) => !ex.round_id || order[ex.round_id] === p.eligible_round);
+    return all.filter((ex) => {
+      if (!ex.round_id) return true;                  // drive-level paper → always
+      const ord = order[ex.round_id];
+      if (ord === undefined) return true;             // round no longer in pipeline → don't vanish
+      return ord === p.eligible_round;                // gated to the qualified round
+    });
   }
 
   if (drives.loading) return <Loading />;
