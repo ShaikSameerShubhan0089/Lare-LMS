@@ -1,14 +1,22 @@
 """Recruitment drive logic: drives, roles, eligibility, rounds, funnel, PPO."""
 from __future__ import annotations
 
+import secrets
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from lare_common.errors import BadRequest, Conflict, NotFound
 from lare_common.security import new_id
 from lare_common.service_client import ServiceClient
+
+_ACCESS_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+DRIVE_ACCESS_HOURS = 12
+
+
+def _as_utc(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
 # East-west clients: Candidate has name/email/roll; Auth is the fallback for
 # name/email (e.g. staff accounts with no candidate record).
@@ -52,8 +60,9 @@ def _utcnow() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 from .models import (
-    ApplicationForm, Drive, DriveRole, EligibilityRule, FormSubmission,
-    PpoConfig, Registration, Round, RoundScore, SeatAllocation,
+    ApplicationForm, Drive, DriveAccessCode, DriveAccessSession, DriveRole,
+    EligibilityRule, FormSubmission, PpoConfig, Registration, Round, RoundScore,
+    SeatAllocation,
 )
 
 
@@ -879,3 +888,85 @@ class DriveService:
     @staticmethod
     def round_out(r: Round) -> dict:
         return {"id": r.id, "order": r.order, "type": r.type, "service_ref": r.service_ref}
+
+    # ---------- Drive Access Gate ----------
+    def _gen_drive_code(self, s: Session, drive_title: str) -> str:
+        base = "".join(ch for ch in (drive_title or "DRIVE").upper() if ch.isalnum())[:5] or "DRIVE"
+        for _ in range(20):
+            suffix = "".join(secrets.choice(_ACCESS_ALPHABET) for _ in range(4))
+            code = f"{base}-{suffix}"
+            if not s.execute(select(DriveAccessCode.id).where(DriveAccessCode.code == code)).first():
+                return code
+        raise Conflict("Could not generate a unique code", code="code_gen_failed")
+
+    def create_access_code(self, s: Session, data, created_by: str | None) -> DriveAccessCode:
+        drive = s.get(Drive, data.drive_id)
+        if not drive:
+            raise NotFound("Drive not found", code="drive_not_found")
+        exp = None
+        if data.expires_at:
+            try:
+                exp = datetime.fromisoformat(data.expires_at.replace("Z", "+00:00"))
+            except ValueError as e:
+                raise BadRequest("Invalid expires_at", code="bad_datetime") from e
+        ac = DriveAccessCode(id=new_id(), code=self._gen_drive_code(s, drive.title),
+                             drive_id=drive.id, label=data.label, expires_at=exp,
+                             created_by=created_by)
+        s.add(ac)
+        s.flush()
+        return ac
+
+    def list_access_codes(self, s: Session, drive_id: str | None) -> list[DriveAccessCode]:
+        stmt = select(DriveAccessCode).order_by(DriveAccessCode.created_at.desc())
+        if drive_id:
+            stmt = stmt.where(DriveAccessCode.drive_id == drive_id)
+        return list(s.execute(stmt).scalars().all())
+
+    def set_access_status(self, s: Session, code_id: str, status: str) -> DriveAccessCode:
+        ac = s.get(DriveAccessCode, code_id)
+        if not ac:
+            raise NotFound("Access code not found", code="code_not_found")
+        ac.status = status
+        s.flush()
+        return ac
+
+    def regenerate_access_code(self, s: Session, code_id: str) -> DriveAccessCode:
+        ac = s.get(DriveAccessCode, code_id)
+        if not ac:
+            raise NotFound("Access code not found", code="code_not_found")
+        drive = s.get(Drive, ac.drive_id)
+        ac.code = self._gen_drive_code(s, drive.title if drive else "DRIVE")
+        s.flush()
+        return ac
+
+    def validate_access(self, s: Session, code: str, user_id: str) -> dict:
+        ac = s.execute(
+            select(DriveAccessCode).where(DriveAccessCode.code == code.strip().upper())
+        ).scalar_one_or_none()
+        if not ac or ac.status != "active":
+            raise NotFound("Invalid or inactive access code", code="invalid_access_code")
+        if ac.expires_at and _as_utc(ac.expires_at) < datetime.now(tz=timezone.utc):
+            raise BadRequest("This access code has expired", code="access_code_expired")
+        drive = s.get(Drive, ac.drive_id)
+        for old in s.execute(select(DriveAccessSession).where(DriveAccessSession.user_id == user_id)).scalars().all():
+            s.delete(old)
+        sess = DriveAccessSession(id=new_id(), user_id=user_id, drive_id=ac.drive_id,
+                                  code_id=ac.id,
+                                  expires_at=datetime.now(tz=timezone.utc) + timedelta(hours=DRIVE_ACCESS_HOURS))
+        s.add(sess)
+        ac.used_count += 1
+        s.flush()
+        return {"drive_id": ac.drive_id, "drive_title": drive.title if drive else None,
+                "company_name": drive.company_name if drive else None,
+                "label": ac.label, "expires_at": sess.expires_at.isoformat()}
+
+    def clear_access_session(self, s: Session, user_id: str) -> None:
+        for sess in s.execute(select(DriveAccessSession).where(DriveAccessSession.user_id == user_id)).scalars().all():
+            s.delete(sess)
+
+    @staticmethod
+    def access_code_out(ac: DriveAccessCode) -> dict:
+        return {"id": ac.id, "code": ac.code, "drive_id": ac.drive_id, "label": ac.label,
+                "status": ac.status, "used_count": ac.used_count,
+                "expires_at": ac.expires_at.isoformat() if ac.expires_at else None,
+                "created_at": ac.created_at.isoformat()}

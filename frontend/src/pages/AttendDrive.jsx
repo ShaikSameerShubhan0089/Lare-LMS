@@ -13,7 +13,7 @@ export default function AttendDrive() {
   const nav = useNavigate();
   const { reload } = useAuth();
   const [mode, setMode] = useState("register"); // register | resume
-  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", roll_number: "" });
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", roll_number: "" });
   const [studentId, setStudentId] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -127,6 +127,10 @@ export default function AttendDrive() {
               <Field label="Last name"><Input value={form.last_name} onChange={set("last_name")} required /></Field>
             </div>
             <Field label="Email"><Input type="email" value={form.email} onChange={set("email")} required /></Field>
+            <Field label="Phone number">
+              <Input type="tel" inputMode="numeric" value={form.phone} onChange={set("phone")}
+                placeholder="10-digit mobile number" required />
+            </Field>
             <Field label="Roll number">
               <Input value={form.roll_number} onChange={set("roll_number")} placeholder="e.g. 21CS045" required />
               <p className="mt-1 text-xs text-slate-400">Letters and digits only — no spaces or symbols.</p>

@@ -91,10 +91,13 @@ export default function Login({ product = "learn" }) {
           <Button type="submit" size="lg" className="w-full" disabled={busy}>
             <LogIn size={18} /> {busy ? "Signing in…" : "Sign in"}
           </Button>
-          <button type="button" onClick={() => switchMode("otp")}
-            className="w-full text-sm text-slate-500 hover:text-ink-900 flex items-center justify-center gap-1.5">
-            <KeyRound size={14} /> Sign in with a code instead
-          </button>
+          {/* Passwordless code sign-in — LARE Learn only. */}
+          {product === "learn" && (
+            <button type="button" onClick={() => switchMode("otp")}
+              className="w-full text-sm text-slate-500 hover:text-ink-900 flex items-center justify-center gap-1.5">
+              <KeyRound size={14} /> Sign in with a code instead
+            </button>
+          )}
         </form>
       ) : (
         <div className="space-y-4">

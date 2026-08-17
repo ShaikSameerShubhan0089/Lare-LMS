@@ -159,3 +159,31 @@ class PpoConfig(Base):
     eligibility: Mapped[dict] = mapped_column(JSON, default=dict)
     stages: Mapped[list] = mapped_column(JSON, default=list)
     conversion_criteria: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class DriveAccessCode(Base):
+    """A secure, admin-managed code that gates entry to ONE recruitment drive.
+    A candidate (Hire login) presents it to access only that drive."""
+    __tablename__ = "drive_access_codes"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    code: Mapped[str] = mapped_column(String(40), unique=True, index=True, nullable=False)
+    drive_id: Mapped[str] = mapped_column(ForeignKey("drives.id", ondelete="CASCADE"), index=True)
+    label: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active | inactive
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class DriveAccessSession(Base):
+    """Records a candidate passed the Drive gate this session, bound to a drive."""
+    __tablename__ = "drive_access_sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    drive_id: Mapped[str] = mapped_column(String(64), index=True)
+    code_id: Mapped[str | None] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

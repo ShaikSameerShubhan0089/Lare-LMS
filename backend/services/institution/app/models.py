@@ -113,3 +113,40 @@ class Assignment(Base):
     user_id: Mapped[str] = mapped_column(String(64))
     role: Mapped[str] = mapped_column(String(32))  # trainer | mentor | coordinator
     scope: Mapped[str | None] = mapped_column(String(64))
+
+
+class AccessCode(Base):
+    """A secure, admin-managed code that gates entry to ONE cohort (College →
+    Year → Branch → Section). A student must present a valid code every login;
+    it resolves to this cohort and scopes their LMS session to it."""
+    __tablename__ = "access_codes"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(64), default="lare", index=True)
+    code: Mapped[str] = mapped_column(String(40), unique=True, index=True, nullable=False)
+    cohort_id: Mapped[str] = mapped_column(ForeignKey("cohorts.id", ondelete="CASCADE"), index=True)
+    # denormalised for fast display / validation response
+    college_id: Mapped[str] = mapped_column(String(64), index=True)
+    branch_id: Mapped[str | None] = mapped_column(String(64))
+    year_no: Mapped[int] = mapped_column(Integer, default=1)
+    section: Mapped[str | None] = mapped_column(String(16))
+    label: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active | inactive
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class AccessSession(Base):
+    """Records that a user passed the Access Gate this session and to which
+    cohort. Short-lived; re-created on every login. LMS reads it to scope data
+    and to enforce that the gate was passed."""
+    __tablename__ = "access_sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    cohort_id: Mapped[str] = mapped_column(String(64), index=True)
+    code_id: Mapped[str | None] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

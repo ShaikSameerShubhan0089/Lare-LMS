@@ -1,6 +1,9 @@
 """HTTP layer for the Recruitment Drive Service."""
 from __future__ import annotations
 
+import time
+
+import jwt
 from flask import Blueprint, Response, current_app, request
 from pydantic import ValidationError
 
@@ -9,8 +12,8 @@ from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import created, ok
 
 from .schemas import (
-    AdvanceIn, DriveIn, EligibilityIn, PpoIn, RegisterIn, RoleIn, RoundIn,
-    ShortlistIn,
+    AdvanceIn, DriveAccessCodeIn, DriveAccessStatusIn, DriveAccessValidateIn, DriveIn,
+    EligibilityIn, PpoIn, RegisterIn, RoleIn, RoundIn, ShortlistIn,
 )
 from .service import DriveService
 
@@ -18,6 +21,15 @@ bp = Blueprint("drive", __name__)
 
 MANAGE = ("super_admin", "company_admin", "recruiter")
 READ = ("super_admin", "company_admin", "recruiter", "college_admin", "student")
+
+DRIVE_GRANT_TTL = 12 * 3600
+
+
+def _mint_drive_grant(user_id: str, drive_id: str) -> str:
+    now = int(time.time())
+    secret = current_app.config["LARE"].INTERNAL_JWT_SECRET
+    return jwt.encode({"sub": user_id, "drive_id": drive_id, "scope": "drive_access",
+                       "iat": now, "exp": now + DRIVE_GRANT_TTL}, secret, algorithm="HS256")
 
 
 def _svc() -> DriveService:
@@ -224,8 +236,14 @@ def create():
 def list_drives():
     status = request.args.get("status")
     limit = min(int(request.args.get("limit", 50)), 200)
+    # A candidate who passed the Drive Access Gate is bound to exactly one drive
+    # (the Gateway injects X-Drive-Id from their grant) — show only that drive.
+    bound = request.headers.get("X-Drive-Id")
     with _db().session() as s:
-        return ok([_svc().out(d) for d in _svc().list(s, status, limit)])
+        drives = _svc().list(s, status, limit)
+        if bound:
+            drives = [d for d in drives if d.id == bound]
+        return ok([_svc().out(d) for d in drives])
 
 
 @bp.get("/drive/v1/opportunities")
@@ -359,3 +377,54 @@ def set_ppo(did):
     with _db().session() as s:
         _svc().set_ppo(s, did, data)
         return ok({"drive_id": did, "ppo_configured": True})
+
+
+# ---------- Drive Access Gate ----------
+@bp.post("/drive/v1/access/codes")
+@require_roles(*MANAGE)
+def create_drive_access_code():
+    data = _parse(DriveAccessCodeIn, request.get_json(silent=True))
+    with _db().session() as s:
+        return created(_svc().access_code_out(
+            _svc().create_access_code(s, data, current_identity().user_id)))
+
+
+@bp.get("/drive/v1/access/codes")
+@require_roles(*MANAGE)
+def list_drive_access_codes():
+    drive_id = request.args.get("drive_id")
+    with _db().session() as s:
+        return ok([_svc().access_code_out(ac) for ac in _svc().list_access_codes(s, drive_id)])
+
+
+@bp.post("/drive/v1/access/codes/<cid>/status")
+@require_roles(*MANAGE)
+def set_drive_access_status(cid):
+    data = _parse(DriveAccessStatusIn, request.get_json(silent=True))
+    with _db().session() as s:
+        return ok(_svc().access_code_out(_svc().set_access_status(s, cid, data.status)))
+
+
+@bp.post("/drive/v1/access/codes/<cid>/regenerate")
+@require_roles(*MANAGE)
+def regenerate_drive_access_code(cid):
+    with _db().session() as s:
+        return ok(_svc().access_code_out(_svc().regenerate_access_code(s, cid)))
+
+
+@bp.post("/drive/v1/access/validate")
+def validate_drive_access():
+    """Candidate (Hire login) presents the Drive Access ID → bound to that drive."""
+    data = _parse(DriveAccessValidateIn, request.get_json(silent=True))
+    uid = current_identity().user_id
+    with _db().session() as s:
+        result = _svc().validate_access(s, data.code, uid)
+    result["grant"] = _mint_drive_grant(uid, result["drive_id"])
+    return ok(result)
+
+
+@bp.post("/drive/v1/access/exit")
+def exit_drive_access():
+    with _db().session() as s:
+        _svc().clear_access_session(s, current_identity().user_id)
+        return ok({"cleared": True})

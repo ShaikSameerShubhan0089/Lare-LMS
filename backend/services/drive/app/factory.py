@@ -22,6 +22,13 @@ def build_app():
         except Exception:  # noqa: BLE001
             return False
 
+    # Idempotently create any missing tables (e.g. the new drive_access_codes /
+    # drive_access_sessions). Never alters or drops existing tables.
+    try:
+        db.create_all()
+    except Exception:  # noqa: BLE001
+        pass
+
     svc = DriveService()
     app = create_app(cfg, blueprints=[(bp, "")], ready_check=ready)
     app.extensions["db"] = db

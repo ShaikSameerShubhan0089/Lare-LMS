@@ -67,6 +67,8 @@ class CandidateService:
         cand.first_name, cand.last_name = data.first_name, data.last_name
         cand.full_name, cand.email = full_name, data.email
         cand.roll_number = data.roll_number
+        if getattr(data, "phone", None):
+            cand.phone = data.phone
         if not cand.student_id:
             cand.student_id = self._next_student_id(s)
         s.flush()

@@ -1,16 +1,32 @@
 """HTTP layer for the Institution Service."""
 from __future__ import annotations
 
+import time
+
+import jwt
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import require_roles
+ACCESS_GRANT_TTL = 12 * 3600  # 12h, matches the access-session lifetime
+
+
+def _mint_grant(user_id: str, cohort_id: str) -> str:
+    """Short-lived LMS access grant, signed with the shared internal secret so
+    the Gateway can verify it statelessly for student /lms/* routes."""
+    now = int(time.time())
+    secret = current_app.config["LARE"].INTERNAL_JWT_SECRET
+    return jwt.encode(
+        {"sub": user_id, "cohort_id": cohort_id, "scope": "lms_access",
+         "iat": now, "exp": now + ACCESS_GRANT_TTL},
+        secret, algorithm="HS256")
+
+from lare_common.auth_context import current_identity, require_roles
 from lare_common.errors import BadRequest
 from lare_common.responses import created, ok
 
 from .schemas import (
-    AcademicYearIn, AssignmentIn, BranchIn, CohortIn, CollegeIn, ConfigIn,
-    ScheduleSlotIn,
+    AcademicYearIn, AccessCodeIn, AccessCodeStatusIn, AccessValidateIn, AssignmentIn,
+    BranchIn, CohortIn, CollegeIn, ConfigIn, ScheduleSlotIn,
 )
 from .service import InstitutionService
 
@@ -154,3 +170,62 @@ def put_config(cid):
         c = _svc().update_config(s, cid, data)
         return ok({"passing_threshold": c.passing_threshold,
                    "min_cohort_size": c.min_cohort_size})
+
+
+# ---------- Access Gate ----------
+@bp.post("/lms/v1/access/codes")
+@require_roles(*MANAGE_COLLEGE)
+def create_access_code():
+    data = _parse(AccessCodeIn, request.get_json(silent=True))
+    with _db().session() as s:
+        ac = _svc().create_access_code(s, data, current_identity().user_id)
+        return created(_svc().access_code_out(ac))
+
+
+@bp.get("/lms/v1/access/codes")
+@require_roles(*READ)
+def list_access_codes():
+    cohort_id = request.args.get("cohort_id")
+    with _db().session() as s:
+        return ok([_svc().access_code_out(ac) for ac in _svc().list_access_codes(s, cohort_id)])
+
+
+@bp.post("/lms/v1/access/codes/<cid>/status")
+@require_roles(*MANAGE_COLLEGE)
+def set_access_status(cid):
+    data = _parse(AccessCodeStatusIn, request.get_json(silent=True))
+    with _db().session() as s:
+        return ok(_svc().access_code_out(_svc().set_access_status(s, cid, data.status)))
+
+
+@bp.post("/lms/v1/access/codes/<cid>/regenerate")
+@require_roles(*MANAGE_COLLEGE)
+def regenerate_access_code(cid):
+    with _db().session() as s:
+        return ok(_svc().access_code_out(_svc().regenerate_access_code(s, cid)))
+
+
+@bp.post("/lms/v1/access/validate")
+def validate_access():
+    """Student presents the group Access ID (any logged-in LMS user)."""
+    data = _parse(AccessValidateIn, request.get_json(silent=True))
+    uid = current_identity().user_id
+    with _db().session() as s:
+        result = _svc().validate_access(s, data.code, uid)
+    result["grant"] = _mint_grant(uid, result["cohort_id"])
+    return ok(result)
+
+
+@bp.get("/lms/v1/access/me")
+def my_access():
+    """Whether this user has a valid access session (else the SPA shows the gate)."""
+    with _db().session() as s:
+        sess = _svc().access_session(s, current_identity().user_id)
+        return ok({"granted": bool(sess), "access": sess})
+
+
+@bp.post("/lms/v1/access/exit")
+def exit_access():
+    with _db().session() as s:
+        _svc().clear_access_session(s, current_identity().user_id)
+        return ok({"cleared": True})

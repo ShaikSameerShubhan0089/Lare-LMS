@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, tokens } from "./api";
+import { api, tokens, accessGrant } from "./api";
 
 const AuthCtx = createContext(null);
 
@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
   }, [loadMe]);
 
   const login = async (email, password, product = "learn") => {
+    accessGrant.clear();           // every login re-enters the class Access ID
     const t = await api.login(email, password, product);
     tokens.set(t);
     setUser(await api.me());
@@ -46,6 +47,7 @@ export function AuthProvider({ children }) {
 
   // Passwordless sign-in: verify the emailed code and start the session.
   const loginOtp = async (email, code, product = "learn") => {
+    accessGrant.clear();
     const t = await api.verifyOtp(email, code, product);
     tokens.set(t);
     setUser(await api.me());
@@ -54,9 +56,11 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       if (tokens.refresh) await api.logout(tokens.refresh);
+      await api.exitAccess().catch(() => {});
     } catch {
       /* ignore */
     }
+    accessGrant.clear();
     tokens.clear();
     setUser(null);
   };

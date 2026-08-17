@@ -56,6 +56,20 @@ class AdvanceIn(BaseModel):
     candidate_id: str
 
 
+class DriveAccessCodeIn(BaseModel):
+    drive_id: str
+    label: str | None = Field(default=None, max_length=255)
+    expires_at: str | None = None
+
+
+class DriveAccessStatusIn(BaseModel):
+    status: str = Field(pattern="^(active|inactive)$")
+
+
+class DriveAccessValidateIn(BaseModel):
+    code: str = Field(min_length=3, max_length=40)
+
+
 class PpoIn(BaseModel):
     eligibility: dict = {}
     stages: list = []

@@ -1,5 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./lib/auth.jsx";
+import { accessGrant } from "./lib/api.js";
+import AccessGate from "./pages/AccessGate.jsx";
+import DriveAccessGate from "./pages/DriveAccessGate.jsx";
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -31,19 +34,21 @@ import LearnProfile from "./pages/LearnProfile.jsx";
 import RecruiterDrives from "./pages/recruiter/RecruiterDrives.jsx";
 import DriveConsole from "./pages/recruiter/DriveConsole.jsx";
 import QuestionBank from "./pages/recruiter/QuestionBank.jsx";
+import DriveAccessCodes from "./pages/recruiter/DriveAccessCodes.jsx";
 import Assessments from "./pages/Assessments.jsx";
 import Certificates from "./pages/Certificates.jsx";
 import Tutor from "./pages/Tutor.jsx";
 import AdminConsole from "./pages/admin/AdminConsole.jsx";
 import CurriculumStudio from "./pages/admin/CurriculumStudio.jsx";
 import TrainerConsole from "./pages/admin/TrainerConsole.jsx";
+import AccessCodes from "./pages/admin/AccessCodes.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 
 // Auth guard. `product` selects which app shell wraps the page; `bare` renders
 // without a shell (the app chooser). LMS and Drive never share a shell.
 // `roles` restricts a page to those roles — hiding a link in the nav is not a
 // guard, so staff pages must reject a student who types the URL directly.
-function Protected({ children, product, bare, roles }) {
+function Protected({ children, product, bare, roles, skipGate }) {
   const { user, loading } = useAuth();
   if (loading)
     return <div className="min-h-screen grid place-items-center text-slate-400">Loading…</div>;
@@ -51,6 +56,21 @@ function Protected({ children, product, bare, roles }) {
   if (!user) return <Navigate to={product === "drive" ? "/hire/login" : "/learn/login"} replace />;
   if (roles?.length && !(user.roles || []).some((r) => roles.includes(r)))
     return <Navigate to={product === "lms" ? "/lms" : "/drive"} replace />;
+  // LMS Access Gate — a student must present their class Access ID this session
+  // before entering the learning environment. Staff/admins are exempt.
+  if (product === "lms" && !skipGate) {
+    const isStudent = (user.roles || []).includes("student");
+    const isStaff = (user.roles || []).some((r) => LMS_STAFF.includes(r));
+    if (isStudent && !isStaff && !accessGrant.value)
+      return <Navigate to="/lms/access-gate" replace />;
+  }
+  // Drive Access Gate — a candidate must present their Drive Access ID.
+  if (product === "drive" && !skipGate) {
+    const isStudent = (user.roles || []).includes("student");
+    const isStaff = (user.roles || []).some((r) => DRIVE_STAFF.includes(r));
+    if (isStudent && !isStaff && !accessGrant.value)
+      return <Navigate to="/drive/access-gate" replace />;
+  }
   if (bare) return children;
   return <AppShell product={product}>{children}</AppShell>;
 }
@@ -88,6 +108,8 @@ export default function App() {
       <Route path="/verify/:verifyId" element={<CertificateVerify />} />
 
       {/* ================= LARE Learn (LMS) ================= */}
+      {/* Access Gate — students validate their class Access ID before entry. */}
+      <Route path="/lms/access-gate" element={<Protected product="lms" bare skipGate><AccessGate /></Protected>} />
       <Route path="/lms" element={lms(<Dashboard />)} />
       <Route path="/lms/learning" element={lms(<MyLearning />)} />
       <Route path="/lms/assessments" element={lms(<Assessments />)} />
@@ -108,17 +130,21 @@ export default function App() {
       <Route path="/lms/admin" element={lmsStaff(<AdminConsole />)} />
       <Route path="/lms/curriculum" element={lmsStaff(<CurriculumStudio />)} />
       <Route path="/lms/trainer" element={lmsStaff(<TrainerConsole />)} />
+      <Route path="/lms/access-codes" element={lmsStaff(<AccessCodes />)} />
       <Route path="/lms/notifications" element={lms(<Notifications />)} />
       <Route path="/lms/profile" element={lms(<LearnProfile />)} />
       <Route path="/lms/settings" element={lms(<Settings />)} />
 
       {/* ================= LARE Hire (Drive) ================= */}
+      {/* Access Gate — candidates validate their Drive Access ID before entry. */}
+      <Route path="/drive/access-gate" element={<Protected product="drive" bare skipGate><DriveAccessGate /></Protected>} />
       <Route path="/drive" element={drive(<Drives />)} />
       <Route path="/drive/opportunities" element={drive(<MatchedOpportunities />)} />
       <Route path="/drive/test/:examId" element={drive(<ExamPortal />)} />
       <Route path="/drive/recruiter/drives" element={driveStaff(<RecruiterDrives />)} />
       <Route path="/drive/recruiter/drives/:id" element={driveStaff(<DriveConsole />)} />
       <Route path="/drive/recruiter/questions" element={driveStaff(<QuestionBank />)} />
+      <Route path="/drive/recruiter/access-codes" element={driveStaff(<DriveAccessCodes />)} />
       <Route path="/drive/notifications" element={drive(<Notifications />)} />
       <Route path="/drive/profile" element={drive(<Profile />)} />
       <Route path="/drive/settings" element={drive(<Settings />)} />

@@ -161,6 +161,11 @@ function DriveSelect({ value, onChange }) {
 const blankMcq = () => ({ type: "mcq", stem: "", options: [{ id: "a", text: "" }, { id: "b", text: "" }], correct: "a", weight: 1 });
 const blankCoding = () => ({ type: "coding", stem: "", languages: ["python", "java", "c", "cpp", "javascript"], sample_cases: [{ input: "", expected: "" }], hidden_cases: [{ input: "", expected: "" }], weight: 5 });
 
+// Round types that need a written question paper. Each such round in a drive
+// gets its OWN paper (exam) — the builder asks for one per written round.
+const WRITTEN_TYPES = ["aptitude", "technical", "verbal", "coding", "sql", "custom"];
+const cap = (s) => (s || "").charAt(0).toUpperCase() + (s || "").slice(1);
+
 // Direct exam builder — author questions straight into the exam (no separate
 // pool/activation). Options + correct answers are captured here; the exam saved
 // to students carries only stems+options, while the answer key goes to the
@@ -173,6 +178,31 @@ function ExamBuilder() {
   const [sections, setSections] = useState([{ title: "Aptitude", questions: [] }]);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Written rounds of the selected drive + which one this paper is for.
+  const [rounds, setRounds] = useState([]);
+  const [roundId, setRoundId] = useState("");
+  const [existing, setExisting] = useState([]); // exams already created for the drive
+
+  async function reloadExisting(did) {
+    setExisting(await api.listExams(did).catch(() => []));
+  }
+
+  useEffect(() => {
+    if (!driveId) { setRounds([]); setRoundId(""); setExisting([]); return; }
+    (async () => {
+      const d = await api.drive(driveId).catch(() => null);
+      setRounds((d?.rounds || []).filter((r) => WRITTEN_TYPES.includes(r.type)));
+      setRoundId("");
+      await reloadExisting(driveId);
+    })();
+  }, [driveId]);
+
+  function pickRound(r) {
+    setRoundId(r.id);
+    setTitle(`${cap(r.label || r.type)} — Written Test`);
+    setSections([{ title: cap(r.type), questions: [] }]);
+    setResult(null);
+  }
 
   const totalQ = sections.reduce((n, s) => n + s.questions.length, 0);
   const setSec = (i, patch) => setSections((ss) => ss.map((s, j) => (j === i ? { ...s, ...patch } : s)));
@@ -186,6 +216,7 @@ function ExamBuilder() {
   function validate() {
     const errs = [];
     if (!driveId) errs.push("Select the drive this exam belongs to.");
+    if (rounds.length && !roundId) errs.push("Pick which written round this paper is for.");
     if (!totalQ) errs.push("Add at least one question.");
     sections.forEach((s, i) => {
       if (!s.questions.length) errs.push(`Section ${i + 1} (${s.title || "untitled"}) has no questions.`);
@@ -226,9 +257,11 @@ function ExamBuilder() {
             language: (q.languages && q.languages[0]) || "python" }
         : { question_id: `q-${i}-${j}`, type: "mcq", correct: { option: q.correct }, weight: Number(q.weight) || 1 })));
     try {
-      const exam = await api.createExam({ title, drive_id: driveId, total_time_min: Number(timeMin), sections: examSections });
+      const exam = await api.createExam({ title, drive_id: driveId, round_id: roundId || null, total_time_min: Number(timeMin), sections: examSections });
       await api.upsertEvalKey({ exam_id: exam.id, items, passing_pct: Number(passPct) }).catch(() => {});
       setResult({ id: exam.id, title: exam.title });
+      await reloadExisting(driveId);           // mark this round as done (green tick)
+      setRoundId("");                          // ready to pick the next round
     } catch (e) {
       setResult({ error: e?.message || "Could not create exam — check the fields." });
     } finally { setBusy(false); }
@@ -247,6 +280,35 @@ function ExamBuilder() {
         </div>
       </div>
       <DriveSelect value={driveId} onChange={setDriveId} />
+
+      {/* One paper per written round — dynamic to the drive's pipeline. */}
+      {driveId && rounds.length > 0 && (
+        <div className="mt-4 rounded-lg border border-brand-200 bg-brand-500/[0.04] p-4">
+          <p className="text-xs font-semibold text-ink-900 mb-2 flex items-center gap-1.5">
+            <ClipboardList size={14} className="text-brand-500" />
+            Attach a question paper for each written round ({rounds.length})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {rounds.map((r) => {
+              const hasPaper = existing.some((e) => e.round_id === r.id);
+              const active = roundId === r.id;
+              return (
+                <button key={r.id} onClick={() => pickRound(r)}
+                  className={`h-9 px-3 rounded-md text-sm font-medium border transition-colors ${
+                    active ? "bg-invert-900 text-white border-invert-900"
+                      : "bg-surface border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                  {r.order}. {cap(r.label || r.type)}
+                  {hasPaper && <CheckCircle2 size={13} className="inline ml-1.5 text-teal-500 -mt-0.5" />}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">
+            {roundId ? "Building the paper for the selected round — save it, then pick the next round."
+              : "Pick a round to build its paper. A green tick means that round already has a paper."}
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 space-y-4">
         {sections.map((sec, i) => (

@@ -16,6 +16,7 @@ import {
   GraduationCap,
   BookMarked,
   Settings as SettingsIcon,
+  KeyRound,
   LogOut,
   Menu,
   Bell,
@@ -77,6 +78,7 @@ export const PRODUCTS = {
         roles: STAFF_ROLES,
         items: [
           { to: "/lms/admin", icon: Building2, label: "Institution" },
+          { to: "/lms/access-codes", icon: KeyRound, label: "Access IDs" },
           { to: "/lms/curriculum", icon: BookMarked, label: "Curriculum Studio" },
           { to: "/lms/trainer", icon: GraduationCap, label: "Trainer Console" },
           { to: "/lms/analytics", icon: BarChart3, label: "Analytics" },
@@ -106,6 +108,7 @@ export const PRODUCTS = {
         roles: RECRUITER_ROLES,
         items: [
           { to: "/drive/recruiter/drives", icon: Building2, label: "Manage Drives" },
+          { to: "/drive/recruiter/access-codes", icon: KeyRound, label: "Drive Access IDs" },
           { to: "/drive/recruiter/questions", icon: FileStack, label: "Question Bank" },
         ],
       },

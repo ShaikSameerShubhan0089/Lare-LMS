@@ -22,6 +22,15 @@ export const tokens = {
   },
 };
 
+// LMS Access Gate grant. Kept in sessionStorage so it clears when the browser
+// session ends — a fresh sign-in must re-enter the class Access ID.
+const GRANT_KEY = "lare_access_grant";
+export const accessGrant = {
+  get value() { return sessionStorage.getItem(GRANT_KEY); },
+  set(v) { if (v) sessionStorage.setItem(GRANT_KEY, v); },
+  clear() { sessionStorage.removeItem(GRANT_KEY); },
+};
+
 export class ApiError extends Error {
   constructor(message, code, status, details) {
     super(message);
@@ -99,6 +108,7 @@ async function request(path, opts = {}) {
   const { method = "GET", body, auth = true, raw = false, _retried = false } = opts;
   const headers = { "Content-Type": "application/json" };
   if (auth && tokens.access) headers.Authorization = `Bearer ${tokens.access}`;
+  if (accessGrant.value) headers["X-Access-Grant"] = accessGrant.value;
 
   const res = await fetch(`/api${path}`, {
     method,
@@ -138,6 +148,13 @@ async function request(path, opts = {}) {
 
   if (!res.ok) {
     const err = payload?.errors?.[0];
+    // LMS Access Gate: grant missing/expired → drop it and send the student to
+    // the gate (unless they're already there).
+    if (err?.code === "access_gate_required") {
+      accessGrant.clear();
+      const gate = path.startsWith("/drive") ? "/drive/access-gate" : "/lms/access-gate";
+      if (!location.pathname.endsWith("/access-gate")) location.assign(gate);
+    }
     throw new ApiError(
       err?.message || `Request failed (${res.status})`,
       err?.code,
@@ -177,6 +194,16 @@ export const api = {
     request("/auth/v1/logout", { method: "POST", auth: false, body: { refresh_token } }),
   me: () => request("/auth/v1/me"),
 
+  // ---- LMS Access Gate ----
+  validateAccess: (code) => request("/lms/v1/access/validate", { method: "POST", body: { code } }),
+  myAccess: () => request("/lms/v1/access/me"),
+  exitAccess: () => request("/lms/v1/access/exit", { method: "POST" }),
+  // admin — manage access codes
+  createAccessCode: (body) => request("/lms/v1/access/codes", { method: "POST", body }),
+  listAccessCodes: (cohortId) => request(`/lms/v1/access/codes${cohortId ? `?cohort_id=${cohortId}` : ""}`),
+  setAccessCodeStatus: (id, status) => request(`/lms/v1/access/codes/${id}/status`, { method: "POST", body: { status } }),
+  regenerateAccessCode: (id) => request(`/lms/v1/access/codes/${id}/regenerate`, { method: "POST" }),
+
   // ---- LMS ----
   curriculumTree: (id) => request(`/lms/v1/curricula/${id}/tree`),
   curricula: () => request("/lms/v1/curricula"),
@@ -204,6 +231,14 @@ export const api = {
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   },
   assessmentSummary: (learnerId) => request(`/lms/v1/assessments/summary?learner_id=${learnerId}`),
+
+  // ---- Drive Access Gate ----
+  validateDriveAccess: (code) => request("/drive/v1/access/validate", { method: "POST", body: { code } }),
+  exitDriveAccess: () => request("/drive/v1/access/exit", { method: "POST" }),
+  createDriveAccessCode: (body) => request("/drive/v1/access/codes", { method: "POST", body }),
+  listDriveAccessCodes: (driveId) => request(`/drive/v1/access/codes${driveId ? `?drive_id=${driveId}` : ""}`),
+  setDriveAccessCodeStatus: (id, status) => request(`/drive/v1/access/codes/${id}/status`, { method: "POST", body: { status } }),
+  regenerateDriveAccessCode: (id) => request(`/drive/v1/access/codes/${id}/regenerate`, { method: "POST" }),
 
   // ---- Drive (candidate) ----
   drives: (status) => request(`/drive/v1/drives${status ? `?status=${status}` : ""}`),

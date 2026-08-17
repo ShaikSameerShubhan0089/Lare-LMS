@@ -2,6 +2,7 @@
 context, rate-limit, and reverse-proxy to the resolved upstream service."""
 from __future__ import annotations
 
+import jwt
 import requests
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
@@ -100,6 +101,55 @@ def build_app() -> Flask:
                 "X-College-Ids": ",".join(claims.get("college_ids", [])),
                 "X-Product": token_product or "",
             }
+
+            # LMS Access Gate — a student must have validated their class Access
+            # ID this session (a short-lived grant) to reach the learning
+            # environment. Staff/admins are exempt; the access endpoints (where
+            # the code is validated) are exempt so the gate can be passed.
+            roles = claims.get("roles", [])
+            if ("student" in roles and full.startswith("/lms/v1/")
+                    and not full.startswith("/lms/v1/access")):
+                grant = request.headers.get("X-Access-Grant", "")
+                cohort_id = ""
+                valid = False
+                if grant:
+                    try:
+                        gclaims = jwt.decode(grant, cfg.INTERNAL_JWT_SECRET, algorithms=["HS256"])
+                        if (gclaims.get("scope") == "lms_access"
+                                and gclaims.get("sub") == claims.get("sub")):
+                            valid = True
+                            cohort_id = gclaims.get("cohort_id", "")
+                    except Exception:  # noqa: BLE001 — invalid/expired grant
+                        valid = False
+                if not valid:
+                    return jsonify(error_payload(
+                        "access_gate_required",
+                        "Enter your class Access ID to continue")), 403
+                injected["X-Cohort-Id"] = cohort_id
+
+            # Drive Access Gate — a candidate must present a valid Drive Access ID
+            # this session to reach a recruitment drive. Recruiters/admins are
+            # exempt; the access endpoints and public attend flow are exempt.
+            if ("student" in roles and full.startswith("/drive/v1/")
+                    and not full.startswith("/drive/v1/access")
+                    and not full.startswith("/drive/v1/attend")):
+                grant = request.headers.get("X-Access-Grant", "")
+                drive_id = ""
+                valid = False
+                if grant:
+                    try:
+                        gclaims = jwt.decode(grant, cfg.INTERNAL_JWT_SECRET, algorithms=["HS256"])
+                        if (gclaims.get("scope") == "drive_access"
+                                and gclaims.get("sub") == claims.get("sub")):
+                            valid = True
+                            drive_id = gclaims.get("drive_id", "")
+                    except Exception:  # noqa: BLE001
+                        valid = False
+                if not valid:
+                    return jsonify(error_payload(
+                        "access_gate_required",
+                        "Enter your Drive Access ID to continue")), 403
+                injected["X-Drive-Id"] = drive_id
 
         if not limiter.allow(_client_key(), limit):
             return jsonify(error_payload("rate_limited", "Too many requests")), 429

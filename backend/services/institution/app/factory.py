@@ -20,6 +20,13 @@ def build_app():
         except Exception:  # noqa: BLE001
             return False
 
+    # Ensure tables exist (idempotent — creates only missing tables, e.g. the
+    # new access_codes / access_sessions; never alters or drops existing ones).
+    try:
+        db.create_all()
+    except Exception:  # noqa: BLE001 — never block startup on this
+        pass
+
     # Blueprint carries full /lms/v1/... paths, so register at root.
     app = create_app(cfg, blueprints=[(bp, "")], ready_check=ready)
     app.extensions["db"] = db

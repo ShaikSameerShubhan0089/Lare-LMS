@@ -48,6 +48,7 @@ class GatewayConfig(BaseConfig):
     ROUTES = {
         "/auth/": "auth",
         "/lms/v1/colleges": "lms-institution",
+        "/lms/v1/access": "lms-institution",
         "/lms/v1/branches": "lms-institution",
         "/lms/v1/cohorts": "lms-institution",
         "/lms/v1/schedule": "lms-institution",
@@ -83,6 +84,7 @@ class GatewayConfig(BaseConfig):
         "/drive/v1/attend": "drive-candidate",
         "/drive/v1/drives": "drive-core",
         "/drive/v1/opportunities": "drive-core",
+        "/drive/v1/access": "drive-core",
         "/drive/v1/evidence": "drive-evidence",
         "/drive/v1/competency": "drive-competency",
         "/drive/v1/decisions": "drive-decision",

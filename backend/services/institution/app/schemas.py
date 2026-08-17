@@ -58,4 +58,18 @@ class AssignmentIn(BaseModel):
 
 class ConfigIn(BaseModel):
     passing_threshold: int = Field(ge=0, le=100)
+
+
+class AccessCodeIn(BaseModel):
+    cohort_id: str
+    label: str | None = Field(default=None, max_length=255)
+    expires_at: str | None = None  # optional ISO datetime
+
+
+class AccessCodeStatusIn(BaseModel):
+    status: str = Field(pattern="^(active|inactive)$")
+
+
+class AccessValidateIn(BaseModel):
+    code: str = Field(min_length=3, max_length=40)
     min_cohort_size: int = Field(ge=1)

@@ -8,6 +8,7 @@ class AttendIn(BaseModel):
     first_name: str = Field(min_length=1, max_length=120)
     last_name: str = Field(min_length=1, max_length=120)
     email: str = Field(min_length=3, max_length=255)
+    phone: str = Field(min_length=8, max_length=20)
     roll_number: str = Field(min_length=1, max_length=64)
 
     @field_validator("roll_number")
@@ -17,6 +18,14 @@ class AttendIn(BaseModel):
         if not v.isalnum():
             raise ValueError("roll number must be alphanumeric (letters and digits only)")
         return v.upper()
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        digits = "".join(ch for ch in v if ch.isdigit())
+        if len(digits) < 10:
+            raise ValueError("enter a valid phone number (at least 10 digits)")
+        return digits
 
     @field_validator("email")
     @classmethod
