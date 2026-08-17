@@ -489,13 +489,15 @@ function AIGenerate({ onAdd }) {
 function PaperViewer() {
   const [driveId, setDriveId] = useState("");
   const [exams, setExams] = useState([]);
+  const [rounds, setRounds] = useState([]);
   const [paper, setPaper] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setPaper(null); setExams([]);
+    setPaper(null); setExams([]); setRounds([]);
     if (!driveId) return;
     api.listExams(driveId).then((r) => setExams(r || [])).catch(() => setExams([]));
+    api.drive(driveId).then((d) => setRounds(d?.rounds || [])).catch(() => setRounds([]));
   }, [driveId]);
 
   async function view(eid) {
@@ -514,12 +516,25 @@ function PaperViewer() {
       <DriveSelect value={driveId} onChange={setDriveId} />
 
       {exams.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {exams.map((ex) => (
-            <Button key={ex.id} size="sm" variant="secondary" onClick={() => view(ex.id)}>
-              <ClipboardList size={14} /> {ex.title} ({ex.sections} sec)
-            </Button>
-          ))}
+        <div className="mt-4 space-y-3">
+          {[...rounds, { id: null, label: "Other papers", type: "" }].map((r) => {
+            const rExams = exams.filter((e) => (e.round_id || null) === (r.id || null));
+            if (!rExams.length) return null;
+            return (
+              <div key={r.id || "other"}>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1.5">
+                  {r.id ? `${r.order}. ${cap(r.label || r.type)}` : "Other papers"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {rExams.map((ex) => (
+                    <Button key={ex.id} size="sm" variant="secondary" onClick={() => view(ex.id)}>
+                      <ClipboardList size={14} /> {ex.title} ({ex.sections} sec)
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
       {driveId && exams.length === 0 && <p className="mt-3 text-sm text-slate-400">No exams for this drive yet.</p>}

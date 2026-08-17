@@ -137,11 +137,14 @@ class DriveService:
         return req
 
     def match_opportunities(self, s: Session, candidate_id: str,
-                            threshold: float = 55.0) -> dict:
+                            threshold: float = 55.0, bound_drive_id: str | None = None) -> dict:
         """Rank OPEN drives by how well the candidate's skills match the roles'
         required skills. Returns matched skills, gaps, and a match %."""
         skill_map = self._candidate_skill_map(candidate_id)
         drives = self.list(s, status="open", limit=200)
+        # A gated candidate is bound to one drive — only that drive is an option.
+        if bound_drive_id:
+            drives = [d for d in drives if d.id == bound_drive_id]
         matches, unspecified = [], []
         for d in drives:
             req = self._drive_required_skills(d)

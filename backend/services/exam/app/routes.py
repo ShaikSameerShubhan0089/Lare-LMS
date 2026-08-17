@@ -5,8 +5,16 @@ from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
 from lare_common.auth_context import current_identity, require_roles
-from lare_common.errors import BadRequest
+from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import created, ok
+
+
+def _check_bound_drive(exam):
+    """A gated candidate is bound to one drive (Gateway injects X-Drive-Id) — an
+    exam from any other drive is off-limits, even via a direct URL."""
+    bound = request.headers.get("X-Drive-Id")
+    if bound and getattr(exam, "drive_id", None) and exam.drive_id != bound:
+        raise Forbidden("This assessment is not part of your drive.", code="wrong_drive")
 
 from .schemas import ExamIn, LockIn, SaveIn, StartIn
 from .service import ExamEngine
@@ -83,7 +91,9 @@ def list_exams():
 def get_exam(eid):
     current_identity()
     with _db().session() as s:
-        return ok(_svc().exam_out(_svc().get_exam(s, eid)))
+        exam = _svc().get_exam(s, eid)
+        _check_bound_drive(exam)
+        return ok(_svc().exam_out(exam))
 
 
 @bp.get("/drive/v1/exams/<eid>/paper")
@@ -130,6 +140,7 @@ def start(eid):
     else:
         candidate_id = ident.user_id
     with _db().session() as s:
+        _check_bound_drive(_svc().get_exam(s, eid))
         return created(_svc().start(s, eid, candidate_id))
 
 

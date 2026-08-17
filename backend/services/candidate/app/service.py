@@ -68,6 +68,14 @@ class CandidateService:
         cand.full_name, cand.email = full_name, data.email
         cand.roll_number = data.roll_number
         if getattr(data, "phone", None):
+            # A phone number identifies one candidate — reject if already used by
+            # a different registration.
+            dup = s.execute(
+                select(Candidate).where(Candidate.phone == data.phone,
+                                        Candidate.user_id != user_id)
+            ).scalar_one_or_none()
+            if dup:
+                raise Conflict("This phone number is already registered.", code="phone_taken")
             cand.phone = data.phone
         if not cand.student_id:
             cand.student_id = self._next_student_id(s)

@@ -257,8 +257,9 @@ def opportunities():
     if not ident.has_role("super_admin", "company_admin", "recruiter", "college_admin") \
             and cid != ident.user_id:
         raise Forbidden("You can only view your own opportunities.")
+    bound = request.headers.get("X-Drive-Id")  # gated candidate → only their drive
     with _db().session() as s:
-        return ok(_svc().match_opportunities(s, cid))
+        return ok(_svc().match_opportunities(s, cid, bound_drive_id=bound))
 
 
 @bp.get("/drive/v1/drives/<did>")
