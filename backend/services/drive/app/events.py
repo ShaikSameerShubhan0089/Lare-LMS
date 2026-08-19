@@ -2,8 +2,9 @@
 
 * ``candidate.registered`` — a student applied; register them on the drive so
   they show under Candidates and are seeded into Round 1.
-* ``evaluation.completed`` — the written test was auto-graded; post the score
-  into the Round 1 marks sheet (later rounds are panel-entered).
+* ``evaluation.completed`` — a written test was auto-graded; post the score
+  into the marks sheet of the ROUND that exam belongs to (each written round
+  has its own paper). Panel rounds are still entered by hand.
 
 Both handlers are idempotent and ignore events for drives this instance does not
 own, so replays and cross-drive fan-out are harmless.
@@ -43,7 +44,8 @@ def register_handlers(bus, db, svc) -> None:
                 attempted_count=p.get("attempted_count", 0),
                 coding_total=p.get("coding_total", 0),
                 coding_attempted=p.get("coding_attempted", 0),
-                coding_correct=p.get("coding_correct", 0))
+                coding_correct=p.get("coding_correct", 0),
+                round_id=p.get("round_id"))          # → post into the exam's round
         log.info("recorded written-test result for %s on drive %s (%.0f%%)",
                  cand, did, p.get("percentage", 0))
 

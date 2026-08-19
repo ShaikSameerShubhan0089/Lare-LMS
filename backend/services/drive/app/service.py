@@ -327,22 +327,29 @@ class DriveService:
                           passed: bool, needs_review: bool,
                           total_questions: int = 0, correct_count: int = 0,
                           attempted_count: int = 0, coding_total: int = 0,
-                          coding_attempted: int = 0, coding_correct: int = 0) -> None:
-        """Post an auto-graded written-test result into the Round 1 marks sheet.
+                          coding_attempted: int = 0, coding_correct: int = 0,
+                          round_id: str | None = None) -> None:
+        """Post an auto-graded written-test result into the marks sheet of the
+        round the exam belongs to (each written round has its own paper).
 
-        Marks column = number of correct answers, Out-of = questions attempted,
-        Remarks = total questions + correct (as requested). The written test is
-        always Round 1 (later rounds are panel-entered). Values refresh on every
-        (re-)grade; `cleared` defaults from pass/fail but never overwrites an
-        admin's manual clear/reject decision."""
+        Marks column = number of correct answers, Out-of = questions attempted.
+        Values refresh on every (re-)grade; `cleared` defaults from pass/fail but
+        never overwrites an admin's manual clear/reject decision."""
         if s.get(Drive, did) is None:
             return
+        # Resolve which round this exam belongs to; fall back to Round 1 for
+        # legacy papers with no round_id.
+        order = 1
+        if round_id:
+            rnd = s.get(Round, round_id)
+            if rnd and rnd.drive_id == did:
+                order = rnd.order
         self.ensure_registration(s, did, candidate_id)
         rs = s.execute(select(RoundScore).where(
-            RoundScore.drive_id == did, RoundScore.round_order == 1,
+            RoundScore.drive_id == did, RoundScore.round_order == order,
             RoundScore.candidate_id == candidate_id)).scalar_one_or_none()
         if rs is None:
-            rs = RoundScore(id=new_id(), drive_id=did, round_order=1,
+            rs = RoundScore(id=new_id(), drive_id=did, round_order=order,
                             candidate_id=candidate_id)
             s.add(rs)
         rs.marks = float(correct_count)          # Marks = correct answers
