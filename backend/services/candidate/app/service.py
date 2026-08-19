@@ -137,7 +137,8 @@ class CandidateService:
         for c in rows:
             name = c.full_name or (f"{c.first_name or ''} {c.last_name or ''}".strip() or None)
             out[c.user_id] = {"full_name": name, "email": c.email,
-                              "roll_number": c.roll_number}
+                              "roll_number": c.roll_number,
+                              "phone": c.phone, "student_id": c.student_id}
         return out
 
     def get_by_id(self, s: Session, cid: str) -> Candidate:

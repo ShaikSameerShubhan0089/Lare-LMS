@@ -206,6 +206,12 @@ export default function RoundsTab({ id }) {
                         {s.candidate_roll && (
                           <span className="block text-xs text-slate-400">Roll: {s.candidate_roll}</span>
                         )}
+                        {s.candidate_phone && (
+                          <span className="block text-xs text-slate-400">Phone: {s.candidate_phone}</span>
+                        )}
+                        {s.candidate_student_id && (
+                          <span className="block text-xs text-slate-400">Student ID: {s.candidate_student_id}</span>
+                        )}
                       </div>
                     ) : (
                       <span className="font-mono text-xs">{s.candidate_id}</span>

@@ -38,7 +38,8 @@ def _resolve_names(candidate_ids: list[str]) -> dict[str, dict]:
         resp = _CAND.get("drive-candidate", "/drive/v1/candidates/resolve?ids=" + ",".join(ids))
         for uid, info in ((resp or {}).get("data") or {}).items():
             out[uid] = {"name": info.get("full_name"), "email": info.get("email"),
-                        "roll": info.get("roll_number")}
+                        "roll": info.get("roll_number"), "phone": info.get("phone"),
+                        "student_id": info.get("student_id")}
     except Exception:  # noqa: BLE001 — labelling is cosmetic
         pass
     # Fill gaps (no candidate record / missing name) from Auth.
@@ -296,6 +297,8 @@ class DriveService:
                 "referred": r.referred, "entered_by": r.entered_by,
                 "candidate_name": info.get("name"), "candidate_email": info.get("email"),
                 "candidate_roll": info.get("roll"),
+                "candidate_phone": info.get("phone"),
+                "candidate_student_id": info.get("student_id"),
                 "coding_attempted": r.coding_attempted, "coding_correct": r.coding_correct,
                 "coding_total": r.coding_total}
 
