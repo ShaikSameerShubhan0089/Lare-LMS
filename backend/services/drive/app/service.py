@@ -903,22 +903,29 @@ class DriveService:
         return {"id": r.id, "order": r.order, "type": r.type, "service_ref": r.service_ref}
 
     def candidate_round(self, s: Session, did: str, user_id: str) -> dict:
-        """A candidate's progress in a drive: their current round + the pipeline.
-        The learning surface uses this to reveal only the round they've qualified
-        for (a later round's exam stays hidden until they clear the earlier one)."""
+        """A candidate's progress in a drive: their eligible round + the pipeline.
+        The learning surface reveals only the round they've qualified for."""
         drive = self.get(s, did)
         reg = s.execute(
             select(Registration).where(Registration.drive_id == did,
                                         Registration.candidate_id == user_id)
         ).scalar_one_or_none()
         current = reg.current_round if reg else 0
+        # A candidate can enter round R once they're marked CLEARED in round R-1
+        # (round 1 is open to everyone registered). Basing this on the cleared flag
+        # — not current_round — means marking a candidate cleared unlocks the next
+        # round for them immediately, without waiting for the round to be published.
+        cleared = {rs.round_order: rs.cleared for rs in s.execute(
+            select(RoundScore).where(RoundScore.drive_id == did,
+                                     RoundScore.candidate_id == user_id)).scalars().all()}
+        eligible, r = 1, 1
+        while cleared.get(r):
+            eligible, r = r + 1, r + 1
         return {
             "current_round": current,
-            # round 1 is available to every registered candidate; otherwise it's
-            # the round they've been advanced to.
-            "eligible_round": current if current and current >= 1 else 1,
-            "rounds": [{"id": r.id, "order": r.order, "type": r.type, "label": r.label}
-                       for r in sorted(drive.rounds or [], key=lambda x: x.order)],
+            "eligible_round": eligible,
+            "rounds": [{"id": rd.id, "order": rd.order, "type": rd.type, "label": rd.label}
+                       for rd in sorted(drive.rounds or [], key=lambda x: x.order)],
         }
 
     # ---------- Drive Access Gate ----------
