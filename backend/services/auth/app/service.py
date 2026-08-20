@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from lare_common.errors import Conflict, Forbidden, TooManyRequests, Unauthorized
+from lare_common.errors import (
+    BadRequest, Conflict, Forbidden, NotFound, TooManyRequests, Unauthorized,
+)
 from lare_common.security import (
     create_access_token, hash_password, hash_token, new_id, random_token,
     verify_password,
@@ -20,7 +22,10 @@ from lare_common.security import (
 import secrets
 
 from .config import AuthConfig
-from .models import RefreshToken, Role, User, UserRole, VerificationToken
+from .models import (
+    Permission, RefreshToken, Role, User, UserRole, VerificationToken,
+    role_permissions,
+)
 
 
 def _utcnow() -> datetime:
@@ -32,6 +37,8 @@ class AuthService:
         self.cfg = cfg
 
     # ---------- helpers ----------
+    _SCOPE_ORDER = ["platform", "college", "branch", "section", "self"]
+
     def _role_names(self, s: Session, user: User) -> list[str]:
         rows = s.execute(
             select(Role.name)
@@ -39,6 +46,28 @@ class AuthService:
             .where(UserRole.user_id == user.id)
         ).scalars().all()
         return sorted(set(rows))
+
+    def _effective(self, s: Session, user: User) -> tuple[list[str], str]:
+        """Union of permission codes across the user's ACTIVE roles, plus the
+        widest scope_level any of those roles grants. This is what the token
+        carries so every service can enforce RBAC without a DB lookup."""
+        roles = s.execute(
+            select(Role)
+            .join(UserRole, UserRole.role_id == Role.id)
+            .where(UserRole.user_id == user.id, Role.is_active.is_(True))
+        ).scalars().all()
+        if not roles:
+            return [], "self"
+        role_ids = [r.id for r in roles]
+        codes = s.execute(
+            select(Permission.code)
+            .join(role_permissions, role_permissions.c.permission_id == Permission.id)
+            .where(role_permissions.c.role_id.in_(role_ids))
+        ).scalars().all()
+        widest = min((r.scope_level for r in roles),
+                     key=lambda lv: self._SCOPE_ORDER.index(lv)
+                     if lv in self._SCOPE_ORDER else len(self._SCOPE_ORDER))
+        return sorted(set(codes)), widest
 
     def _college_ids(self, s: Session, user: User) -> list[str]:
         rows = s.execute(
@@ -48,14 +77,34 @@ class AuthService:
         ).scalars().all()
         return sorted({r for r in rows if r})
 
+    def _scope_bindings(self, s: Session, user: User) -> tuple[list[str], list[str], list[str]]:
+        """The concrete hierarchy slices this user's role grants are pinned to:
+        (college_ids, branch_ids, cohort_ids). Empty college_ids for a
+        platform-scoped user means "all colleges" — the scope helper treats an
+        empty binding set at platform level as unrestricted."""
+        rows = s.execute(
+            select(UserRole.college_id, UserRole.branch_id, UserRole.cohort_id)
+            .where(UserRole.user_id == user.id)
+        ).all()
+        colleges = sorted({r[0] for r in rows if r[0]})
+        branches = sorted({r[1] for r in rows if r[1]})
+        cohorts = sorted({r[2] for r in rows if r[2]})
+        return colleges, branches, cohorts
+
     def _issue_tokens(self, s: Session, user: User, device: str | None,
                       family_id: str | None = None) -> dict:
         roles = self._role_names(s, user)
+        permissions, scope_level = self._effective(s, user)
+        colleges, branches, cohorts = self._scope_bindings(s, user)
         access = create_access_token(
             subject=user.id,
             roles=roles,
             tenant_id=user.tenant_id,
-            college_ids=self._college_ids(s, user),
+            college_ids=colleges,
+            permissions=permissions,
+            scope_level=scope_level,
+            branch_ids=branches,
+            cohort_ids=cohorts,
             alg=self.cfg.JWT_ALG,
             signing_key=self.cfg.signing_key,
             issuer=self.cfg.JWT_ISSUER,
@@ -192,7 +241,8 @@ class AuthService:
             rt.revoked_at = _utcnow()
 
     def assign_role(self, s: Session, user_id: str, role_name: str,
-                    college_id: str | None) -> None:
+                    college_id: str | None, branch_id: str | None = None,
+                    cohort_id: str | None = None) -> None:
         role = s.execute(select(Role).where(Role.name == role_name)).scalar_one_or_none()
         if not role:
             raise Conflict("Unknown role", code="unknown_role")
@@ -208,8 +258,12 @@ class AuthService:
             )
         ).scalar_one_or_none()
         if exists:
+            # Keep the finer bindings current even if the (user,role,college) row
+            # already exists — an admin may be narrowing the scope.
+            exists.branch_id, exists.cohort_id = branch_id, cohort_id
             return
-        s.add(UserRole(id=new_id(), user_id=user_id, role_id=role.id, college_id=college_id))
+        s.add(UserRole(id=new_id(), user_id=user_id, role_id=role.id,
+                       college_id=college_id, branch_id=branch_id, cohort_id=cohort_id))
 
     # ---------- OTP / password reset / email verification ----------
     def _issue_verification(self, s: Session, user: User, purpose: str,
@@ -310,8 +364,8 @@ class AuthService:
         for t in tokens:
             t.revoked_at = _utcnow()
 
-    def user_out(self, s: Session, user: User) -> dict:
-        return {
+    def user_out(self, s: Session, user: User, *, with_permissions: bool = False) -> dict:
+        out = {
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
@@ -322,6 +376,176 @@ class AuthService:
             "product": getattr(user, "product", "learn"),
             "roles": self._role_names(s, user),
         }
+        if with_permissions:
+            perms, scope = self._effective(s, user)
+            out["permissions"] = perms
+            out["scope_level"] = scope
+            out["college_ids"] = self._college_ids(s, user)
+        return out
+
+    # ---------- user administration ----------
+    def role_assignments(self, s: Session, user: User) -> list[dict]:
+        """Each of a user's role grants with the hierarchy slice it's bound to —
+        what the admin UI shows and edits."""
+        rows = s.execute(
+            select(UserRole, Role).join(Role, Role.id == UserRole.role_id)
+            .where(UserRole.user_id == user.id)
+        ).all()
+        return [{
+            "role": role.name, "role_id": role.id, "scope_level": role.scope_level,
+            "college_id": ur.college_id, "branch_id": ur.branch_id,
+            "cohort_id": ur.cohort_id,
+        } for ur, role in rows]
+
+    def admin_user_out(self, s: Session, user: User) -> dict:
+        out = self.user_out(s, user)
+        out["assignments"] = self.role_assignments(s, user)
+        out["created_at"] = user.created_at.isoformat() if user.created_at else None
+        return out
+
+    def list_admin_users(self, s: Session, q: str | None, status: str | None,
+                         product: str | None, limit: int) -> list[User]:
+        stmt = select(User)
+        if q:
+            like = f"%{q.lower()}%"
+            stmt = stmt.where(func.lower(User.email).like(like)
+                              | func.lower(User.full_name).like(like))
+        if status:
+            stmt = stmt.where(User.status == status)
+        if product:
+            stmt = stmt.where(User.product == product)
+        stmt = stmt.order_by(User.created_at.desc()).limit(limit)
+        return list(s.execute(stmt).scalars().all())
+
+    def set_user_status(self, s: Session, user_id: str, status: str,
+                        actor_id: str | None = None) -> User:
+        if status not in ("active", "disabled"):
+            raise BadRequest("Status must be active or disabled", code="bad_status")
+        user = s.get(User, user_id)
+        if not user:
+            raise NotFound("User not found", code="user_not_found")
+        if actor_id and user_id == actor_id and status == "disabled":
+            raise BadRequest("You cannot suspend your own account", code="self_suspend")
+        user.status = status
+        if status == "disabled":
+            # Kill active sessions so a suspension takes effect immediately.
+            for t in s.execute(
+                select(RefreshToken).where(RefreshToken.user_id == user_id,
+                                           RefreshToken.revoked_at.is_(None))
+            ).scalars().all():
+                t.revoked_at = _utcnow()
+        return user
+
+    # ---------- RBAC administration ----------
+    def _role_out(self, s: Session, role: Role) -> dict:
+        n_users = s.execute(
+            select(func.count(UserRole.id)).where(UserRole.role_id == role.id)
+        ).scalar() or 0
+        return {
+            "id": role.id,
+            "name": role.name,
+            "description": role.description,
+            "scope_level": role.scope_level,
+            "is_system": role.is_system,
+            "is_active": role.is_active,
+            "permissions": sorted(p.code for p in role.permissions),
+            "user_count": int(n_users),
+        }
+
+    def list_roles(self, s: Session) -> list[dict]:
+        roles = s.execute(select(Role).order_by(Role.is_system.desc(), Role.name)).scalars().all()
+        return [self._role_out(s, r) for r in roles]
+
+    def list_permissions(self, s: Session) -> list[dict]:
+        rows = s.execute(select(Permission).order_by(Permission.domain, Permission.code)).scalars().all()
+        return [{"code": p.code, "description": p.description, "domain": p.domain} for p in rows]
+
+    def _resolve_perms(self, s: Session, codes: list[str]) -> list[Permission]:
+        codes = [c for c in dict.fromkeys(codes or []) if c]
+        if not codes:
+            return []
+        found = s.execute(select(Permission).where(Permission.code.in_(codes))).scalars().all()
+        missing = set(codes) - {p.code for p in found}
+        if missing:
+            raise BadRequest(f"Unknown permission(s): {', '.join(sorted(missing))}",
+                             code="unknown_permission")
+        return list(found)
+
+    _VALID_SCOPES = ("platform", "college", "branch", "section", "self")
+
+    def create_role(self, s: Session, name: str, description: str | None,
+                    scope_level: str, permission_codes: list[str]) -> dict:
+        name = (name or "").strip().lower().replace(" ", "_")
+        if not name:
+            raise BadRequest("Role name is required", code="name_required")
+        if scope_level not in self._VALID_SCOPES:
+            raise BadRequest("Invalid scope level", code="invalid_scope")
+        if s.execute(select(Role).where(Role.name == name)).scalar_one_or_none():
+            raise Conflict("A role with that name already exists", code="role_exists")
+        role = Role(id=new_id(), name=name, description=description,
+                    scope_level=scope_level, is_system=False, is_active=True)
+        role.permissions = self._resolve_perms(s, permission_codes)
+        s.add(role)
+        s.flush()
+        return self._role_out(s, role)
+
+    def clone_role(self, s: Session, source_id: str, new_name: str,
+                   description: str | None) -> dict:
+        src = s.get(Role, source_id)
+        if not src:
+            raise NotFound("Source role not found", code="role_not_found")
+        return self.create_role(
+            s, new_name, description or f"Copy of {src.name}",
+            src.scope_level, [p.code for p in src.permissions])
+
+    def update_role(self, s: Session, role_id: str, *, description=None,
+                    scope_level=None, is_active=None, permission_codes=None) -> dict:
+        role = s.get(Role, role_id)
+        if not role:
+            raise NotFound("Role not found", code="role_not_found")
+        if description is not None:
+            role.description = description
+        if scope_level is not None:
+            if scope_level not in self._VALID_SCOPES:
+                raise BadRequest("Invalid scope level", code="invalid_scope")
+            # A built-in role's scope ceiling is part of the platform contract.
+            if role.is_system and scope_level != role.scope_level:
+                raise BadRequest("Cannot change a system role's scope", code="system_role")
+            role.scope_level = scope_level
+        if is_active is not None:
+            if role.is_system and not is_active:
+                raise BadRequest("System roles cannot be deactivated", code="system_role")
+            role.is_active = bool(is_active)
+        if permission_codes is not None:
+            # Permissions are always re-assignable — even for system roles.
+            role.permissions = self._resolve_perms(s, permission_codes)
+        s.flush()
+        return self._role_out(s, role)
+
+    def delete_role(self, s: Session, role_id: str) -> None:
+        role = s.get(Role, role_id)
+        if not role:
+            raise NotFound("Role not found", code="role_not_found")
+        if role.is_system:
+            raise BadRequest("Built-in roles cannot be deleted", code="system_role")
+        n_users = s.execute(
+            select(func.count(UserRole.id)).where(UserRole.role_id == role.id)
+        ).scalar() or 0
+        if n_users:
+            raise Conflict(f"{n_users} user(s) still hold this role; reassign them first",
+                           code="role_in_use")
+        s.delete(role)
+
+    def remove_role(self, s: Session, user_id: str, role_name: str,
+                    college_id: str | None) -> None:
+        role = s.execute(select(Role).where(Role.name == role_name)).scalar_one_or_none()
+        if not role:
+            return
+        stmt = select(UserRole).where(UserRole.user_id == user_id, UserRole.role_id == role.id)
+        stmt = stmt.where(UserRole.college_id.is_(None) if college_id is None
+                          else UserRole.college_id == college_id)
+        for ur in s.execute(stmt).scalars().all():
+            s.delete(ur)
 
 
 def _lock_active(locked_until: datetime) -> bool:

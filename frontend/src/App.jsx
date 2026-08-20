@@ -42,6 +42,10 @@ import AdminConsole from "./pages/admin/AdminConsole.jsx";
 import CurriculumStudio from "./pages/admin/CurriculumStudio.jsx";
 import TrainerConsole from "./pages/admin/TrainerConsole.jsx";
 import AccessCodes from "./pages/admin/AccessCodes.jsx";
+import RolesPermissions from "./pages/admin/RolesPermissions.jsx";
+import UserManagement from "./pages/admin/UserManagement.jsx";
+import AnalyticsExplorer from "./pages/admin/AnalyticsExplorer.jsx";
+import AuditLog from "./pages/admin/AuditLog.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 
 // Auth guard. `product` selects which app shell wraps the page; `bare` renders
@@ -79,9 +83,24 @@ function Protected({ children, product, bare, roles, skipGate }) {
 const DRIVE_STAFF = ["super_admin", "company_admin", "recruiter", "college_admin"];
 const LMS_STAFF = ["super_admin", "college_admin", "trainer", "content_manager"];
 
+// Platform administration (RBAC, and later the Super Admin portal). The backend
+// enforces the actual capability via granular permissions; this is the coarse
+// route gate on top of that.
+const PLATFORM_ADMIN = ["super_admin", "company_admin"];
+
 const lms = (el) => <Protected product="lms">{el}</Protected>;
 const lmsStaff = (el) => (
   <Protected product="lms" roles={LMS_STAFF}>{el}</Protected>
+);
+const platformAdmin = (el) => (
+  <Protected product="lms" roles={PLATFORM_ADMIN}>{el}</Protected>
+);
+// Institution analytics — leadership & academic roles. The backend clips every
+// rollup to the caller's scope, so the same page serves each role's own view.
+const ANALYTICS_ROLES = ["super_admin", "company_admin", "college_admin",
+  "principal", "dean", "tpo", "faculty", "trainer"];
+const analyticsView = (el) => (
+  <Protected product="lms" roles={ANALYTICS_ROLES}>{el}</Protected>
 );
 const drive = (el) => <Protected product="drive">{el}</Protected>;
 const driveStaff = (el) => (
@@ -131,6 +150,10 @@ export default function App() {
       <Route path="/lms/curriculum" element={lmsStaff(<CurriculumStudio />)} />
       <Route path="/lms/trainer" element={lmsStaff(<TrainerConsole />)} />
       <Route path="/lms/access-codes" element={lmsStaff(<AccessCodes />)} />
+      <Route path="/lms/roles" element={platformAdmin(<RolesPermissions />)} />
+      <Route path="/lms/users" element={platformAdmin(<UserManagement />)} />
+      <Route path="/lms/institution-analytics" element={analyticsView(<AnalyticsExplorer />)} />
+      <Route path="/lms/audit" element={platformAdmin(<AuditLog />)} />
       <Route path="/lms/notifications" element={lms(<Notifications />)} />
       <Route path="/lms/profile" element={lms(<LearnProfile />)} />
       <Route path="/lms/settings" element={lms(<Settings />)} />

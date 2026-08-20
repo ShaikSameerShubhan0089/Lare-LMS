@@ -4,7 +4,7 @@ from __future__ import annotations
 from flask import Blueprint, Response, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import current_identity, require_roles
+from lare_common.auth_context import current_identity, current_scope, require_roles
 from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import ok
 from lare_common.responses import created
@@ -46,11 +46,10 @@ def ingest():
 @bp.get("/analytics/v1/college/<college_id>/readiness")
 @require_roles(*READ)
 def readiness(college_id):
-    ident = current_identity()
-    # A college_admin (TPO) may only see their own college.
-    if ident.has_role("college_admin") and not ident.has_role(*ADMIN) \
-            and college_id not in ident.college_ids:
-        raise Forbidden("Not permitted for this college")
+    # Data-scope isolation: only a platform-wide caller, or one whose scope
+    # includes this college, may read its readiness.
+    if not current_scope().allows_college(college_id):
+        raise Forbidden("Outside your college scope")
     with _db().session() as s:
         return ok(_svc().readiness(s, college_id))
 

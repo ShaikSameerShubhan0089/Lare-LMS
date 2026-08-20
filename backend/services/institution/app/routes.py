@@ -20,8 +20,8 @@ def _mint_grant(user_id: str, cohort_id: str) -> str:
          "iat": now, "exp": now + ACCESS_GRANT_TTL},
         secret, algorithm="HS256")
 
-from lare_common.auth_context import current_identity, require_roles
-from lare_common.errors import BadRequest
+from lare_common.auth_context import current_identity, current_scope, require_roles
+from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import created, ok
 
 from .schemas import (
@@ -67,13 +67,17 @@ def create_college():
 @require_roles(*READ)
 def list_colleges():
     limit = min(int(request.args.get("limit", 50)), 200)
+    scope = current_scope()
     with _db().session() as s:
-        return ok([_svc().college_out(c) for c in _svc().list_colleges(s, limit)])
+        return ok([_svc().college_out(c) for c in _svc().list_colleges(s, limit, scope)])
 
 
 @bp.get("/lms/v1/colleges/<cid>")
 @require_roles(*READ)
 def get_college(cid):
+    scope = current_scope()
+    if not scope.unrestricted and cid not in scope.college_ids:
+        raise Forbidden("Outside your college scope")
     with _db().session() as s:
         return ok(_svc().college_out(_svc().get_college(s, cid)))
 

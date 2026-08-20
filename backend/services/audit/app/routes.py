@@ -4,7 +4,7 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import require_roles
+from lare_common.auth_context import require_permission, require_roles
 from lare_common.errors import BadRequest
 from lare_common.responses import created, ok
 
@@ -51,7 +51,7 @@ def activity():
 
 
 @bp.get("/audit/v1/logs")
-@require_roles(*ADMIN)
+@require_permission("platform.audit.view")
 def logs():
     with _db().session() as s:
         return ok(_svc().query(
@@ -67,7 +67,7 @@ def logs():
 
 
 @bp.get("/audit/v1/logs/verify")
-@require_roles(*ADMIN)
+@require_permission("platform.audit.view")
 def verify():
     partition = request.args.get("partition_key", "global")
     with _db().session() as s:

@@ -21,6 +21,11 @@ def forward(upstream_base: str, path: str, *, injected: dict, timeout: int) -> R
         if k.lower() not in HOP_BY_HOP and not k.lower().startswith("x-user")
         and not k.lower().startswith("x-roles") and not k.lower().startswith("x-tenant")
         and not k.lower().startswith("x-college")
+        # RBAC context — permissions & scope are derived from the verified token
+        # by the gateway alone; a client must never be able to assert its own.
+        and not k.lower().startswith("x-permissions")
+        and not k.lower().startswith("x-scope-level")
+        and not k.lower().startswith("x-branch")
         # Access-gate context is set ONLY by the gateway from a verified grant —
         # never trust a client-supplied value.
         and not k.lower().startswith("x-product")

@@ -97,6 +97,10 @@ def build_app() -> Flask:
             injected = {
                 "X-User-Id": claims["sub"],
                 "X-Roles": ",".join(claims.get("roles", [])),
+                "X-Permissions": ",".join(claims.get("permissions", [])),
+                "X-Scope-Level": claims.get("scope_level", "self"),
+                "X-Branch-Ids": ",".join(claims.get("branch_ids", [])),
+                "X-Cohort-Ids": ",".join(claims.get("cohort_ids", [])),
                 "X-Tenant-Id": claims.get("tenant_id", "lare"),
                 "X-College-Ids": ",".join(claims.get("college_ids", [])),
                 "X-Product": token_product or "",

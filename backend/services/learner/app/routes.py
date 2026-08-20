@@ -4,7 +4,9 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import current_identity, require_roles
+from lare_common.auth_context import (
+    current_identity, current_scope, require_permission, require_roles,
+)
 from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import created, ok
 
@@ -46,8 +48,26 @@ def create():
 def list_learners():
     college_id = request.args.get("college_id")
     limit = min(int(request.args.get("limit", 50)), 500)
+    scope = current_scope()
     with _db().session() as s:
-        return ok([_svc().out(l) for l in _svc().list(s, college_id, limit)])
+        return ok([_svc().out(l) for l in _svc().list(s, college_id, limit, scope)])
+
+
+ANALYTICS_VIEW = ("analytics.platform.view", "analytics.college.view",
+                  "analytics.branch.view", "analytics.section.view",
+                  "analytics.student.view")
+
+
+@bp.get("/lms/v1/roster/rollup")
+@require_permission(*ANALYTICS_VIEW)
+def roster_rollup():
+    # Hierarchical drill-down: Platform → College → Branch → Section → Student,
+    # aggregated from the real roster and clipped to the caller's data scope.
+    level = request.args.get("level", "platform")
+    parent_id = request.args.get("parent_id") or None
+    scope = current_scope()
+    with _db().session() as s:
+        return ok(_svc().rollup(s, scope, level, parent_id))
 
 
 @bp.post("/lms/v1/learners/import")

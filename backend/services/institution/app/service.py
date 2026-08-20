@@ -51,8 +51,15 @@ class InstitutionService:
             raise NotFound("College not found", code="college_not_found")
         return c
 
-    def list_colleges(self, s: Session, limit: int) -> list[College]:
-        return list(s.execute(select(College).limit(limit)).scalars().all())
+    def list_colleges(self, s: Session, limit: int, scope=None) -> list[College]:
+        q = select(College)
+        # Every non-platform user (Principal, Dean, TPO, Faculty…) is bound to a
+        # college, so the colleges list is filtered to their college bindings —
+        # the finer branch/section scope narrows the rows *within* a college
+        # elsewhere, not which colleges are visible.
+        if scope is not None and not scope.unrestricted:
+            q = q.where(College.id.in_(scope.college_ids or []))
+        return list(s.execute(q.limit(limit)).scalars().all())
 
     # ---------- branches ----------
     def add_branch(self, s: Session, cid: str, data) -> Branch:

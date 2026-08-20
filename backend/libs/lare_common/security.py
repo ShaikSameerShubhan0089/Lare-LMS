@@ -61,6 +61,10 @@ def create_access_token(
     issuer: str,
     audience: str,
     ttl_minutes: int,
+    permissions: list[str] | None = None,
+    scope_level: str = "self",
+    branch_ids: list[str] | None = None,
+    cohort_ids: list[str] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> str:
     iat = _now()
@@ -68,8 +72,16 @@ def create_access_token(
         "sub": subject,
         "type": "access",
         "roles": roles,
+        # Effective permission codes (union across the user's roles), so any
+        # service can enforce RBAC from the token alone — no DB round-trip.
+        "permissions": permissions or [],
+        # Widest data-visibility tier the user's roles grant, plus the concrete
+        # hierarchy bindings that tier is exercised over (data-scope isolation).
+        "scope_level": scope_level,
         "tenant_id": tenant_id,
         "college_ids": college_ids,
+        "branch_ids": branch_ids or [],
+        "cohort_ids": cohort_ids or [],
         "iss": issuer,
         "aud": audience,
         "iat": iat,

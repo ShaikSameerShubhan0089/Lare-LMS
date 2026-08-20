@@ -194,6 +194,16 @@ export const api = {
     request("/auth/v1/logout", { method: "POST", auth: false, body: { refresh_token } }),
   me: () => request("/auth/v1/me"),
 
+  // ---- RBAC administration (roles & permissions) ----
+  listRoles: () => request("/auth/v1/roles"),
+  listPermissions: () => request("/auth/v1/permissions"),
+  createRole: (body) => request("/auth/v1/roles", { method: "POST", body }),
+  cloneRole: (id, body) => request(`/auth/v1/roles/${id}/clone`, { method: "POST", body }),
+  updateRole: (id, body) => request(`/auth/v1/roles/${id}`, { method: "PATCH", body }),
+  deleteRole: (id) => request(`/auth/v1/roles/${id}`, { method: "DELETE" }),
+  assignRole: (body) => request("/auth/v1/roles/assign", { method: "POST", body }),
+  unassignRole: (body) => request("/auth/v1/roles/unassign", { method: "POST", body }),
+
   // ---- LMS Access Gate ----
   validateAccess: (code) => request("/lms/v1/access/validate", { method: "POST", body: { code } }),
   myAccess: () => request("/lms/v1/access/me"),
@@ -464,7 +474,29 @@ export const api = {
   colleges: () => request("/lms/v1/colleges"),
   createCollege: (body) => request("/lms/v1/colleges", { method: "POST", body }),
   collegeCohorts: (cid) => request(`/lms/v1/colleges/${cid}/cohorts`),
+  collegeBranches: (cid) => request(`/lms/v1/colleges/${cid}/branches`),
   createCohort: (cid, body) => request(`/lms/v1/colleges/${cid}/cohorts`, { method: "POST", body }),
+
+  // ---- Audit trail (Super Admin) ----
+  auditLogs: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
+    return request(`/audit/v1/logs${qs ? `?${qs}` : ""}`);
+  },
+  auditVerify: (partitionKey = "platform") =>
+    request(`/audit/v1/logs/verify?partition_key=${encodeURIComponent(partitionKey)}`),
+
+  // ---- User administration (Super Admin portal) ----
+  adminUsers: (params = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
+    return request(`/auth/v1/admin/users${qs ? `?${qs}` : ""}`);
+  },
+  adminUser: (id) => request(`/auth/v1/admin/users/${id}`),
+  createUser: (body) => request("/auth/v1/admin/users", { method: "POST", body }),
+  setUserStatus: (id, status) => request(`/auth/v1/admin/users/${id}/status`, { method: "POST", body: { status } }),
+
+  // ---- Hierarchical analytics (Platform → College → Branch → Section → Student) ----
+  rosterRollup: (level = "platform", parentId) =>
+    request(`/lms/v1/roster/rollup?level=${level}${parentId ? `&parent_id=${parentId}` : ""}`),
 
   // ---- Learner roster (TPO / College Admin) ----
   learners: (params = "") => request(`/lms/v1/learners${params}`),

@@ -11,10 +11,14 @@ def register_handlers(bus, db, svc) -> None:
         p = payload or {}
         drive_id = p.get("drive_id")
         partition = f"drive:{drive_id}" if drive_id else "platform"
+        # When an event names the human who caused it (administrative actions do),
+        # attribute the audit record to that user rather than the emitting service.
+        actor_id = p.get("actor_id")
+        actor_type = p.get("actor_type") or ("user" if actor_id else "service")
         data = SimpleNamespace(
             partition_key=partition,
-            actor_type="service",
-            actor_id=event.source,
+            actor_type=actor_type,
+            actor_id=actor_id or event.source,
             action=event.type,
             entity_type=p.get("entity_type", "event"),
             entity_id=p.get("entity_id") or p.get("session_id") or event.id,

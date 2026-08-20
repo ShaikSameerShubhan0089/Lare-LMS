@@ -112,4 +112,5 @@ class AuditService:
         return {"id": r.id, "partition_key": r.partition_key, "seq": r.seq,
                 "ts": r.ts.isoformat() if r.ts else None, "actor_type": r.actor_type,
                 "actor_id": r.actor_id, "action": r.action, "entity_type": r.entity_type,
-                "entity_id": r.entity_id, "correlation_id": r.correlation_id, "hash": r.hash}
+                "entity_id": r.entity_id, "meta": r.meta or {},
+                "correlation_id": r.correlation_id, "hash": r.hash}

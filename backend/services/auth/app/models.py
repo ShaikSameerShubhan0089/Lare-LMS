@@ -63,6 +63,15 @@ class Role(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(String(255))
+    # Data-visibility ceiling this role's holders get by default:
+    # platform > college > branch > section > self. Enforced at the service/query
+    # layer (Phase 2); carried here so custom roles declare their reach.
+    scope_level: Mapped[str] = mapped_column(String(16), default="self", nullable=False)
+    # System roles are the built-in ladder (super_admin … student): they may be
+    # re-permissioned but never deleted. Custom roles created by an admin are not.
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     permissions: Mapped[list["Permission"]] = relationship(
         secondary=role_permissions, back_populates="roles"
@@ -90,8 +99,13 @@ class UserRole(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     role_id: Mapped[str] = mapped_column(ForeignKey("roles.id", ondelete="CASCADE"))
-    # Role can be scoped to a college (e.g. a TPO of one college). Null = global.
+    # A role grant is bound to a slice of the institution hierarchy, narrowing
+    # from the role's scope_level ceiling. college_id null = platform-wide; a
+    # branch/section-scoped role additionally pins branch_id / cohort_id. These
+    # bindings become the data-visibility filter every read path enforces.
     college_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    branch_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cohort_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="roles")
     role: Mapped[Role] = relationship()

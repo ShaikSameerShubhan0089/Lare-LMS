@@ -28,6 +28,8 @@ import {
   Gauge,
   Users,
   Boxes,
+  ShieldCheck,
+  ScrollText,
   Sun,
   Moon,
 } from "lucide-react";
@@ -38,6 +40,9 @@ import { getTheme, toggleTheme } from "../../lib/theme.js";
 
 const RECRUITER_ROLES = ["recruiter", "company_admin", "super_admin"];
 const STAFF_ROLES = ["super_admin", "company_admin", "college_admin", "trainer"];
+const PLATFORM_ADMIN = ["super_admin", "company_admin"];
+const ANALYTICS_ROLES = ["super_admin", "company_admin", "college_admin",
+  "principal", "dean", "tpo", "faculty", "trainer"];
 const STUDENT = ["student"];
 
 // Two standalone apps on one platform. Each product owns its own nav; they never
@@ -75,13 +80,20 @@ export const PRODUCTS = {
     sections: [
       {
         title: "Administration",
-        roles: STAFF_ROLES,
+        // Leadership/academic roles (Principal, Dean, TPO, Faculty) reach the
+        // scope-clipped analytics item; management items stay staff-only via
+        // their own per-item `roles`.
+        roles: ANALYTICS_ROLES,
         items: [
-          { to: "/lms/admin", icon: Building2, label: "Institution" },
-          { to: "/lms/access-codes", icon: KeyRound, label: "Access IDs" },
-          { to: "/lms/curriculum", icon: BookMarked, label: "Curriculum Studio" },
-          { to: "/lms/trainer", icon: GraduationCap, label: "Trainer Console" },
-          { to: "/lms/analytics", icon: BarChart3, label: "Analytics" },
+          { to: "/lms/institution-analytics", icon: BarChart3, label: "Institution Analytics", roles: ANALYTICS_ROLES },
+          { to: "/lms/admin", icon: Building2, label: "Institution", roles: STAFF_ROLES },
+          { to: "/lms/users", icon: Users, label: "User Management", roles: PLATFORM_ADMIN },
+          { to: "/lms/roles", icon: ShieldCheck, label: "Roles & Permissions", roles: PLATFORM_ADMIN },
+          { to: "/lms/audit", icon: ScrollText, label: "Audit Trail", roles: PLATFORM_ADMIN },
+          { to: "/lms/access-codes", icon: KeyRound, label: "Access IDs", roles: STAFF_ROLES },
+          { to: "/lms/curriculum", icon: BookMarked, label: "Curriculum Studio", roles: STAFF_ROLES },
+          { to: "/lms/trainer", icon: GraduationCap, label: "Trainer Console", roles: STAFF_ROLES },
+          { to: "/lms/analytics", icon: BarChart3, label: "Analytics", roles: STAFF_ROLES },
         ],
       },
     ],
@@ -174,7 +186,9 @@ export function AppShell({ children, product = "lms" }) {
                 <p className="px-3 pt-5 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   {sec.title}
                 </p>
-                {sec.items.map((item) => (
+                {sec.items
+                  .filter((item) => !item.roles || roles.some((r) => item.roles.includes(r)))
+                  .map((item) => (
                   <NavLink key={item.to} to={item.to} onClick={() => setOpen(false)} className={linkClass}>
                     <item.icon size={19} strokeWidth={1.75} />
                     {item.label}

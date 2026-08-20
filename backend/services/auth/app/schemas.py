@@ -31,6 +31,41 @@ class AssignRoleIn(BaseModel):
     user_id: str
     role: str
     college_id: str | None = None
+    branch_id: str | None = None
+    cohort_id: str | None = None
+
+
+class AdminUserCreateIn(BaseModel):
+    email: EmailStr
+    full_name: str | None = Field(default=None, max_length=255)
+    product: Product = "learn"
+    password: str = Field(min_length=8, max_length=128)
+    role: str | None = None            # optional initial role
+    college_id: str | None = None
+    branch_id: str | None = None
+    cohort_id: str | None = None
+
+
+ScopeLevel = Literal["platform", "college", "branch", "section", "self"]
+
+
+class RoleCreateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=64)
+    description: str | None = Field(default=None, max_length=255)
+    scope_level: ScopeLevel = "self"
+    permissions: list[str] = []
+
+
+class RoleCloneIn(BaseModel):
+    name: str = Field(min_length=2, max_length=64)
+    description: str | None = Field(default=None, max_length=255)
+
+
+class RoleUpdateIn(BaseModel):
+    description: str | None = Field(default=None, max_length=255)
+    scope_level: ScopeLevel | None = None
+    is_active: bool | None = None
+    permissions: list[str] | None = None
 
 
 class OtpRequestIn(BaseModel):

@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from lare_common.errors import Conflict, NotFound
+from lare_common.errors import Conflict, Forbidden, NotFound
 from lare_common.security import new_id
 
 from .models import (
@@ -44,11 +44,98 @@ class LearnerService:
             raise NotFound("Learner not found", code="learner_not_found")
         return lr
 
-    def list(self, s: Session, college_id: str | None, limit: int) -> list[Learner]:
+    def list(self, s: Session, college_id: str | None, limit: int,
+             scope=None) -> list[Learner]:
         q = select(Learner)
         if college_id:
             q = q.where(Learner.college_id == college_id)
+        # Data-scope isolation: a caller only ever sees learners inside their
+        # slice of the hierarchy (platform sees all). Enforced at the query.
+        if scope is not None:
+            q = scope.apply(q, college_col=Learner.college_id,
+                            branch_col=Learner.branch_id,
+                            cohort_col=Learner.cohort_id,
+                            user_col=Learner.user_id)
         return list(s.execute(q.limit(limit)).scalars().all())
+
+    # ---------- hierarchical analytics (Platform → College → Branch → Section → Student) ----------
+    # A learner is "at risk" if their CGPA is on record and below 6.0, or their
+    # enrolment is paused. Honest signal from real roster data — no fabrication.
+    _AT_RISK = ((Learner.cgpa.is_not(None)) & (Learner.cgpa < 6.0)) | (Learner.status == "paused")
+
+    _DRILL = {
+        # level being viewed → (filter column for parent_id, grouping column for children, child level)
+        "platform": (None, Learner.college_id, "college"),
+        "college": (Learner.college_id, Learner.branch_id, "branch"),
+        "branch": (Learner.branch_id, Learner.cohort_id, "section"),
+        "section": (Learner.cohort_id, None, "student"),
+    }
+
+    def rollup(self, s: Session, scope, level: str, parent_id: str | None) -> dict:
+        """Aggregated readiness for one node of the hierarchy plus a breakdown of
+        its children. Scope-enforced: a caller only ever drills within their own
+        slice, and the parent they open must be inside it."""
+        if level not in self._DRILL:
+            raise Conflict("Unknown hierarchy level", code="bad_level")
+        parent_col, group_col, child_level = self._DRILL[level]
+
+        if parent_col is not None and not parent_id:
+            raise Conflict("parent_id is required at this level", code="parent_required")
+        # Guard: the node being opened must be visible to the caller.
+        if parent_id and scope is not None:
+            ok = {
+                "college": scope.can_see(college_id=parent_id),
+                "branch": scope.can_see(branch_id=parent_id) or scope.level in ("platform", "college"),
+                "section": scope.can_see(cohort_id=parent_id) or scope.level in ("platform", "college", "branch"),
+            }.get(level, True)
+            if not ok:
+                raise Forbidden("Outside your scope")
+
+        def scoped(stmt):
+            base = stmt
+            if parent_col is not None:
+                base = base.where(parent_col == parent_id)
+            if scope is not None:
+                base = scope.apply(base, college_col=Learner.college_id,
+                                   branch_col=Learner.branch_id,
+                                   cohort_col=Learner.cohort_id, user_col=Learner.user_id)
+            return base
+
+        agg = (func.count(Learner.id),
+               func.sum(case((Learner.verified.is_(True), 1), else_=0)),
+               func.avg(Learner.cgpa),
+               func.sum(case((self._AT_RISK, 1), else_=0)))
+
+        # This node's totals
+        total, verified, avg_cgpa, at_risk = s.execute(scoped(select(*agg))).one()
+        summary = {
+            "level": level, "parent_id": parent_id,
+            "learners": int(total or 0), "verified": int(verified or 0),
+            "avg_cgpa": round(float(avg_cgpa), 2) if avg_cgpa is not None else None,
+            "at_risk": int(at_risk or 0),
+        }
+
+        # Children breakdown (or the student leaf list)
+        if group_col is None:  # section → list students
+            rows = s.execute(scoped(select(Learner))).scalars().all()
+            summary["child_level"] = "student"
+            summary["children"] = [{
+                "id": l.id, "name": l.full_name or l.roll_no, "roll_no": l.roll_no,
+                "cgpa": l.cgpa, "verified": l.verified, "status": l.status,
+                "at_risk": (l.cgpa is not None and l.cgpa < 6.0) or l.status == "paused",
+            } for l in rows]
+            return summary
+
+        rows = s.execute(
+            scoped(select(group_col, *agg)).where(group_col.is_not(None)).group_by(group_col)
+        ).all()
+        summary["child_level"] = child_level
+        summary["children"] = [{
+            "id": gid, "learners": int(cnt or 0), "verified": int(vf or 0),
+            "avg_cgpa": round(float(avg), 2) if avg is not None else None,
+            "at_risk": int(ar or 0),
+        } for gid, cnt, vf, avg, ar in rows]
+        return summary
 
     def bulk_import(self, s: Session, data) -> dict:
         existing = {
