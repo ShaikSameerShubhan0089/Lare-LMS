@@ -115,6 +115,34 @@ class LearnerService:
             "at_risk": int(at_risk or 0),
         }
 
+        # Real distributions for this node's population (no fabrication).
+        # Status breakdown (active / paused / alumni …).
+        summary["status_breakdown"] = {
+            (st or "unknown"): int(n) for st, n in s.execute(
+                scoped(select(Learner.status, func.count(Learner.id))).group_by(Learner.status)
+            ).all()
+        }
+        # Year-of-study distribution.
+        summary["year_distribution"] = {
+            str(int(yr or 0)): int(n) for yr, n in s.execute(
+                scoped(select(Learner.year_no, func.count(Learner.id))).group_by(Learner.year_no)
+            ).all()
+        }
+        # CGPA bands (5 buckets + unknown) for a distribution histogram.
+        band = case(
+            (Learner.cgpa.is_(None), "unknown"),
+            (Learner.cgpa < 6.0, "<6"),
+            (Learner.cgpa < 7.0, "6-7"),
+            (Learner.cgpa < 8.0, "7-8"),
+            (Learner.cgpa < 9.0, "8-9"),
+            else_="9-10",
+        )
+        summary["cgpa_bands"] = {
+            b: int(n) for b, n in s.execute(
+                scoped(select(band.label("b"), func.count(Learner.id))).group_by("b")
+            ).all()
+        }
+
         # Children breakdown (or the student leaf list)
         if group_col is None:  # section → list students
             rows = s.execute(scoped(select(Learner))).scalars().all()
