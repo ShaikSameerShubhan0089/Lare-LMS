@@ -46,6 +46,7 @@ import psycopg                                                # noqa: E402
 SCHEMA_INST = "lms_institution"
 SCHEMA_AUTH = "lare_auth"
 SCHEMA_LEARN = "lms_learner"
+SCHEMA_CURR = "lms_curriculum"
 
 STUDENT_PASSWORD = "Student@2026"
 SUPER_ADMIN = {"email": "superadmin@platform.com", "password": "SuperAdmin@2026",
@@ -66,6 +67,47 @@ DEG_BRANCHES = [
     ("BSc MPC", "BSC-MPC", "core"),
     ("BZC", "BZC", "core"),
 ]
+
+# Year-wise roadmaps. Each entry: year_no -> (theme, goal, [modules]).
+# A module is (title, branch_scope) where branch_scope is all|cse_allied|core.
+BTECH_ROADMAP = {
+    1: ("Foundation & Soft Skills", "Communication, aptitude, reasoning and first code", [
+        ("Soft Skills", "all"), ("Communication", "all"), ("Aptitude", "all"),
+        ("Logical Reasoning", "all"), ("Work & Time Management", "all"),
+        ("Professional Etiquette", "all"), ("Basic Programming (C / Python)", "all")]),
+    2: ("Programming & Core CS", "Data structures, databases and the modern toolchain", [
+        ("Programming Fundamentals", "all"), ("Advanced Programming", "all"),
+        ("Competitive Programming", "all"), ("Data Structures", "all"),
+        ("Web Development Basics", "all"), ("DBMS", "all"), ("SQL", "all"),
+        ("Git & GitHub", "all"), ("AI & ML Foundations", "cse_allied"),
+        ("Digital Electronics Essentials", "core")]),
+    3: ("Product & Industry Readiness", "Build real products with industry tools", [
+        ("Product Development", "all"), ("API Development", "all"),
+        ("Frontend Development", "all"), ("Backend Development", "all"),
+        ("Database Engineering", "all"), ("Software Engineering", "all"),
+        ("Team Projects", "all"), ("Industry Tools", "all"),
+        ("Applied AI Project Track", "cse_allied"), ("Embedded Systems & IoT", "core")]),
+    4: ("Placement Preparation", "Portfolio, interviews and getting placed", [
+        ("Major Project", "all"), ("Resume Building", "all"), ("Portfolio", "all"),
+        ("Mock Interviews", "all"), ("Technical Interviews", "all"),
+        ("HR Interviews", "all"), ("Group Discussions", "all"),
+        ("Aptitude Revision", "all"), ("Placement Preparation", "all"),
+        ("Industry Readiness", "all")]),
+}
+DEGREE_ROADMAP = {
+    1: ("Foundation & Soft Skills", "Communication, aptitude and first code", [
+        ("Soft Skills", "all"), ("Communication", "all"), ("Aptitude", "all"),
+        ("Logical Reasoning", "all"), ("Work Management", "all"),
+        ("Basic Programming", "all"), ("Competitive Programming", "all")]),
+    2: ("Applications & Data", "Build apps and work with data", [
+        ("Web Development", "all"), ("DBMS", "all"), ("SQL", "all"),
+        ("Programming", "all"), ("Git & GitHub", "all"), ("Application Development", "all")]),
+    3: ("Product & Placement Readiness", "Ship products and prepare to get placed", [
+        ("Product Development", "all"), ("API Development", "all"), ("Frontend", "all"),
+        ("Backend", "all"), ("Database", "all"), ("Projects", "all"),
+        ("Resume Building", "all"), ("Mock Interviews", "all"),
+        ("Technical + HR Interview Prep", "all")]),
+}
 
 FIRST = ["Aarav", "Vivaan", "Aditya", "Sai", "Ananya", "Diya", "Ishaan", "Kabir",
          "Meera", "Riya", "Rohan", "Sneha", "Arjun", "Priya", "Karthik", "Divya",
@@ -103,7 +145,10 @@ class Plan:
         self.colleges, self.branches, self.years, self.cohorts = [], [], [], []
         self.users, self.user_roles, self.learners = [], [], []
         self.staff_creds = []               # (login_email, password, role, college)
+        # roadmap (curriculum) rows, shared across all cohorts of a program
+        self.curricula, self.year_tracks, self.modules, self.cohort_curriculum = [], [], [], []
         self._student_pw_hash = hash_password(STUDENT_PASSWORD)
+        self._build_roadmaps()
 
         specs = ([("Engineering College %02d", ENG_BRANCHES, 4, "eng")] * n_eng
                  + [("Degree College %02d", DEG_BRANCHES, 3, "deg")] * n_deg)
@@ -113,11 +158,30 @@ class Plan:
                 eng_i += 1; idx = eng_i; prefix = f"ENG{eng_i:02d}"
             else:
                 deg_i += 1; idx = deg_i; prefix = f"DEG{deg_i:02d}"
-            self._college(tmpl % idx, prefix, branches, n_years, per_cohort)
+            self._college(tmpl % idx, prefix, branches, n_years, per_cohort, kind)
 
         # the explicit super admin
         self._user(SUPER_ADMIN["email"], SUPER_ADMIN["name"], "super_admin",
                    pw=SUPER_ADMIN["password"])
+
+    def _build_roadmaps(self):
+        """Two published curricula (B.Tech 4yr, Degree 3yr) with year themes and
+        branch-aware modules. Shared by every cohort of the program; each cohort
+        links to one via cohort_curriculum. year_track ids are kept for lookup."""
+        self.roadmap_yt = {}   # (curriculum_id, year_no) -> year_track_id
+        for key, name, roadmap in (
+            ("btech", "B.Tech Roadmap", BTECH_ROADMAP),
+            ("degree", "Degree Roadmap", DEGREE_ROADMAP),
+        ):
+            cur_id = new_id()
+            setattr(self, f"{key}_cid", cur_id)
+            self.curricula.append((cur_id, name, 1, "published", now))
+            for year_no, (theme, goal, mods) in roadmap.items():
+                yt_id = new_id()
+                self.year_tracks.append((yt_id, cur_id, year_no, theme, goal))
+                self.roadmap_yt[(cur_id, year_no)] = yt_id
+                for order, (title, scope) in enumerate(mods):
+                    self.modules.append((new_id(), yt_id, title, order, scope))
 
     def _user(self, email, name, role, *, pw=None, college_id=None,
               branch_id=None, cohort_id=None, is_student=False):
@@ -129,10 +193,11 @@ class Plan:
             self.user_roles.append((new_id(), uid, role, college_id, branch_id, cohort_id))
         return uid
 
-    def _college(self, name, prefix, branches, n_years, per_cohort):
+    def _college(self, name, prefix, branches, n_years, per_cohort, kind):
         cid = new_id()
         self.colleges.append((cid, "lare", name, None, "Asia/Kolkata", "active", 60, 30, now))
         pslug = prefix.lower()
+        curriculum_id = self.btech_cid if kind == "eng" else self.degree_cid
         # leadership — each scoped to this college
         for r in ("principal", "dean", "tpo"):
             pw, email = _pw(), f"{pslug}.{r}@{EMAIL_DOMAIN}"
@@ -156,6 +221,8 @@ class Plan:
                 khid = new_id()
                 self.cohorts.append((khid, cid, bid, year_ids[y], "A", y, per_cohort))
                 branch_cohorts.append(khid)
+                # assign the program roadmap to this cohort
+                self.cohort_curriculum.append((new_id(), khid, curriculum_id, None))
                 # students of this cohort — learner name mirrors the auth account
                 for n in range(1, per_cohort + 1):
                     roll = f"{prefix}-{bcode}-{y}-{n:03d}"
@@ -181,6 +248,9 @@ class Plan:
             "academic_years": len(self.years), "cohorts": len(self.cohorts),
             "users": len(self.users), "user_roles": len(self.user_roles),
             "learners": len(self.learners), "staff_credentials": len(self.staff_creds),
+            "curricula": len(self.curricula), "year_tracks": len(self.year_tracks),
+            "roadmap_modules": len(self.modules),
+            "cohort_curriculum": len(self.cohort_curriculum),
         }
 
 
@@ -246,6 +316,16 @@ def write(url: str, plan: Plan) -> None:
              "photo_file_id,status,verified,year_no,created_at) "
              "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", plan.learners)
 
+        print("… year-wise roadmaps (curricula → years → modules)")
+        many(f"INSERT INTO {SCHEMA_CURR}.curricula (id,name,version,status,created_at) "
+             "VALUES (%s,%s,%s,%s,%s)", plan.curricula)
+        many(f"INSERT INTO {SCHEMA_CURR}.year_tracks (id,curriculum_id,year_no,theme,goal) "
+             "VALUES (%s,%s,%s,%s,%s)", plan.year_tracks)
+        many(f"INSERT INTO {SCHEMA_CURR}.modules (id,year_track_id,title,\"order\",branch_scope) "
+             "VALUES (%s,%s,%s,%s,%s)", plan.modules)
+        many(f"INSERT INTO {SCHEMA_CURR}.cohort_curriculum (id,cohort_id,curriculum_id,effective_from) "
+             "VALUES (%s,%s,%s,%s)", plan.cohort_curriculum)
+
         conn.commit()
     print("committed.")
 
@@ -277,6 +357,9 @@ def purge(url: str) -> None:
         cur.execute(f"DELETE FROM {SCHEMA_INST}.colleges "
                     "WHERE name LIKE 'Engineering College %' OR name LIKE 'Degree College %'")
         print("  colleges (+cascade branches/years/cohorts):", cur.rowcount)
+        # roadmap curricula cascade to year_tracks / modules / cohort_curriculum
+        cur.execute(f"DELETE FROM {SCHEMA_CURR}.curricula WHERE name IN ('B.Tech Roadmap','Degree Roadmap')")
+        print("  curricula (+cascade years/modules/assignments):", cur.rowcount)
         conn.commit()
     print("purged.")
 
