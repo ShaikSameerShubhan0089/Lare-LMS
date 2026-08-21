@@ -517,6 +517,7 @@ export const api = {
   addModule: (yid, body) => request(`/lms/v1/years/${yid}/modules`, { method: "POST", body }),
   addLesson: (mid, body) => request(`/lms/v1/modules/${mid}/lessons`, { method: "POST", body }),
   addModuleToYear: (yid, body) => request(`/lms/v1/years/${yid}/modules`, { method: "POST", body }),
+  authoringScopes: () => request("/lms/v1/authoring/scopes"),
   // content resources on a lesson/topic
   createContent: (body) => request("/lms/v1/content", { method: "POST", body }),
   listContent: (lessonId) => request(`/lms/v1/content?lesson_id=${lessonId}`),

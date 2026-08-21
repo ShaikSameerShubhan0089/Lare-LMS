@@ -4,7 +4,10 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import current_identity, require_permission, require_roles
+from lare_common.auth_context import (
+    current_identity, manageable_branch_scopes, require_branch_scope,
+    require_permission, require_roles,
+)
 
 # Authoring content/curriculum: admins, trainers (lms.curriculum.manage) and
 # faculty (academic.course.manage). Permission-gated so new roles work too.
@@ -83,8 +86,20 @@ def add_year(cid):
 def add_module(yid):
     data = _parse(ModuleIn, request.get_json(silent=True))
     with _db().session() as s:
+        # A scoped author (faculty, principal, TPO…) can only create modules for
+        # branches they're assigned to; platform admins can target anything.
+        require_branch_scope(s, data.branch_scope)
         m = _svc().add_module(s, yid, data)
         return created({"id": m.id, "title": m.title, "branch_scope": m.branch_scope})
+
+
+@bp.get("/lms/v1/authoring/scopes")
+@require_permission(*AUTHOR_PERMS)
+def authoring_scopes():
+    # The audiences the caller may author for — drives the Course Builder dropdown.
+    with _db().session() as s:
+        allowed = manageable_branch_scopes(s)
+    return ok({"unrestricted": allowed is None, "allowed": sorted(allowed or [])})
 
 
 @bp.post("/lms/v1/years/<yid>/outcome-checks")

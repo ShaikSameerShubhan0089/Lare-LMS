@@ -15,6 +15,7 @@ export default function CurriculumStudio({ embedded = false }) {
   const [status, setStatus] = useState("draft");
   const [years, setYears] = useState([]);
   const [audience, setAudience] = useState("all");   // "to whom" a new module targets
+  const [scopes, setScopes] = useState({ unrestricted: true, allowed: [] });
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -44,6 +45,10 @@ export default function CurriculumStudio({ embedded = false }) {
   useEffect(() => {
     (async () => {
       try {
+        // What audiences THIS user may author for (faculty → their branch, etc.).
+        const sc = await api.authoringScopes().catch(() => ({ unrestricted: true, allowed: [] }));
+        setScopes(sc);
+        if (!sc.unrestricted) setAudience(sc.allowed[0] || "");
         const list = await api.curricula();
         if (Array.isArray(list) && list.length) {
           setCurricula(list);
@@ -145,6 +150,14 @@ export default function CurriculumStudio({ embedded = false }) {
     );
   }
 
+  // Audience options this user may pick — filtered to their assigned branches
+  // (platform admins see everything).
+  const visibleGroups = scopes.unrestricted
+    ? AUDIENCE_GROUPS
+    : AUDIENCE_GROUPS
+        .map((g) => ({ ...g, options: g.options.filter((o) => scopes.allowed.includes(o.value)) }))
+        .filter((g) => g.options.length);
+
   const actions = (
     <div className="flex items-center gap-3">
       <Badge tone={status === "published" ? "teal" : "amber"}>{status}</Badge>
@@ -189,13 +202,16 @@ export default function CurriculumStudio({ embedded = false }) {
         <Field label="New module audience — to whom">
           <select value={audience} onChange={(e) => setAudience(e.target.value)}
             className="h-11 rounded-lg border border-slate-200 bg-surface px-3 text-sm min-w-[230px]">
-            {AUDIENCE_GROUPS.map((g) => (
+            {visibleGroups.map((g) => (
               <optgroup key={g.label} label={g.label}>
                 {g.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </optgroup>
             ))}
           </select>
         </Field>
+        {!scopes.unrestricted && (
+          <p className="text-xs text-slate-400 pb-2.5">You can author for your assigned branch(es) only.</p>
+        )}
       </div>
 
       <div className="space-y-4">

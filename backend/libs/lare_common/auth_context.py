@@ -213,6 +213,43 @@ def current_scope() -> "Scope":
     return current_identity().scope
 
 
+def manageable_branch_scopes(session, identity: "Identity | None" = None):
+    """Which module/content audiences (branch_scope values) a user may ASSIGN.
+
+    Returns ``None`` when unrestricted — platform-level operators (super_admin /
+    company_admin) can target any branch, the grouped categories, or "all".
+    Otherwise a set of the exact branch codes the user is bound to: faculty get
+    their assigned branch(es); college-scoped roles (principal / dean / tpo /
+    college_admin) get every branch of their college. Reads institution.branches
+    (one DB, LMS-internal); guarded so a dev/sqlite DB simply yields an empty set.
+    """
+    from sqlalchemy import text
+    ident = identity or current_identity()
+    if ident.scope.level == "platform":
+        return None
+    try:
+        if ident.branch_ids:
+            rows = session.execute(text(
+                "SELECT code FROM institution.branches WHERE id = ANY(:ids)"),
+                {"ids": list(ident.branch_ids)}).all()
+        elif ident.college_ids:
+            rows = session.execute(text(
+                "SELECT code FROM institution.branches WHERE college_id = ANY(:ids)"),
+                {"ids": list(ident.college_ids)}).all()
+        else:
+            rows = []
+        return {r[0] for r in rows}
+    except Exception:  # noqa: BLE001 — institution schema unavailable (dev/sqlite)
+        return set()
+
+
+def require_branch_scope(session, branch_scope: str, identity: "Identity | None" = None) -> None:
+    """Raise Forbidden if the caller may not author for this audience."""
+    allowed = manageable_branch_scopes(session, identity)
+    if allowed is not None and branch_scope not in allowed:
+        raise Forbidden("You can only author content for your assigned branches")
+
+
 def require_auth(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):

@@ -7,8 +7,12 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import current_identity, require_permission, require_roles
-from lare_common.errors import BadRequest
+from sqlalchemy import text
+
+from lare_common.auth_context import (
+    current_identity, manageable_branch_scopes, require_permission, require_roles,
+)
+from lare_common.errors import BadRequest, Forbidden
 from lare_common.responses import created, ok
 
 from .schemas import ContentIn, GateIn, ProgressIn
@@ -43,6 +47,16 @@ def _parse(model, payload):
 def create():
     data = _parse(ContentIn, request.get_json(silent=True))
     with _db().session() as s:
+        # A scoped author can only add materials to a topic whose module targets a
+        # branch they're assigned to. Resolve the lesson's module audience.
+        allowed = manageable_branch_scopes(s)
+        if allowed is not None:
+            row = s.execute(text(
+                "SELECT m.branch_scope FROM curriculum.lessons l "
+                "JOIN curriculum.modules m ON m.id = l.module_id WHERE l.id = :lid"),
+                {"lid": data.lesson_id}).first()
+            if not row or row[0] not in allowed:
+                raise Forbidden("You can only add materials for your assigned branches")
         return created(_svc().out(_svc().create(s, data)))
 
 
