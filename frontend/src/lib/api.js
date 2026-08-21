@@ -501,6 +501,8 @@ export const api = {
   // ---- Hierarchical analytics (Platform → College → Branch → Section → Student) ----
   rosterRollup: (level = "platform", parentId) =>
     request(`/lms/v1/roster/rollup?level=${level}${parentId ? `&parent_id=${parentId}` : ""}`),
+  placementRollup: (level = "platform", parentId) =>
+    request(`/lms/v1/placement/rollup?level=${level}${parentId ? `&parent_id=${parentId}` : ""}`),
 
   // ---- Learner roster (TPO / College Admin) ----
   learners: (params = "") => request(`/lms/v1/learners${params}`),

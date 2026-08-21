@@ -89,6 +89,7 @@ export const PRODUCTS = {
         roles: ANALYTICS_ROLES,
         items: [
           { to: "/lms/institution-analytics", icon: BarChart3, label: "Institution Analytics", roles: ANALYTICS_ROLES },
+          { to: "/lms/placement", icon: Briefcase, label: "Placement Readiness", roles: ANALYTICS_ROLES },
           { to: "/lms/admin", icon: Building2, label: "Institution", roles: STAFF_ROLES },
           { to: "/lms/users", icon: Users, label: "User Management", roles: PLATFORM_ADMIN },
           { to: "/lms/roles", icon: ShieldCheck, label: "Roles & Permissions", roles: PLATFORM_ADMIN },

@@ -48,6 +48,7 @@ import AnalyticsExplorer from "./pages/admin/AnalyticsExplorer.jsx";
 import AuditLog from "./pages/admin/AuditLog.jsx";
 import StudentHome from "./pages/StudentHome.jsx";
 import ContentStudio from "./pages/admin/ContentStudio.jsx";
+import PlacementAnalytics from "./pages/admin/PlacementAnalytics.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 
 // Auth guard. `product` selects which app shell wraps the page; `bare` renders
@@ -162,6 +163,7 @@ export default function App() {
       <Route path="/lms/roles" element={platformAdmin(<RolesPermissions />)} />
       <Route path="/lms/users" element={platformAdmin(<UserManagement />)} />
       <Route path="/lms/institution-analytics" element={analyticsView(<AnalyticsExplorer />)} />
+      <Route path="/lms/placement" element={analyticsView(<PlacementAnalytics />)} />
       <Route path="/lms/audit" element={platformAdmin(<AuditLog />)} />
       <Route path="/lms/content-studio" element={contentAuthor(<ContentStudio />)} />
       <Route path="/lms/notifications" element={lms(<Notifications />)} />

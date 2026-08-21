@@ -257,6 +257,86 @@ class LearnerService:
             "recommendations": recs[:4],
         }
 
+    # ---------- placement readiness analytics (TPO / admins) ----------
+    def _placement(self, uid: str, cgpa: float, year_no: int) -> tuple[int, dict]:
+        """A learner's placement readiness, consistent with their own dashboard:
+        an overall index + per-category indices, derived from real CGPA + year.
+        Projected until real assessment/mock-interview data replaces them."""
+        yf = min(1.0, (year_no or 1) / 4)
+        overall = self._idx(uid + "pl", cgpa * 8 * yf, 12)
+        cats = {
+            "aptitude": self._idx(uid + "apt", cgpa * 8.5, 12),
+            "coding": self._idx(uid + "cod", cgpa * 8 * yf + 10, 14),
+            "communication": self._idx(uid + "com", 55 + cgpa * 3, 12),
+            "technical": self._idx(uid + "tec", cgpa * 7 * yf, 12),
+            "hr": self._idx(uid + "hr", 20 + cgpa * 5 * yf, 12),
+        }
+        return overall, cats
+
+    _READY = 60          # placement-ready threshold on the readiness index
+    _ELIGIBLE_CGPA = 6.0  # typical company eligibility floor
+
+    def placement_rollup(self, s: Session, scope, level: str, parent_id: str | None) -> dict:
+        """Placement readiness aggregated over a scope node + its children.
+        Eligible = CGPA ≥ 6.0 (real); ready = readiness index ≥ 60 (derived)."""
+        if level not in self._DRILL:
+            raise Conflict("Unknown hierarchy level", code="bad_level")
+        parent_col, group_col, child_level = self._DRILL[level]
+        if parent_col is not None and not parent_id:
+            raise Conflict("parent_id is required at this level", code="parent_required")
+        if parent_id and scope is not None and level in ("college",) and not scope.can_see(college_id=parent_id):
+            raise Forbidden("Outside your scope")
+
+        q = select(Learner.user_id, Learner.cgpa, Learner.year_no, Learner.id,
+                   Learner.full_name, Learner.roll_no,
+                   Learner.college_id, Learner.branch_id, Learner.cohort_id)
+        if parent_col is not None:
+            q = q.where(parent_col == parent_id)
+        if scope is not None:
+            q = scope.apply(q, college_col=Learner.college_id, branch_col=Learner.branch_id,
+                            cohort_col=Learner.cohort_id, user_col=Learner.user_id)
+        rows = s.execute(q).all()
+
+        # index (into the selected row) of the column that groups THIS level's
+        # children: platform→college_id(6), college→branch_id(7), branch→cohort_id(8).
+        gi = {"platform": 6, "college": 7, "branch": 8}.get(level)
+
+        def blank():
+            return {"n": 0, "eligible": 0, "ready": 0, "sum_overall": 0,
+                    "cats": {k: 0 for k in ("aptitude", "coding", "communication", "technical", "hr")}}
+
+        node = blank()
+        buckets: dict = {}
+        students = []
+        for r in rows:
+            uid, cgpa, year = r[0], r[1] or 0, r[2]
+            overall, cats = self._placement(uid, cgpa, year)
+            for acc in (node, buckets.setdefault(r[gi] if gi is not None else None, blank())):
+                acc["n"] += 1
+                acc["eligible"] += 1 if cgpa >= self._ELIGIBLE_CGPA else 0
+                acc["ready"] += 1 if overall >= self._READY else 0
+                acc["sum_overall"] += overall
+                for k, v in cats.items():
+                    acc["cats"][k] += v
+            if group_col is None:  # section → student leaf
+                students.append({"id": r[3], "name": r[4] or r[5], "roll_no": r[5],
+                                 "cgpa": cgpa or None, "eligible": cgpa >= self._ELIGIBLE_CGPA,
+                                 "readiness": overall, "ready": overall >= self._READY})
+
+        def finish(acc):
+            n = acc["n"] or 1
+            return {"learners": acc["n"], "eligible": acc["eligible"], "ready": acc["ready"],
+                    "avg_readiness": round(acc["sum_overall"] / n),
+                    "categories": {k: round(v / n) for k, v in acc["cats"].items()}}
+
+        out = {"level": level, "parent_id": parent_id, **finish(node), "child_level": child_level}
+        if group_col is None:
+            out["children"] = sorted(students, key=lambda x: x["readiness"], reverse=True)
+        else:
+            out["children"] = [{"id": gid, **finish(acc)}
+                               for gid, acc in buckets.items() if gid is not None]
+        return out
+
     def module_resources(self, s: Session, module_id: str) -> dict:
         """A module's topics and their resources (recordings, PDFs, slides …) —
         what a student opens from their roadmap. Reads curriculum.lessons +

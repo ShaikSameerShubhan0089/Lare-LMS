@@ -73,6 +73,16 @@ def student_module_resources(mid):
         return ok(_svc().module_resources(s, mid))
 
 
+@bp.get("/lms/v1/placement/rollup")
+@require_permission(*ANALYTICS_VIEW)
+def placement_rollup():
+    level = request.args.get("level", "platform")
+    parent_id = request.args.get("parent_id") or None
+    scope = current_scope()
+    with _db().session() as s:
+        return ok(_svc().placement_rollup(s, scope, level, parent_id))
+
+
 @bp.get("/lms/v1/roster/rollup")
 @require_permission(*ANALYTICS_VIEW)
 def roster_rollup():
