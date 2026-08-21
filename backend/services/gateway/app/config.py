@@ -53,6 +53,9 @@ class GatewayConfig(BaseConfig):
         "/lms/v1/cohorts": "lms-institution",
         "/lms/v1/schedule": "lms-institution",
         "/lms/v1/learners": "lms-learner",
+        "/lms/v1/roster": "lms-learner",       # hierarchical roster analytics
+        "/lms/v1/placement": "lms-learner",    # placement readiness analytics
+        "/lms/v1/students": "lms-learner",     # student dashboard + roadmap + resources
         "/lms/v1/curricula": "lms-curriculum",
         "/lms/v1/years": "lms-curriculum",
         "/lms/v1/modules": "lms-curriculum",
