@@ -6,6 +6,7 @@ import {
 import { Card, Button, Badge, Field, Input } from "../../components/ui/primitives.jsx";
 import { PageHeader, Loading, EmptyState } from "../../components/ui/states.jsx";
 import { api } from "../../lib/api.js";
+import { audienceLabel } from "../../lib/audiences.js";
 
 // Content Studio — author materials onto the roadmap. Pick a curriculum → year →
 // module → topic, then add resources (recordings, PPT, PDF, notes, coding, links).
@@ -21,11 +22,6 @@ const RES_TYPES = [
 ];
 const typeMeta = (t) => RES_TYPES.find((r) => r.key === t) || RES_TYPES[5];
 
-// Who a module (and therefore its materials) reaches.
-const AUDIENCE_LABEL = {
-  all: "All students", cse_allied: "CSE & AI branches", core: "Core branches (ECE / EEE …)",
-};
-const audienceOf = (scope) => AUDIENCE_LABEL[scope] || `${scope} branch`;
 
 export default function ContentStudio({ embedded = false }) {
   const [curricula, setCurricula] = useState([]);
@@ -127,7 +123,7 @@ export default function ContentStudio({ embedded = false }) {
                     ${moduleId === m.id ? "bg-brand-500/5 border-l-2 border-l-brand-500" : ""}`}>
                   <span className="text-sm text-ink-900 truncate">{m.title}</span>
                   <span className="flex items-center gap-1.5 shrink-0">
-                    {m.branch_scope !== "all" && <Badge tone="amber">{m.branch_scope.replace("cse_allied", "cse")}</Badge>}
+                    {m.branch_scope !== "all" && <Badge tone="amber">{audienceLabel(m.branch_scope)}</Badge>}
                     <span className="text-xs text-slate-400">{m.lessons?.length || 0}</span>
                   </span>
                 </button>
@@ -168,7 +164,7 @@ function ModulePanel({ module, lessonId, resources, onOpenLesson, onAddTopic, on
       </div>
       <div className="mb-4 flex items-center gap-2 text-xs">
         <span className="text-slate-400">Materials here are visible to:</span>
-        <Badge tone={module.branch_scope === "all" ? "teal" : "amber"}>{audienceOf(module.branch_scope)}</Badge>
+        <Badge tone={module.branch_scope === "all" ? "teal" : "amber"}>{audienceLabel(module.branch_scope)}</Badge>
         <span className="text-slate-400">of this year, across every college</span>
       </div>
 

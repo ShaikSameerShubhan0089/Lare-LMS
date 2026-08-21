@@ -3,18 +3,11 @@ import { BookOpen, Plus, Layers, FileText, Rocket, CheckCircle2, ChevronRight, P
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { PageHeader, Loading } from "../../components/ui/states.jsx";
 import { api } from "../../lib/api.js";
+import { AUDIENCE_GROUPS, audienceLabel } from "../../lib/audiences.js";
 import LessonEditor from "./LessonEditor.jsx";
 
 // Curriculum designer: build curriculum -> years -> modules -> lessons, then
 // publish (which makes the structure immutable per the SRS).
-// Audience a module targets — drives who sees the module & its materials.
-const AUDIENCES = [
-  ["all", "All students"],
-  ["cse_allied", "CSE & AI branches"],
-  ["core", "Core branches (ECE / EEE …)"],
-];
-const audienceLabel = (s) => (AUDIENCES.find(([v]) => v === s) || ["", s])[1];
-
 export default function CurriculumStudio({ embedded = false }) {
   const [curricula, setCurricula] = useState([]);
   const [curriculum, setCurriculum] = useState(null);
@@ -195,8 +188,12 @@ export default function CurriculumStudio({ embedded = false }) {
         )}
         <Field label="New module audience — to whom">
           <select value={audience} onChange={(e) => setAudience(e.target.value)}
-            className="h-11 rounded-lg border border-slate-200 bg-surface px-3 text-sm min-w-[210px]">
-            {AUDIENCES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            className="h-11 rounded-lg border border-slate-200 bg-surface px-3 text-sm min-w-[230px]">
+            {AUDIENCE_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </optgroup>
+            ))}
           </select>
         </Field>
       </div>
