@@ -46,6 +46,10 @@ class Database:
             engine_kw["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "3"))
             engine_kw["pool_recycle"] = int(os.getenv("DB_POOL_RECYCLE", "1800"))
             engine_kw["pool_timeout"] = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+            # Test a pooled connection before use and transparently reconnect if
+            # it's dead — so a dropped SSH tunnel / pooler reset reconnects on the
+            # next request instead of surfacing as a 500.
+            engine_kw["pool_pre_ping"] = True
             if self.schema:
                 # Pin search_path as a libpq STARTUP option. This is preserved
                 # per-connection by the Supabase/pgbouncer session pooler, unlike
