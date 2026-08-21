@@ -58,6 +58,14 @@ ANALYTICS_VIEW = ("analytics.platform.view", "analytics.college.view",
                   "analytics.student.view")
 
 
+@bp.get("/lms/v1/students/me/home")
+def student_home():
+    # A student's own dashboard + year-wise roadmap. Keyed to the caller.
+    ident = current_identity()
+    with _db().session() as s:
+        return ok(_svc().student_home(s, ident.user_id))
+
+
 @bp.get("/lms/v1/roster/rollup")
 @require_permission(*ANALYTICS_VIEW)
 def roster_rollup():

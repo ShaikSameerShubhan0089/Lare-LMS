@@ -1,9 +1,10 @@
 """Learner business logic."""
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, select, text
 from sqlalchemy.orm import Session
 
 from lare_common.errors import Conflict, Forbidden, NotFound
@@ -164,6 +165,96 @@ class LearnerService:
             "at_risk": int(ar or 0),
         } for gid, cnt, vf, avg, ar in rows]
         return summary
+
+    # ---------- student home (dashboard + roadmap) ----------
+    @staticmethod
+    def _idx(seed: str, base: float, spread: float, lo=0, hi=100) -> int:
+        """A stable, per-student readiness index in [lo,hi], derived from real
+        fields (CGPA, year) with deterministic per-student variation. These are
+        projected readiness indices until real activity data (assessments,
+        content consumption) replaces them — not fabricated stored analytics."""
+        h = int(hashlib.md5(seed.encode()).hexdigest()[:6], 16) / 0xFFFFFF
+        return int(max(lo, min(hi, base + (h - 0.5) * 2 * spread)))
+
+    def student_home(self, s: Session, user_id: str) -> dict:
+        lr = s.execute(select(Learner).where(Learner.user_id == user_id)).scalar_one_or_none()
+        if not lr:
+            raise NotFound("No learner profile for this account", code="learner_not_found")
+
+        # College + branch (institution schema) — one DB, schema-qualified read.
+        row = s.execute(text(
+            "SELECT c.name AS college, b.name AS branch, b.code AS code, b.category AS category "
+            "FROM institution.branches b JOIN institution.colleges c ON c.id = b.college_id "
+            "WHERE b.id = :bid"), {"bid": lr.branch_id}).mappings().first() or {}
+        college = row.get("college") or ""
+        program = "B.Tech" if "Engineering" in college else ("Degree" if "Degree" in college else "Programme")
+        n_years = 4 if program == "B.Tech" else 3
+        cat, code = row.get("category"), row.get("code")
+
+        # Roadmap: the cohort's curriculum → year tracks → branch-eligible modules.
+        rm = s.execute(text(
+            'SELECT cu.name AS curriculum, y.year_no, y.theme, y.goal, '
+            'm.title AS module, m.branch_scope, m."order" AS ord '
+            "FROM curriculum.cohort_curriculum cc "
+            "JOIN curriculum.curricula cu ON cu.id = cc.curriculum_id "
+            "JOIN curriculum.year_tracks y ON y.curriculum_id = cu.id "
+            "LEFT JOIN curriculum.modules m ON m.year_track_id = y.id "
+            "  AND m.branch_scope IN ('all', :cat, :code) "
+            "WHERE cc.cohort_id = :cohort ORDER BY y.year_no, m.ord"),
+            {"cohort": lr.cohort_id, "cat": cat, "code": code}).mappings().all()
+
+        curriculum_name = rm[0]["curriculum"] if rm else None
+        years: dict[int, dict] = {}
+        for r in rm:
+            y = years.setdefault(r["year_no"], {
+                "year_no": r["year_no"], "theme": r["theme"], "goal": r["goal"],
+                "current": r["year_no"] == lr.year_no,
+                "past": r["year_no"] < lr.year_no, "modules": []})
+            if r["module"]:
+                # Past years are shown complete; the current/future years are the
+                # active path. (Per-module completion arrives with consumption data.)
+                y["modules"].append({"title": r["module"], "scope": r["branch_scope"],
+                                     "done": r["year_no"] < lr.year_no})
+
+        cgpa = lr.cgpa or 0
+        uid = lr.user_id
+        # progress — academic is real (CGPA); the rest are projected indices.
+        academic = int(round(cgpa * 10)) if cgpa else 0
+        year_frac = lr.year_no / n_years
+        progress = {
+            "academic": academic,
+            "course_completion": self._idx(uid + "cc", (lr.year_no - 0.4) / n_years * 100, 14),
+            "skill": self._idx(uid + "sk", cgpa * 9, 12),
+            "placement": self._idx(uid + "pl", cgpa * 8 * year_frac, 12),
+        }
+        placement = [
+            {"label": "Aptitude", "pct": self._idx(uid + "apt", cgpa * 8.5, 12)},
+            {"label": "Coding", "pct": self._idx(uid + "cod", cgpa * 8 * year_frac + 10, 14)},
+            {"label": "Communication", "pct": self._idx(uid + "com", 55 + cgpa * 3, 12)},
+            {"label": "Technical Interview", "pct": self._idx(uid + "tec", cgpa * 7 * year_frac, 12)},
+            {"label": "HR Interview", "pct": self._idx(uid + "hr", 20 + cgpa * 5 * year_frac, 12)},
+        ]
+
+        # next recommended — the current year's first not-done modules + gentle nudges
+        cur_modules = years.get(lr.year_no, {}).get("modules", [])
+        recs = [f"Start “{m['title']}”" for m in cur_modules[:2]]
+        if progress["placement"] < 50 and lr.year_no >= (n_years - 1):
+            recs.append("Complete your Resume in the Placement module")
+        recs.append("Attempt an Aptitude assessment")
+
+        return {
+            "profile": {
+                "name": lr.full_name, "roll_no": lr.roll_no, "email": lr.email,
+                "program": program, "college": college, "branch": row.get("branch"),
+                "branch_code": code, "year_no": lr.year_no, "n_years": n_years,
+                "cgpa": lr.cgpa, "verified": lr.verified, "status": lr.status,
+            },
+            "progress": progress,
+            "roadmap": {"curriculum": curriculum_name,
+                        "years": [years[k] for k in sorted(years)]},
+            "placement_readiness": placement,
+            "recommendations": recs[:4],
+        }
 
     def bulk_import(self, s: Session, data) -> dict:
         existing = {

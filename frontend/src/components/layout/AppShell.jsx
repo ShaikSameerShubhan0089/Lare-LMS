@@ -62,6 +62,7 @@ export const PRODUCTS = {
     gamified: true,
     items: [
       { to: "/lms", icon: LayoutDashboard, label: "Dashboard", end: true, roles: STUDENT },
+      { to: "/lms/roadmap", icon: GraduationCap, label: "My Roadmap", roles: STUDENT },
       { to: "/lms/learning", icon: BookOpen, label: "My Learning", roles: STUDENT },
       { to: "/lms/assessments", icon: ClipboardList, label: "Assessments", roles: STUDENT },
       { to: "/lms/practice", icon: Code2, label: "Coding Practice", roles: STUDENT },

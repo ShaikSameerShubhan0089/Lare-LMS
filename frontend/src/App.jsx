@@ -46,6 +46,7 @@ import RolesPermissions from "./pages/admin/RolesPermissions.jsx";
 import UserManagement from "./pages/admin/UserManagement.jsx";
 import AnalyticsExplorer from "./pages/admin/AnalyticsExplorer.jsx";
 import AuditLog from "./pages/admin/AuditLog.jsx";
+import StudentHome from "./pages/StudentHome.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 
 // Auth guard. `product` selects which app shell wraps the page; `bare` renders
@@ -130,6 +131,7 @@ export default function App() {
       {/* Access Gate — students validate their class Access ID before entry. */}
       <Route path="/lms/access-gate" element={<Protected product="lms" bare skipGate><AccessGate /></Protected>} />
       <Route path="/lms" element={lms(<Dashboard />)} />
+      <Route path="/lms/roadmap" element={lms(<StudentHome />)} />
       <Route path="/lms/learning" element={lms(<MyLearning />)} />
       <Route path="/lms/assessments" element={lms(<Assessments />)} />
       <Route path="/lms/skill-map" element={lms(<SkillMap />)} />

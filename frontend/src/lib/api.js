@@ -494,6 +494,9 @@ export const api = {
   createUser: (body) => request("/auth/v1/admin/users", { method: "POST", body }),
   setUserStatus: (id, status) => request(`/auth/v1/admin/users/${id}/status`, { method: "POST", body: { status } }),
 
+  // ---- Student home (dashboard + year-wise roadmap) ----
+  studentHome: () => request("/lms/v1/students/me/home"),
+
   // ---- Hierarchical analytics (Platform → College → Branch → Section → Student) ----
   rosterRollup: (level = "platform", parentId) =>
     request(`/lms/v1/roster/rollup?level=${level}${parentId ? `&parent_id=${parentId}` : ""}`),
