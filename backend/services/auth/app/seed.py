@@ -28,7 +28,7 @@ ROLES = [
     ("super_admin",   "Platform owner (LARE). Full control across all institutions.", "platform"),
     ("company_admin", "LARE recruitment / programme operator.",                       "platform"),
     ("principal",     "Institution head — oversees one college end to end.",          "college"),
-    ("dean",          "Department / branch head.",                                    "branch"),
+    ("dean",          "Academic head — oversees academics & development for a college.", "college"),
     ("tpo",           "Training & Placement Officer — placements for one college.",   "college"),
     ("college_admin", "College coordinator / administrator.",                         "college"),
     ("trainer",       "Trainer / mentor (LMS).",                                      "section"),
@@ -102,8 +102,8 @@ ROLE_DEFAULTS: dict[str, list[str]] = {
         *_ANALYTICS_DOWN,
     ],
     "dean": [
-        "institution.view", "academic.course.view",
-        "analytics.branch.view", "analytics.section.view",
+        "institution.view", "academic.course.manage", "academic.course.view",
+        "analytics.college.view", "analytics.branch.view", "analytics.section.view",
         "analytics.student.view", "analytics.export",
     ],
     "tpo": [
