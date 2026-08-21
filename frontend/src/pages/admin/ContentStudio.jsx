@@ -21,7 +21,7 @@ const RES_TYPES = [
 ];
 const typeMeta = (t) => RES_TYPES.find((r) => r.key === t) || RES_TYPES[5];
 
-export default function ContentStudio() {
+export default function ContentStudio({ embedded = false }) {
   const [curricula, setCurricula] = useState([]);
   const [curId, setCurId] = useState("");
   const [tree, setTree] = useState(null);
@@ -78,10 +78,12 @@ export default function ContentStudio() {
 
   return (
     <div>
-      <PageHeader
-        title="Content Studio"
-        subtitle="Author recordings, notes, slides and more onto the roadmap — automatically visible to every eligible student."
-      />
+      {!embedded && (
+        <PageHeader
+          title="Content Studio"
+          subtitle="Author recordings, notes, slides and more onto the roadmap — automatically visible to every eligible student."
+        />
+      )}
       {err && <div className="rounded-md bg-rose-500/10 text-rose-600 text-sm px-3.5 py-2.5 mb-4">{err}</div>}
 
       {/* Curriculum + year selectors */}

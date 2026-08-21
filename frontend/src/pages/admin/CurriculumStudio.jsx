@@ -7,7 +7,7 @@ import LessonEditor from "./LessonEditor.jsx";
 
 // Curriculum designer: build curriculum -> years -> modules -> lessons, then
 // publish (which makes the structure immutable per the SRS).
-export default function CurriculumStudio() {
+export default function CurriculumStudio({ embedded = false }) {
   const [curriculum, setCurriculum] = useState(null);
   const [name, setName] = useState("LARE 4-Year Programme");
   const [status, setStatus] = useState("draft");
@@ -118,7 +118,7 @@ export default function CurriculumStudio() {
   if (!curriculum) {
     return (
       <div>
-        <PageHeader title="Curriculum Studio" subtitle="Design the 4-year structured programme" />
+        {!embedded && <PageHeader title="Curriculum Studio" subtitle="Design the 4-year structured programme" />}
         {err && <div className="mb-4 rounded-md bg-amber-500/10 text-amber-700 p-3 text-sm">{err}</div>}
         <Card className="p-6 max-w-lg">
           <h2 className="font-display font-semibold text-ink-900 mb-4 flex items-center gap-2">
@@ -131,22 +131,27 @@ export default function CurriculumStudio() {
     );
   }
 
+  const actions = (
+    <div className="flex items-center gap-3">
+      <Badge tone={status === "published" ? "teal" : "amber"}>{status}</Badge>
+      {status !== "published" && (
+        <Button variant="amber" onClick={publish} disabled={busy || years.length === 0}>
+          <Rocket size={16} /> Publish
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <div>
-      <PageHeader
-        title="Curriculum Studio"
-        subtitle={curriculum.name}
-        right={
-          <div className="flex items-center gap-3">
-            <Badge tone={status === "published" ? "teal" : "amber"}>{status}</Badge>
-            {status !== "published" && (
-              <Button variant="amber" onClick={publish} disabled={busy || years.length === 0}>
-                <Rocket size={16} /> Publish
-              </Button>
-            )}
-          </div>
-        }
-      />
+      {embedded ? (
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-slate-500 truncate">{curriculum.name}</p>
+          {actions}
+        </div>
+      ) : (
+        <PageHeader title="Curriculum Studio" subtitle={curriculum.name} right={actions} />
+      )}
 
       {msg && (
         <div className="mb-5 rounded-md bg-teal-500/10 text-teal-700 p-3 text-sm flex items-center gap-2">

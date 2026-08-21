@@ -27,7 +27,6 @@ import PeerMesh from "./pages/PeerMesh.jsx";
 import Lessons from "./pages/Lessons.jsx";
 import PracticeWorlds from "./pages/PracticeWorlds.jsx";
 import LessonViewer from "./pages/LessonViewer.jsx";
-import Analytics from "./pages/Analytics.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Profile from "./pages/Profile.jsx";
 import LearnProfile from "./pages/LearnProfile.jsx";
@@ -48,6 +47,7 @@ import AnalyticsExplorer from "./pages/admin/AnalyticsExplorer.jsx";
 import AuditLog from "./pages/admin/AuditLog.jsx";
 import StudentHome from "./pages/StudentHome.jsx";
 import ContentStudio from "./pages/admin/ContentStudio.jsx";
+import CourseBuilder from "./pages/admin/CourseBuilder.jsx";
 import PlacementAnalytics from "./pages/admin/PlacementAnalytics.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 
@@ -155,7 +155,6 @@ export default function App() {
       <Route path="/lms/achievements" element={lms(<Achievements />)} />
       <Route path="/lms/tutor" element={lms(<Tutor />)} />
       <Route path="/lms/certificates" element={lms(<Certificates />)} />
-      <Route path="/lms/analytics" element={lms(<Analytics />)} />
       <Route path="/lms/admin" element={lmsStaff(<AdminConsole />)} />
       <Route path="/lms/curriculum" element={lmsStaff(<CurriculumStudio />)} />
       <Route path="/lms/trainer" element={lmsStaff(<TrainerConsole />)} />
@@ -165,6 +164,8 @@ export default function App() {
       <Route path="/lms/institution-analytics" element={analyticsView(<AnalyticsExplorer />)} />
       <Route path="/lms/placement" element={analyticsView(<PlacementAnalytics />)} />
       <Route path="/lms/audit" element={platformAdmin(<AuditLog />)} />
+      <Route path="/lms/course-builder" element={contentAuthor(<CourseBuilder />)} />
+      {/* Deep links to the individual studios still resolve; the nav uses Course Builder. */}
       <Route path="/lms/content-studio" element={contentAuthor(<ContentStudio />)} />
       <Route path="/lms/notifications" element={lms(<Notifications />)} />
       <Route path="/lms/profile" element={lms(<LearnProfile />)} />
