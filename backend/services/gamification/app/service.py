@@ -70,7 +70,10 @@ class GamificationService:
         return st
 
     def game_state(self, s: Session, learner_id: str) -> dict:
-        st = s.get(LevelState, learner_id) or LevelState(learner_id=learner_id)
+        # A learner with no XP yet has no row; the fallback needs explicit
+        # defaults (column defaults only apply on INSERT, so an unflushed object
+        # would carry level=None and blow up in next_level_threshold).
+        st = s.get(LevelState, learner_id) or LevelState(learner_id=learner_id, total_xp=0, level=1)
         badges = s.execute(
             select(LearnerBadge).where(LearnerBadge.learner_id == learner_id)
         ).scalars().all()
