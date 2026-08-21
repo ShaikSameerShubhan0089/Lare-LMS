@@ -43,10 +43,19 @@ from lare_common.security import hash_password, new_id        # noqa: E402
 
 import psycopg                                                # noqa: E402
 
-SCHEMA_INST = "lms_institution"
-SCHEMA_AUTH = "lare_auth"
-SCHEMA_LEARN = "lms_learner"
-SCHEMA_CURR = "lms_curriculum"
+# Windows consoles default to cp1252 and choke on the arrows/ellipses below.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:  # noqa: BLE001
+    pass
+
+# NOTE: the deployed DB uses short schema names (institution/curriculum/learner),
+# not the service config defaults (lms_*). Auth is lare_auth. Override via env if
+# a given deployment differs.
+SCHEMA_INST = os.getenv("SCHEMA_INST", "institution")
+SCHEMA_AUTH = os.getenv("SCHEMA_AUTH", "lare_auth")
+SCHEMA_LEARN = os.getenv("SCHEMA_LEARN", "learner")
+SCHEMA_CURR = os.getenv("SCHEMA_CURR", "curriculum")
 
 STUDENT_PASSWORD = "Student@2026"
 SUPER_ADMIN = {"email": "superadmin@platform.com", "password": "SuperAdmin@2026",
@@ -232,14 +241,14 @@ class Plan:
                     self.learners.append((new_id(), uid, cid, khid, bid, roll, sname,
                                           email, rand_cgpa(), None, "active",
                                           random.random() < 0.7, y, now))
-            # 2 faculty per branch, splitting the branch's cohorts between them
+            # 2 faculty per branch — each scoped to the whole branch (a role grant
+            # is unique per user/role/college, so one branch binding per faculty).
             for f in range(1, 3):
                 fpw = _pw()
                 femail = f"{pslug}.{bslug}.faculty{f:02d}@{EMAIL_DOMAIN}"
-                fuid = self._user(femail, f"{rand_name()} ({bcode} Faculty)", None, pw=fpw)
+                self._user(femail, f"{rand_name()} ({bcode} Faculty)", "faculty",
+                           pw=fpw, college_id=cid, branch_id=bid)
                 self.staff_creds.append((femail.lower(), fpw, "faculty", cid))
-                for kh in [kh for j, kh in enumerate(branch_cohorts) if j % 2 == (f - 1)]:
-                    self.user_roles.append((new_id(), fuid, "faculty", cid, bid, kh))
 
     # convenience counters
     def summary(self) -> dict:

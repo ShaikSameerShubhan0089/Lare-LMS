@@ -32,7 +32,7 @@ ROLES = [
     ("tpo",           "Training & Placement Officer — placements for one college.",   "college"),
     ("college_admin", "College coordinator / administrator.",                         "college"),
     ("trainer",       "Trainer / mentor (LMS).",                                      "section"),
-    ("faculty",       "Faculty — teaches and assesses their own sections.",           "section"),
+    ("faculty",       "Faculty — teaches and assesses their assigned branch.",        "branch"),
     ("recruiter",     "Recruiter / interviewer (Drive).",                             "self"),
     ("student",       "Learner / candidate.",                                         "self"),
 ]
@@ -123,8 +123,9 @@ ROLE_DEFAULTS: dict[str, list[str]] = {
         "self.profile.manage",
     ],
     "faculty": [
-        "academic.course.view", "assessment.manage", "assessment.grade",
-        "analytics.section.view", "analytics.student.view",
+        "academic.course.manage", "academic.course.view",
+        "assessment.manage", "assessment.grade",
+        "analytics.branch.view", "analytics.section.view", "analytics.student.view",
         "self.profile.manage",
     ],
     "recruiter": [
