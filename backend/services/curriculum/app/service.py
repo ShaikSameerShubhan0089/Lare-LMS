@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from lare_common.errors import Conflict, NotFound
@@ -213,8 +213,30 @@ class CurriculumService:
         return [{"item_type": r.item_type, "item_id": r.item_id} for r in rows]
 
     # ---------- read ----------
+    def _resource_counts(self, s: Session, cid: str) -> dict:
+        """How many materials (content items) are attached to each lesson of this
+        curriculum — so the structure view shows what's been added in Materials.
+        Reads content.content_items (one DB, LMS-internal); guarded so a dev
+        sqlite DB or an unmigrated content schema simply yields no counts."""
+        lesson_ids = s.execute(
+            select(Lesson.id).join(Module, Module.id == Lesson.module_id)
+            .join(YearTrack, YearTrack.id == Module.year_track_id)
+            .where(YearTrack.curriculum_id == cid)
+        ).scalars().all()
+        if not lesson_ids:
+            return {}
+        try:
+            rows = s.execute(text(
+                "SELECT lesson_id, count(*) FROM content.content_items "
+                "WHERE lesson_id = ANY(:ids) GROUP BY lesson_id"),
+                {"ids": list(lesson_ids)}).all()
+            return {r[0]: int(r[1]) for r in rows}
+        except Exception:  # noqa: BLE001 — content schema unavailable (dev/sqlite)
+            return {}
+
     def tree(self, s: Session, cid: str) -> dict:
         cur = self.get_curriculum(s, cid)
+        resource_counts = self._resource_counts(s, cid)
         years = []
         for y in sorted(cur.years, key=lambda x: x.year_no):
             mods = s.execute(
@@ -244,6 +266,7 @@ class CurriculumService:
                         "id": l.id, "title": l.title, "order": l.order,
                         "content_ref": l.content_ref,
                         "blocks": len(l.content or []),
+                        "resources": resource_counts.get(l.id, 0),
                         "objectives": [
                             {"id": o.id, "statement": o.statement, "skill_tag": o.skill_tag}
                             for o in objs

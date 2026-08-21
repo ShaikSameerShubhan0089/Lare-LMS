@@ -7,35 +7,55 @@ import LessonEditor from "./LessonEditor.jsx";
 
 // Curriculum designer: build curriculum -> years -> modules -> lessons, then
 // publish (which makes the structure immutable per the SRS).
+// Audience a module targets — drives who sees the module & its materials.
+const AUDIENCES = [
+  ["all", "All students"],
+  ["cse_allied", "CSE & AI branches"],
+  ["core", "Core branches (ECE / EEE …)"],
+];
+const audienceLabel = (s) => (AUDIENCES.find(([v]) => v === s) || ["", s])[1];
+
 export default function CurriculumStudio({ embedded = false }) {
+  const [curricula, setCurricula] = useState([]);
   const [curriculum, setCurriculum] = useState(null);
   const [name, setName] = useState("LARE 4-Year Programme");
   const [status, setStatus] = useState("draft");
   const [years, setYears] = useState([]);
+  const [audience, setAudience] = useState("all");   // "to whom" a new module targets
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
   const [editing, setEditing] = useState(null); // {id, title} lesson being authored
 
-  // Load an existing curriculum from the backend so its real lessons (with real
-  // ids) are editable — no fragile in-session placeholders.
+  function applyTree(c, tree) {
+    setCurriculum({ id: c.id, name: c.name });
+    setStatus(c.status || tree.status || "draft");
+    setYears((tree.years || []).map((y) => ({
+      id: y.id, year_no: y.year_no, theme: y.theme,
+      modules: (y.modules || []).map((m) => ({
+        id: m.id, title: m.title, branch_scope: m.branch_scope || "all",
+        lessons: (m.lessons || []).map((l) => ({ id: l.id, title: l.title, blocks: l.blocks || 0, resources: l.resources || 0 })),
+      })),
+    })));
+  }
+
+  async function openCurriculum(id) {
+    setLoading(true);
+    try { applyTree({ id }, await api.curriculumTree(id)); }
+    catch (e) { flashErr(e, "Couldn't load that curriculum."); }
+    finally { setLoading(false); }
+  }
+
+  // Load the curricula list + open the first (real ids so lessons are editable).
   useEffect(() => {
     (async () => {
       try {
         const list = await api.curricula();
         if (Array.isArray(list) && list.length) {
+          setCurricula(list);
           const c = list[0];
-          const tree = await api.curriculumTree(c.id);
-          setCurriculum({ id: c.id, name: c.name });
-          setStatus(c.status || tree.status || "draft");
-          setYears((tree.years || []).map((y) => ({
-            id: y.id, year_no: y.year_no, theme: y.theme,
-            modules: (y.modules || []).map((m) => ({
-              id: m.id, title: m.title,
-              lessons: (m.lessons || []).map((l) => ({ id: l.id, title: l.title, blocks: l.blocks || 0 })),
-            })),
-          })));
+          applyTree(c, await api.curriculumTree(c.id));
         }
       } catch { /* none yet — show the create card */ }
       finally { setLoading(false); }
@@ -70,9 +90,10 @@ export default function CurriculumStudio({ embedded = false }) {
     const title = prompt("Module title?");
     if (!title) return;
     try {
-      const m = await api.addModule(y.id, { title, branch_scope: "all" });
+      // The module is scoped to the currently-selected audience.
+      const m = await api.addModule(y.id, { title, branch_scope: audience });
       const copy = [...years];
-      copy[yi] = { ...y, modules: [...y.modules, { ...m, title, lessons: [] }] };
+      copy[yi] = { ...y, modules: [...y.modules, { ...m, title, branch_scope: audience, lessons: [] }] };
       setYears(copy);
     } catch (e) { flashErr(e, "Couldn't add the module."); }
   }
@@ -162,6 +183,24 @@ export default function CurriculumStudio({ embedded = false }) {
         <div className="mb-5 rounded-md bg-amber-500/10 text-amber-700 p-3 text-sm">{err}</div>
       )}
 
+      {/* Roadmap picker + the audience new modules target ("to whom"). */}
+      <div className="flex flex-wrap items-end gap-3 mb-5">
+        {curricula.length > 1 && (
+          <Field label="Roadmap / Curriculum">
+            <select value={curriculum?.id || ""} onChange={(e) => openCurriculum(e.target.value)}
+              className="h-11 rounded-lg border border-slate-200 bg-surface px-3 text-sm min-w-[220px]">
+              {curricula.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Field>
+        )}
+        <Field label="New module audience — to whom">
+          <select value={audience} onChange={(e) => setAudience(e.target.value)}
+            className="h-11 rounded-lg border border-slate-200 bg-surface px-3 text-sm min-w-[210px]">
+            {AUDIENCES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Field>
+      </div>
+
       <div className="space-y-4">
         {years.map((y, yi) => (
           <Card key={y.id} className="p-5">
@@ -180,6 +219,9 @@ export default function CurriculumStudio({ embedded = false }) {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-ink-900 flex items-center gap-2">
                       <BookOpen size={14} className="text-brand-500" /> {m.title}
+                      <Badge tone={m.branch_scope === "all" ? "slate" : "amber"}>
+                        {audienceLabel(m.branch_scope)}
+                      </Badge>
                     </p>
                     {status !== "published" && (
                       <button onClick={() => addLesson(yi, mi)} className="text-xs text-brand-600 hover:underline flex items-center gap-1">
@@ -193,9 +235,15 @@ export default function CurriculumStudio({ embedded = false }) {
                         <li key={l.id} className="text-sm text-slate-600 flex items-center gap-2 pl-4 group">
                           <FileText size={13} className="text-slate-400 shrink-0" />
                           <span className="flex-1">{l.title}</span>
-                          {l.blocks > 0
-                            ? <Badge tone="teal">{l.blocks} block{l.blocks > 1 ? "s" : ""}</Badge>
-                            : <span className="text-xs text-amber-500">no material yet</span>}
+                          {l.resources > 0 && (
+                            <Badge tone="violet">{l.resources} material{l.resources > 1 ? "s" : ""}</Badge>
+                          )}
+                          {l.blocks > 0 && (
+                            <Badge tone="teal">{l.blocks} block{l.blocks > 1 ? "s" : ""}</Badge>
+                          )}
+                          {!l.blocks && !l.resources && (
+                            <span className="text-xs text-amber-500">no material yet</span>
+                          )}
                           {!l.demo && (
                             <button onClick={() => setEditing({ id: l.id, title: l.title })}
                               className="text-xs text-brand-600 hover:underline flex items-center gap-1">

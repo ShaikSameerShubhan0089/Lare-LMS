@@ -21,6 +21,12 @@ const RES_TYPES = [
 ];
 const typeMeta = (t) => RES_TYPES.find((r) => r.key === t) || RES_TYPES[5];
 
+// Who a module (and therefore its materials) reaches.
+const AUDIENCE_LABEL = {
+  all: "All students", cse_allied: "CSE & AI branches", core: "Core branches (ECE / EEE …)",
+};
+const audienceOf = (scope) => AUDIENCE_LABEL[scope] || `${scope} branch`;
+
 export default function ContentStudio({ embedded = false }) {
   const [curricula, setCurricula] = useState([]);
   const [curId, setCurId] = useState("");
@@ -157,9 +163,13 @@ function ModulePanel({ module, lessonId, resources, onOpenLesson, onAddTopic, on
 
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <h3 className="font-display font-semibold text-ink-900">{module.title}</h3>
-        {module.branch_scope !== "all" && <Badge tone="amber">{module.branch_scope} only</Badge>}
+      </div>
+      <div className="mb-4 flex items-center gap-2 text-xs">
+        <span className="text-slate-400">Materials here are visible to:</span>
+        <Badge tone={module.branch_scope === "all" ? "teal" : "amber"}>{audienceOf(module.branch_scope)}</Badge>
+        <span className="text-slate-400">of this year, across every college</span>
       </div>
 
       {/* Topics */}
