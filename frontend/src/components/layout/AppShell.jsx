@@ -30,6 +30,7 @@ import {
   Boxes,
   ShieldCheck,
   ScrollText,
+  Library,
   Sun,
   Moon,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const STAFF_ROLES = ["super_admin", "company_admin", "college_admin", "trainer"]
 const PLATFORM_ADMIN = ["super_admin", "company_admin"];
 const ANALYTICS_ROLES = ["super_admin", "company_admin", "college_admin",
   "principal", "dean", "tpo", "faculty", "trainer"];
+const CONTENT_AUTHOR_ROLES = ["super_admin", "company_admin", "college_admin", "trainer", "faculty"];
 const STUDENT = ["student"];
 
 // Two standalone apps on one platform. Each product owns its own nav; they never
@@ -93,6 +95,7 @@ export const PRODUCTS = {
           { to: "/lms/audit", icon: ScrollText, label: "Audit Trail", roles: PLATFORM_ADMIN },
           { to: "/lms/access-codes", icon: KeyRound, label: "Access IDs", roles: STAFF_ROLES },
           { to: "/lms/curriculum", icon: BookMarked, label: "Curriculum Studio", roles: STAFF_ROLES },
+          { to: "/lms/content-studio", icon: Library, label: "Content Studio", roles: CONTENT_AUTHOR_ROLES },
           { to: "/lms/trainer", icon: GraduationCap, label: "Trainer Console", roles: STAFF_ROLES },
           { to: "/lms/analytics", icon: BarChart3, label: "Analytics", roles: STAFF_ROLES },
         ],

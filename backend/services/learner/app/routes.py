@@ -66,6 +66,13 @@ def student_home():
         return ok(_svc().student_home(s, ident.user_id))
 
 
+@bp.get("/lms/v1/students/modules/<mid>/resources")
+def student_module_resources(mid):
+    current_identity()  # any authenticated learner
+    with _db().session() as s:
+        return ok(_svc().module_resources(s, mid))
+
+
 @bp.get("/lms/v1/roster/rollup")
 @require_permission(*ANALYTICS_VIEW)
 def roster_rollup():

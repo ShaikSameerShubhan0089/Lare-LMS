@@ -3,10 +3,13 @@ import {
   GraduationCap, CheckCircle2, ArrowRight, Lock, Target, Sparkles,
   TrendingUp, BadgeCheck, Layers, Trophy,
 } from "lucide-react";
+import { Video, FileText, Presentation, BookOpen, Code2, Link2 } from "lucide-react";
 import { Card, Badge } from "../components/ui/primitives.jsx";
 import { PageHeader, Loading, EmptyState } from "../components/ui/states.jsx";
 import { RadialGauge, MasteryBar } from "../components/charts.jsx";
 import { api } from "../lib/api.js";
+
+const RES_ICON = { video: Video, slide: Presentation, pdf: FileText, reading: BookOpen, interactive: Code2, link: Link2 };
 
 // A student's personal home: academic / skill / placement readiness at a glance,
 // their year-wise roadmap with what's done and what's next, a placement-readiness
@@ -116,6 +119,17 @@ export default function StudentHome() {
 function YearBlock({ y }) {
   const state = y.current ? "current" : y.past ? "past" : "future";
   const tone = { current: "border-brand-300 bg-brand-500/5", past: "border-teal-200 bg-teal-500/5", future: "border-slate-100" }[state];
+  const [openMid, setOpenMid] = useState(null);
+  const [res, setRes] = useState(null);
+  const [loadingRes, setLoadingRes] = useState(false);
+
+  async function toggle(m) {
+    if (openMid === m.id) { setOpenMid(null); return; }
+    setOpenMid(m.id); setRes(null); setLoadingRes(true);
+    try { setRes(await api.moduleResources(m.id)); } catch { setRes({ topics: [] }); }
+    finally { setLoadingRes(false); }
+  }
+
   return (
     <div className={`rounded-xl border ${tone} p-4`}>
       <div className="flex items-center justify-between mb-2">
@@ -132,19 +146,53 @@ function YearBlock({ y }) {
         {state === "future" && <Badge tone="slate"><Lock size={11} /> Upcoming</Badge>}
       </div>
       <div className="flex flex-wrap gap-1.5 mt-2.5">
-        {y.modules.map((m, i) => (
-          <span key={i}
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs
-              ${m.done ? "bg-teal-500/10 text-teal-700"
-                : y.current ? "bg-white border border-brand-200 text-ink-800"
-                : "bg-slate-100 text-slate-400"}`}>
+        {y.modules.map((m) => (
+          <button key={m.id} onClick={() => toggle(m)}
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs transition
+              ${openMid === m.id ? "ring-1 ring-brand-400 " : ""}
+              ${m.done ? "bg-teal-500/10 text-teal-700 hover:bg-teal-500/20"
+                : y.current ? "bg-white border border-brand-200 text-ink-800 hover:border-brand-400"
+                : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}>
             {m.done && <CheckCircle2 size={11} />}
             {m.title}
             {m.scope !== "all" && <span className="text-[9px] uppercase opacity-60">·{m.scope.replace("cse_allied", "cse")}</span>}
-          </span>
+          </button>
         ))}
         {y.modules.length === 0 && <span className="text-xs text-slate-400">Modules coming soon</span>}
       </div>
+
+      {openMid && (
+        <div className="mt-3 rounded-lg bg-white/70 border border-slate-100 p-3">
+          {loadingRes ? (
+            <p className="text-xs text-slate-400">Loading materials…</p>
+          ) : !res?.topics?.length || res.topics.every((t) => !t.resources.length) ? (
+            <p className="text-xs text-slate-400">No materials uploaded for this module yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {res.topics.filter((t) => t.resources.length).map((t, i) => (
+                <div key={i}>
+                  <p className="text-xs font-semibold text-slate-500 mb-1.5">{t.topic}</p>
+                  <div className="space-y-1.5">
+                    {t.resources.map((r) => {
+                      const Icon = RES_ICON[r.type] || Link2;
+                      const body = (
+                        <span className="flex items-center gap-2 text-sm">
+                          <Icon size={14} className="text-brand-500 shrink-0" />
+                          <span className="text-ink-800 truncate">{r.title}</span>
+                        </span>
+                      );
+                      return r.url ? (
+                        <a key={r.id} href={r.url} target="_blank" rel="noreferrer"
+                          className="block rounded-md px-2 py-1.5 hover:bg-brand-500/5">{body}</a>
+                      ) : <div key={r.id} className="px-2 py-1.5">{body}</div>;
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

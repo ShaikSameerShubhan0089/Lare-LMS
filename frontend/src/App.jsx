@@ -47,6 +47,7 @@ import UserManagement from "./pages/admin/UserManagement.jsx";
 import AnalyticsExplorer from "./pages/admin/AnalyticsExplorer.jsx";
 import AuditLog from "./pages/admin/AuditLog.jsx";
 import StudentHome from "./pages/StudentHome.jsx";
+import ContentStudio from "./pages/admin/ContentStudio.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 
 // Auth guard. `product` selects which app shell wraps the page; `bare` renders
@@ -103,6 +104,12 @@ const ANALYTICS_ROLES = ["super_admin", "company_admin", "college_admin",
 const analyticsView = (el) => (
   <Protected product="lms" roles={ANALYTICS_ROLES}>{el}</Protected>
 );
+// Content authoring — admins, trainers and faculty (backend enforces the
+// academic.course.manage / lms.curriculum.manage permission).
+const CONTENT_AUTHORS = ["super_admin", "company_admin", "college_admin", "trainer", "faculty"];
+const contentAuthor = (el) => (
+  <Protected product="lms" roles={CONTENT_AUTHORS}>{el}</Protected>
+);
 const drive = (el) => <Protected product="drive">{el}</Protected>;
 const driveStaff = (el) => (
   <Protected product="drive" roles={DRIVE_STAFF}>{el}</Protected>
@@ -156,6 +163,7 @@ export default function App() {
       <Route path="/lms/users" element={platformAdmin(<UserManagement />)} />
       <Route path="/lms/institution-analytics" element={analyticsView(<AnalyticsExplorer />)} />
       <Route path="/lms/audit" element={platformAdmin(<AuditLog />)} />
+      <Route path="/lms/content-studio" element={contentAuthor(<ContentStudio />)} />
       <Route path="/lms/notifications" element={lms(<Notifications />)} />
       <Route path="/lms/profile" element={lms(<LearnProfile />)} />
       <Route path="/lms/settings" element={lms(<Settings />)} />

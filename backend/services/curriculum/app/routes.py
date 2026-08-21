@@ -4,7 +4,11 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import current_identity, require_roles
+from lare_common.auth_context import current_identity, require_permission, require_roles
+
+# Authoring content/curriculum: admins, trainers (lms.curriculum.manage) and
+# faculty (academic.course.manage). Permission-gated so new roles work too.
+AUTHOR_PERMS = ("lms.curriculum.manage", "academic.course.manage")
 from lare_common.errors import BadRequest
 from lare_common.responses import created, ok
 
@@ -75,7 +79,7 @@ def add_year(cid):
 
 
 @bp.post("/lms/v1/years/<yid>/modules")
-@require_roles(*DESIGN)
+@require_permission(*AUTHOR_PERMS)
 def add_module(yid):
     data = _parse(ModuleIn, request.get_json(silent=True))
     with _db().session() as s:
@@ -93,7 +97,7 @@ def add_outcome(yid):
 
 
 @bp.post("/lms/v1/modules/<mid>/lessons")
-@require_roles(*DESIGN)
+@require_permission(*AUTHOR_PERMS)
 def add_lesson(mid):
     data = _parse(LessonIn, request.get_json(silent=True))
     with _db().session() as s:

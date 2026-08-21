@@ -7,7 +7,7 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
-from lare_common.auth_context import current_identity, require_roles
+from lare_common.auth_context import current_identity, require_permission, require_roles
 from lare_common.errors import BadRequest
 from lare_common.responses import created, ok
 
@@ -16,8 +16,10 @@ from .service import ContentService
 
 bp = Blueprint("content", __name__)
 
-AUTHOR = ("super_admin", "company_admin", "trainer")
-READ = ("super_admin", "company_admin", "college_admin", "trainer", "student")
+# Authoring is permission-gated so trainers (lms.curriculum.manage) and faculty
+# (academic.course.manage) can both add materials — not just platform admins.
+AUTHOR_PERMS = ("lms.curriculum.manage", "academic.course.manage")
+READ = ("super_admin", "company_admin", "college_admin", "trainer", "faculty", "student")
 
 
 def _svc() -> ContentService:
@@ -37,7 +39,7 @@ def _parse(model, payload):
 
 
 @bp.post("/lms/v1/content")
-@require_roles(*AUTHOR)
+@require_permission(*AUTHOR_PERMS)
 def create():
     data = _parse(ContentIn, request.get_json(silent=True))
     with _db().session() as s:
@@ -55,7 +57,7 @@ def list_content():
 
 
 @bp.post("/lms/v1/content/<cid>/gate")
-@require_roles(*AUTHOR)
+@require_permission(*AUTHOR_PERMS)
 def add_gate(cid):
     data = _parse(GateIn, request.get_json(silent=True))
     with _db().session() as s:

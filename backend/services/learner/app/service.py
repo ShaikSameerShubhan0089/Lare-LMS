@@ -194,7 +194,7 @@ class LearnerService:
         # Roadmap: the cohort's curriculum → year tracks → branch-eligible modules.
         rm = s.execute(text(
             'SELECT cu.name AS curriculum, y.year_no, y.theme, y.goal, '
-            'm.title AS module, m.branch_scope, m."order" AS ord '
+            'm.id AS module_id, m.title AS module, m.branch_scope, m."order" AS ord '
             "FROM curriculum.cohort_curriculum cc "
             "JOIN curriculum.curricula cu ON cu.id = cc.curriculum_id "
             "JOIN curriculum.year_tracks y ON y.curriculum_id = cu.id "
@@ -213,7 +213,8 @@ class LearnerService:
             if r["module"]:
                 # Past years are shown complete; the current/future years are the
                 # active path. (Per-module completion arrives with consumption data.)
-                y["modules"].append({"title": r["module"], "scope": r["branch_scope"],
+                y["modules"].append({"id": r["module_id"], "title": r["module"],
+                                     "scope": r["branch_scope"],
                                      "done": r["year_no"] < lr.year_no})
 
         cgpa = lr.cgpa or 0
@@ -255,6 +256,27 @@ class LearnerService:
             "placement_readiness": placement,
             "recommendations": recs[:4],
         }
+
+    def module_resources(self, s: Session, module_id: str) -> dict:
+        """A module's topics and their resources (recordings, PDFs, slides …) —
+        what a student opens from their roadmap. Reads curriculum.lessons +
+        content.content_items (one DB, LMS-internal)."""
+        rows = s.execute(text(
+            'SELECT l.id AS lesson_id, l.title AS topic, l."order" AS lord, '
+            'ci.id AS rid, ci.title, ci.type, ci.url, ci.duration_sec '
+            "FROM curriculum.lessons l "
+            'LEFT JOIN content.content_items ci ON ci.lesson_id = l.id '
+            "WHERE l.module_id = :mid "
+            'ORDER BY l."order", ci."order"'),
+            {"mid": module_id}).mappings().all()
+        topics: dict[str, dict] = {}
+        for r in rows:
+            t = topics.setdefault(r["lesson_id"], {"topic": r["topic"], "resources": []})
+            if r["rid"]:
+                t["resources"].append({
+                    "id": r["rid"], "title": r["title"], "type": r["type"],
+                    "url": r["url"], "duration_sec": r["duration_sec"]})
+        return {"module_id": module_id, "topics": list(topics.values())}
 
     def bulk_import(self, s: Session, data) -> dict:
         existing = {

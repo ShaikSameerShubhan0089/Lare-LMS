@@ -496,6 +496,7 @@ export const api = {
 
   // ---- Student home (dashboard + year-wise roadmap) ----
   studentHome: () => request("/lms/v1/students/me/home"),
+  moduleResources: (mid) => request(`/lms/v1/students/modules/${mid}/resources`),
 
   // ---- Hierarchical analytics (Platform → College → Branch → Section → Student) ----
   rosterRollup: (level = "platform", parentId) =>
@@ -513,6 +514,10 @@ export const api = {
   addYear: (cid, body) => request(`/lms/v1/curricula/${cid}/years`, { method: "POST", body }),
   addModule: (yid, body) => request(`/lms/v1/years/${yid}/modules`, { method: "POST", body }),
   addLesson: (mid, body) => request(`/lms/v1/modules/${mid}/lessons`, { method: "POST", body }),
+  addModuleToYear: (yid, body) => request(`/lms/v1/years/${yid}/modules`, { method: "POST", body }),
+  // content resources on a lesson/topic
+  createContent: (body) => request("/lms/v1/content", { method: "POST", body }),
+  listContent: (lessonId) => request(`/lms/v1/content?lesson_id=${lessonId}`),
   getLesson: (lid) => request(`/lms/v1/lessons/${lid}`),
   setLessonContent: (lid, content) => request(`/lms/v1/lessons/${lid}/content`, { method: "PUT", body: { content } }),
   gradeLessonCheck: (lid, block_id, choice) =>
