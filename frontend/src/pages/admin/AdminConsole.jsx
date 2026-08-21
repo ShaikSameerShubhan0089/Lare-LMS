@@ -9,25 +9,33 @@ import { demoColleges, demoLearners, demoAdminDash } from "../../lib/demo.js";
 // Super Admin / College Admin / TPO console: colleges, learner roster,
 // bulk import, and verification.
 export default function AdminConsole() {
-  const dash = useAsync(() => withFallback(api.dashboard("college_admin"), demoAdminDash), []);
   const colleges = useAsync(() => withFallback(api.colleges(), demoColleges), []);
+  // Real institution figures (learners, verified, at-risk per college) come from
+  // the roster rollup, not the legacy demo dashboard.
+  const roll = useAsync(() => api.rosterRollup("platform").catch(() => null), []);
   const [tab, setTab] = useState("overview");
 
-  if (dash.loading) return <Loading />;
-  const d = dash.data || {};
+  if (colleges.loading) return <Loading />;
+
+  const r = roll.data;
+  const counts = {};
+  (r?.children || []).forEach((c) => { counts[c.id] = c; });
+  const totalLearners = r ? r.learners : null;
+  const totalVerified = r ? r.verified : null;
 
   return (
     <div>
       <PageHeader
         title="Institution Console"
         subtitle="Manage colleges, onboard learners, and track readiness"
-        right={<DataSource live={dash.live && colleges.live} />}
+        right={<DataSource live={colleges.live} />}
       />
 
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
-        <StatTile icon={Building2} label="Colleges" value={d.colleges ?? "—"} tone="brand" />
-        <StatTile icon={Users} label="Learners" value={d.learners ?? "—"} tone="teal" />
-        <StatTile icon={GraduationCap} label="Active drives" value={d.drives ?? "—"} tone="amber" />
+        <StatTile icon={Building2} label="Colleges" value={(colleges.data || []).length || "—"} tone="brand" />
+        <StatTile icon={Users} label="Learners" value={totalLearners != null ? totalLearners.toLocaleString() : "—"} tone="teal" />
+        <StatTile icon={ShieldCheck} label="Verified"
+          value={totalVerified != null && totalLearners ? `${Math.round((totalVerified / totalLearners) * 100)}%` : "—"} tone="amber" />
       </div>
 
       <div className="flex gap-2 mb-5">
@@ -45,7 +53,7 @@ export default function AdminConsole() {
       </div>
 
       {tab === "overview" ? (
-        <Colleges list={colleges.data || []} />
+        <Colleges list={colleges.data || []} counts={counts} />
       ) : (
         <LearnerRoster />
       )}
@@ -53,7 +61,7 @@ export default function AdminConsole() {
   );
 }
 
-function Colleges({ list }) {
+function Colleges({ list, counts = {} }) {
   const [rows, setRows] = useState(list);
   const [form, setForm] = useState({ name: "", code: "", city: "" });
 
@@ -76,22 +84,32 @@ function Colleges({ list }) {
           <h2 className="font-display font-semibold text-ink-900">Colleges ({rows.length})</h2>
         </div>
         <div className="divide-y divide-slate-100">
-          {rows.map((c) => (
-            <div key={c.id} className="p-4 flex items-center gap-3">
-              <span className="grid place-items-center h-10 w-10 rounded-md bg-brand-500/10 text-brand-600 font-semibold">
-                {c.code || c.name?.[0]}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-ink-900 truncate">{c.name}</p>
-                <p className="text-xs text-slate-400">{c.city} · {c.learners ?? 0} learners</p>
+          {rows.map((c) => {
+            const stat = counts[c.id];
+            const learners = stat ? stat.learners : (c.learners ?? 0);
+            const verifiedPct = stat && stat.learners ? Math.round((stat.verified / stat.learners) * 100) : null;
+            return (
+              <div key={c.id} className="p-4 flex items-center gap-3">
+                <span className="grid place-items-center h-10 w-10 rounded-md bg-brand-500/10 text-brand-600 font-semibold">
+                  {c.code || c.name?.[0]}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-ink-900 truncate">{c.name}</p>
+                  <p className="text-xs text-slate-400">
+                    {c.city ? `${c.city} · ` : ""}{learners.toLocaleString()} learners
+                    {stat && stat.at_risk ? ` · ${stat.at_risk} at risk` : ""}
+                  </p>
+                </div>
+                {verifiedPct != null ? (
+                  <Badge tone={verifiedPct >= 60 ? "teal" : "amber"}><ShieldCheck size={13} /> {verifiedPct}% verified</Badge>
+                ) : c.verified ? (
+                  <Badge tone="teal"><ShieldCheck size={13} /> verified</Badge>
+                ) : (
+                  <Badge tone="slate">—</Badge>
+                )}
               </div>
-              {c.verified ? (
-                <Badge tone="teal"><ShieldCheck size={13} /> verified</Badge>
-              ) : (
-                <Badge tone="amber">pending</Badge>
-              )}
-            </div>
-          ))}
+            );
+          })}
           {rows.length === 0 && <EmptyState title="No colleges yet" hint="Add your first college on the right." />}
         </div>
       </Card>
