@@ -101,13 +101,13 @@ const platformAdmin = (el) => (
 // Institution analytics — leadership & academic roles. The backend clips every
 // rollup to the caller's scope, so the same page serves each role's own view.
 const ANALYTICS_ROLES = ["super_admin", "company_admin", "college_admin",
-  "principal", "dean", "tpo", "faculty", "trainer"];
+  "principal", "dean", "hod", "tpo", "faculty", "trainer"];
 const analyticsView = (el) => (
   <Protected product="lms" roles={ANALYTICS_ROLES}>{el}</Protected>
 );
 // Content authoring — admins, trainers and faculty (backend enforces the
 // academic.course.manage / lms.curriculum.manage permission).
-const CONTENT_AUTHORS = ["super_admin", "company_admin", "college_admin", "trainer", "faculty"];
+const CONTENT_AUTHORS = ["super_admin", "company_admin", "college_admin", "trainer", "faculty", "hod"];
 const contentAuthor = (el) => (
   <Protected product="lms" roles={CONTENT_AUTHORS}>{el}</Protected>
 );

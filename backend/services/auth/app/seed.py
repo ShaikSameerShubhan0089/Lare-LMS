@@ -29,6 +29,7 @@ ROLES = [
     ("company_admin", "LARE recruitment / programme operator.",                       "platform"),
     ("principal",     "Institution head — oversees one college end to end.",          "college"),
     ("dean",          "Academic head — oversees academics & development for a college.", "college"),
+    ("hod",           "Head of Department — leads one branch's academics.",           "branch"),
     ("tpo",           "Training & Placement Officer — placements for one college.",   "college"),
     ("college_admin", "College coordinator / administrator.",                         "college"),
     ("trainer",       "Trainer / mentor (LMS).",                                      "section"),
@@ -105,6 +106,14 @@ ROLE_DEFAULTS: dict[str, list[str]] = {
         "institution.view", "academic.course.manage", "academic.course.view",
         "analytics.college.view", "analytics.branch.view", "analytics.section.view",
         "analytics.student.view", "analytics.export",
+    ],
+    "hod": [
+        # Department head: manages their branch's curriculum/assessments and sees
+        # their branch's analytics. Scope (branch) limits it to their department.
+        "institution.view", "academic.course.manage", "academic.course.view",
+        "assessment.manage", "assessment.grade",
+        "analytics.branch.view", "analytics.section.view", "analytics.student.view",
+        "analytics.export", "self.profile.manage",
     ],
     "tpo": [
         "institution.view", "institution.access.manage", "academic.course.view",

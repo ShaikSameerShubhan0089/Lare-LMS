@@ -43,8 +43,8 @@ const RECRUITER_ROLES = ["recruiter", "company_admin", "super_admin"];
 const STAFF_ROLES = ["super_admin", "company_admin", "college_admin", "trainer"];
 const PLATFORM_ADMIN = ["super_admin", "company_admin"];
 const ANALYTICS_ROLES = ["super_admin", "company_admin", "college_admin",
-  "principal", "dean", "tpo", "faculty", "trainer"];
-const CONTENT_AUTHOR_ROLES = ["super_admin", "company_admin", "college_admin", "trainer", "faculty"];
+  "principal", "dean", "hod", "tpo", "faculty", "trainer"];
+const CONTENT_AUTHOR_ROLES = ["super_admin", "company_admin", "college_admin", "trainer", "faculty", "hod"];
 const STUDENT = ["student"];
 
 // Two standalone apps on one platform. Each product owns its own nav; they never
