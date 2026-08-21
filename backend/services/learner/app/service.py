@@ -200,7 +200,7 @@ class LearnerService:
             "JOIN curriculum.year_tracks y ON y.curriculum_id = cu.id "
             "LEFT JOIN curriculum.modules m ON m.year_track_id = y.id "
             "  AND m.branch_scope IN ('all', :cat, :code) "
-            "WHERE cc.cohort_id = :cohort ORDER BY y.year_no, m.ord"),
+            'WHERE cc.cohort_id = :cohort ORDER BY y.year_no, m."order"'),
             {"cohort": lr.cohort_id, "cat": cat, "code": code}).mappings().all()
 
         curriculum_name = rm[0]["curriculum"] if rm else None
