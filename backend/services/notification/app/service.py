@@ -72,6 +72,16 @@ DEFAULT_EMAIL_TEMPLATES = [
      "    {token}\n\n"
      "Entering this code verifies your email and activates your account.\n\n"
      "If you did not create a LARE account, you can safely ignore this email." + SIGNATURE),
+    # Interview scheduling — sent to the candidate with their joining details.
+    # Vars from Interview's schedule flow: {name, stage, mode, slot, link, company}.
+    ("interview_scheduled", "Your {company} interview is scheduled",
+     "Dear {name},\n\n"
+     "Your {stage} interview has been scheduled. Please find the details below:\n\n"
+     "    Mode:   {mode}\n"
+     "    When:   {slot}\n"
+     "    Join:   {link}\n\n"
+     "Kindly join on time using the link above and keep your documents ready. "
+     "We wish you all the best for your interview." + SIGNATURE),
 ]
 
 

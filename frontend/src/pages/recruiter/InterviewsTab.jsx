@@ -68,9 +68,18 @@ export default function InterviewsTab({ id }) {
               </select>
             </div>
           </div>
-          <Field label="Meeting link / slot">
+          <Field label="Date & time">
             <Input value={form.slot} onChange={(e) => setForm({ ...form, slot: e.target.value })} placeholder="2027-01-10 10:00" />
           </Field>
+          <Field label="Meeting link">
+            <Input value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })}
+              placeholder="https://meet.google.com/… or Zoom link" />
+          </Field>
+          {form.link.trim() && (
+            <p className="-mt-2 text-xs text-teal-600 flex items-center gap-1">
+              <Check size={12} /> This link will be emailed to the candidate on Schedule.
+            </p>
+          )}
           <Button type="submit" className="w-full"><CalendarPlus size={16} /> Schedule</Button>
         </form>
       </Card>

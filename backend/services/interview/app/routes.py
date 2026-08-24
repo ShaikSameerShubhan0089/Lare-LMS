@@ -1,6 +1,9 @@
 """HTTP layer for the Interview Service."""
 from __future__ import annotations
 
+import logging
+from types import SimpleNamespace
+
 from flask import Blueprint, current_app, request
 from pydantic import ValidationError
 
@@ -10,6 +13,41 @@ from lare_common.responses import created, ok
 
 from .schemas import AllocateIn, DecisionIn, RateIn, ScheduleIn
 from .service import InterviewService
+
+log = logging.getLogger("lare-interview")
+
+
+def _email_candidate(iv) -> None:
+    """Best-effort: email the candidate their interview details + meeting link.
+    Runs after the interview is persisted and never fails the request."""
+    if not getattr(iv, "link", None):
+        return
+    try:
+        from lare_common.service_client import ServiceClient
+        cli = ServiceClient("drive-interview", default_roles=["recruiter"])
+        r = cli.get("drive-candidate", f"/drive/v1/candidates/resolve?ids={iv.candidate_id}")
+        info = ((r or {}).get("data") or {}).get(iv.candidate_id) or {}
+        email = info.get("email")
+        if not email:
+            log.info("interview %s: no candidate email, skipping notification", iv.candidate_id)
+            return
+        company = "LARE"
+        try:
+            d = cli.get("drive-core", f"/drive/v1/drives/{iv.drive_id}")
+            company = ((d or {}).get("data") or {}).get("company_name") or company
+        except Exception:  # noqa: BLE001
+            pass
+        cli.post("lare-notify", "/notify/v1/send", {
+            "user_id": iv.candidate_id, "template_key": "interview_scheduled",
+            "channel": "email",
+            "variables": {"email": email, "name": info.get("full_name") or "Candidate",
+                          "stage": iv.stage, "mode": iv.mode,
+                          "slot": iv.slot or "to be confirmed",
+                          "link": iv.link, "company": company},
+        })
+        log.info("emailed interview link to candidate %s", iv.candidate_id)
+    except Exception:  # noqa: BLE001 — notification is best-effort
+        log.warning("could not email interview link to %s", getattr(iv, "candidate_id", "?"))
 
 bp = Blueprint("interview", __name__)
 
@@ -38,7 +76,14 @@ def _parse(model, payload):
 def schedule():
     data = _parse(ScheduleIn, request.get_json(silent=True))
     with _db().session() as s:
-        return created(_svc().out(_svc().schedule(s, data)))
+        iv = _svc().schedule(s, data)
+        out = _svc().out(iv)
+        # Snapshot the fields the notification needs before the session closes.
+        snap = SimpleNamespace(candidate_id=iv.candidate_id, drive_id=iv.drive_id,
+                               stage=iv.stage, mode=iv.mode, link=iv.link, slot=iv.slot)
+    # If a meeting link was provided, send it straight to the candidate.
+    _email_candidate(snap)
+    return created(out)
 
 
 @bp.post("/drive/v1/interviews/<iid>/allocate")
