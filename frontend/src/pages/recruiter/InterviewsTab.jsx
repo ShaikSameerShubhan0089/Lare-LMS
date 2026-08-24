@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarPlus, Video, Star, Check, X, UserCheck } from "lucide-react";
 import { Card, Badge, Button, Field, Input } from "../../components/ui/primitives.jsx";
 import { Loading, DataSource } from "../../components/ui/states.jsx";
@@ -12,7 +12,24 @@ export default function InterviewsTab({ id }) {
   const loaded = useAsync(() => withFallback(api.driveInterviews(id), demoInterviews), [id]);
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState({ candidate_id: "", stage: "technical", mode: "online", link: "", slot: "" });
+  // Candidates who cleared the most recent round — those eligible to interview.
+  const [eligible, setEligible] = useState([]);
   const list = rows ?? loaded.data ?? [];
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const wf = await api.getWorkflow(id);
+        const orders = (wf || []).map((r) => r.order).filter((o) => o != null).sort((a, b) => b - a);
+        for (const order of orders) {                // newest round first
+          const scores = await api.roundScores(id, order).catch(() => []);
+          const cleared = (scores || []).filter((s) => s.cleared);
+          if (cleared.length) { setEligible(cleared); return; }
+        }
+        setEligible([]);
+      } catch { setEligible([]); }
+    })();
+  }, [id]);
 
   if (loaded.loading) return <Loading />;
 
@@ -24,7 +41,7 @@ export default function InterviewsTab({ id }) {
     e.preventDefault();
     let iv;
     try {
-      iv = await api.scheduleInterview({ drive_id: id, ...form });
+      iv = await api.scheduleInterview({ drive_id: id, ...form, slot: form.slot.replace("T", " ") });
     } catch {
       iv = { id: `iv-${Date.now()}`, ...form, status: "scheduled" };
     }
@@ -50,7 +67,22 @@ export default function InterviewsTab({ id }) {
         </h2>
         <form onSubmit={schedule} className="space-y-3">
           <Field label="Candidate">
-            <Input required value={form.candidate_id} onChange={(e) => setForm({ ...form, candidate_id: e.target.value })} placeholder="20CSE022 · Sita M." />
+            {eligible.length > 0 ? (
+              <select required value={form.candidate_id}
+                onChange={(e) => setForm({ ...form, candidate_id: e.target.value })}
+                className="w-full h-11 px-3 rounded-md border border-slate-200 bg-surface text-ink-900">
+                <option value="">Select a shortlisted candidate…</option>
+                {eligible.map((c) => (
+                  <option key={c.candidate_id} value={c.candidate_id}>
+                    {c.candidate_roll ? `${c.candidate_roll} · ` : ""}{c.candidate_name || c.candidate_id}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input required value={form.candidate_id}
+                onChange={(e) => setForm({ ...form, candidate_id: e.target.value })}
+                placeholder="No cleared candidates yet — enter a candidate id" />
+            )}
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -69,7 +101,9 @@ export default function InterviewsTab({ id }) {
             </div>
           </div>
           <Field label="Date & time">
-            <Input value={form.slot} onChange={(e) => setForm({ ...form, slot: e.target.value })} placeholder="2027-01-10 10:00" />
+            <input type="datetime-local" value={form.slot}
+              onChange={(e) => setForm({ ...form, slot: e.target.value })}
+              className="w-full h-11 px-3 rounded-md border border-slate-200 bg-surface text-ink-900" />
           </Field>
           <Field label="Meeting link">
             <Input value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })}
