@@ -26,8 +26,9 @@ export default function InterviewsTab({ id }) {
         let cleared = [];
         let anyCandidates = [];
         for (const order of orders) {
-          const scores = await api.roundScores(id, order).catch(() => []);
-          if (!scores?.length) continue;
+          const resp = await api.roundScores(id, order).catch(() => null);
+          const scores = resp?.scores || [];                  // { scores, round } shape
+          if (!scores.length) continue;
           if (!anyCandidates.length) anyCandidates = scores;   // latest round with candidates
           const c = scores.filter((s) => s.cleared);
           if (c.length) { cleared = c; break; }               // prefer cleared/selected
