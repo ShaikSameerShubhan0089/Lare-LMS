@@ -11,7 +11,7 @@ const DEC_TONE = { select: "teal", reject: "rose", hold: "amber", next_round: "b
 export default function InterviewsTab({ id }) {
   const loaded = useAsync(() => withFallback(api.driveInterviews(id), demoInterviews), [id]);
   const [rows, setRows] = useState(null);
-  const [form, setForm] = useState({ candidate_id: "", stage: "technical", mode: "online", link: "", slot: "" });
+  const [form, setForm] = useState({ candidate_id: "", stage: "technical", mode: "online", link: "", slot: "", interviewer_name: "", interviewer_email: "" });
   // Candidates who cleared the most recent round — those eligible to interview.
   const [eligible, setEligible] = useState([]);
   const list = rows ?? loaded.data ?? [];
@@ -54,7 +54,7 @@ export default function InterviewsTab({ id }) {
       iv = { id: `iv-${Date.now()}`, ...form, status: "scheduled" };
     }
     upsert({ id: iv.id, candidate_id: form.candidate_id, stage: form.stage, mode: form.mode, status: "scheduled", decision: null, avg_rating: null });
-    setForm({ candidate_id: "", stage: "technical", mode: "online", link: "", slot: "" });
+    setForm({ candidate_id: "", stage: "technical", mode: "online", link: "", slot: "", interviewer_name: "", interviewer_email: "" });
   }
 
   async function rate(ivId, competency, score) {
@@ -123,6 +123,30 @@ export default function InterviewsTab({ id }) {
               <Check size={12} /> This link will be emailed to the candidate on Schedule.
             </p>
           )}
+
+          <div className="pt-2 border-t border-slate-100">
+            <p className="text-sm font-medium text-ink-900 mb-2 flex items-center gap-1.5">
+              <UserCheck size={15} className="text-brand-500" /> Assigned to (interviewer)
+            </p>
+            <div className="space-y-3">
+              <Field label="Interviewer name">
+                <Input value={form.interviewer_name}
+                  onChange={(e) => setForm({ ...form, interviewer_name: e.target.value })}
+                  placeholder="e.g. Ravi Kumar" />
+              </Field>
+              <Field label="Interviewer email">
+                <Input type="email" value={form.interviewer_email}
+                  onChange={(e) => setForm({ ...form, interviewer_email: e.target.value })}
+                  placeholder="interviewer@company.com" />
+              </Field>
+              {form.interviewer_email.trim() && (
+                <p className="-mt-1 text-xs text-teal-600 flex items-center gap-1">
+                  <Check size={12} /> The interview details will be emailed to this interviewer too.
+                </p>
+              )}
+            </div>
+          </div>
+
           <Button type="submit" className="w-full"><CalendarPlus size={16} /> Schedule</Button>
         </form>
       </Card>

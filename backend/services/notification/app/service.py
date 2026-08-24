@@ -82,6 +82,18 @@ DEFAULT_EMAIL_TEMPLATES = [
      "    Join:   {link}\n\n"
      "Kindly join on time using the link above and keep your documents ready. "
      "We wish you all the best for your interview." + SIGNATURE),
+    # Interview assignment — sent to the interviewer/panelist.
+    # Vars: {name, candidate, stage, mode, slot, link, company}.
+    ("interview_assigned", "You are assigned a {company} interview",
+     "Dear {name},\n\n"
+     "You have been assigned to conduct the following interview:\n\n"
+     "    Candidate:  {candidate}\n"
+     "    Stage:      {stage}\n"
+     "    Mode:       {mode}\n"
+     "    When:       {slot}\n"
+     "    Join:       {link}\n\n"
+     "Please be available at the scheduled time and use the link above to join. "
+     "Thank you for supporting the recruitment process." + SIGNATURE),
 ]
 
 

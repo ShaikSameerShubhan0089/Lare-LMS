@@ -17,37 +17,50 @@ from .service import InterviewService
 log = logging.getLogger("lare-interview")
 
 
-def _email_candidate(iv) -> None:
-    """Best-effort: email the candidate their interview details + meeting link.
-    Runs after the interview is persisted and never fails the request."""
-    if not getattr(iv, "link", None):
-        return
+def _notify_schedule(iv) -> None:
+    """Best-effort: email the interview details to the candidate (their join link)
+    and to the assigned interviewer. Runs after commit; never fails the request."""
     try:
         from lare_common.service_client import ServiceClient
         cli = ServiceClient("drive-interview", default_roles=["recruiter"])
-        r = cli.get("drive-candidate", f"/drive/v1/candidates/resolve?ids={iv.candidate_id}")
-        info = ((r or {}).get("data") or {}).get(iv.candidate_id) or {}
-        email = info.get("email")
-        if not email:
-            log.info("interview %s: no candidate email, skipping notification", iv.candidate_id)
-            return
+        info = {}
+        try:
+            r = cli.get("drive-candidate", f"/drive/v1/candidates/resolve?ids={iv.candidate_id}")
+            info = ((r or {}).get("data") or {}).get(iv.candidate_id) or {}
+        except Exception:  # noqa: BLE001
+            pass
+        candidate_name = info.get("full_name") or "the candidate"
         company = "LARE"
         try:
             d = cli.get("drive-core", f"/drive/v1/drives/{iv.drive_id}")
             company = ((d or {}).get("data") or {}).get("company_name") or company
         except Exception:  # noqa: BLE001
             pass
-        cli.post("lare-notify", "/notify/v1/send", {
-            "user_id": iv.candidate_id, "template_key": "interview_scheduled",
-            "channel": "email",
-            "variables": {"email": email, "name": info.get("full_name") or "Candidate",
-                          "stage": iv.stage, "mode": iv.mode,
-                          "slot": iv.slot or "to be confirmed",
-                          "link": iv.link, "company": company},
-        })
-        log.info("emailed interview link to candidate %s", iv.candidate_id)
+        common = {"stage": iv.stage, "mode": iv.mode, "slot": iv.slot or "to be confirmed",
+                  "link": iv.link or "shared separately", "company": company}
+
+        # 1) the candidate — only if a meeting link was set
+        cand_email = info.get("email")
+        if iv.link and cand_email:
+            cli.post("lare-notify", "/notify/v1/send", {
+                "user_id": iv.candidate_id, "template_key": "interview_scheduled",
+                "channel": "email",
+                "variables": {**common, "email": cand_email, "name": candidate_name},
+            })
+            log.info("emailed interview link to candidate %s", iv.candidate_id)
+
+        # 2) the assigned interviewer — if a name/email was provided
+        if iv.interviewer_email:
+            cli.post("lare-notify", "/notify/v1/send", {
+                "user_id": iv.interviewer_email, "template_key": "interview_assigned",
+                "channel": "email",
+                "variables": {**common, "email": iv.interviewer_email,
+                              "name": iv.interviewer_name or "Interviewer",
+                              "candidate": candidate_name},
+            })
+            log.info("emailed interview assignment to %s", iv.interviewer_email)
     except Exception:  # noqa: BLE001 — notification is best-effort
-        log.warning("could not email interview link to %s", getattr(iv, "candidate_id", "?"))
+        log.warning("could not send interview notifications for %s", getattr(iv, "candidate_id", "?"))
 
 bp = Blueprint("interview", __name__)
 
@@ -78,12 +91,15 @@ def schedule():
     with _db().session() as s:
         iv = _svc().schedule(s, data)
         out = _svc().out(iv)
-        # Snapshot the fields the notification needs before the session closes.
+        # Snapshot the fields the notifications need before the session closes.
         snap = SimpleNamespace(candidate_id=iv.candidate_id, drive_id=iv.drive_id,
-                               stage=iv.stage, mode=iv.mode, link=iv.link, slot=iv.slot)
-    # If a meeting link was provided, send it straight to the candidate.
-    _email_candidate(snap)
-    return created(out)
+                               stage=iv.stage, mode=iv.mode, link=iv.link, slot=iv.slot,
+                               interviewer_name=data.interviewer_name,
+                               interviewer_email=data.interviewer_email)
+    # Email the candidate (their join link) and the assigned interviewer.
+    _notify_schedule(snap)
+    return created({**out, "interviewer_name": data.interviewer_name,
+                    "interviewer_email": data.interviewer_email})
 
 
 @bp.post("/drive/v1/interviews/<iid>/allocate")
