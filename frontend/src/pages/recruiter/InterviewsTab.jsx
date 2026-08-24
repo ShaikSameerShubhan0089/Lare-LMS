@@ -19,14 +19,21 @@ export default function InterviewsTab({ id }) {
   useEffect(() => {
     (async () => {
       try {
-        const wf = await api.getWorkflow(id);
-        const orders = (wf || []).map((r) => r.order).filter((o) => o != null).sort((a, b) => b - a);
-        for (const order of orders) {                // newest round first
+        const wf = await api.getWorkflow(id).catch(() => []);
+        let orders = (wf || []).map((r) => r.order).filter((o) => o != null);
+        if (!orders.length) orders = [1, 2, 3, 4, 5];   // fallback if no workflow defined
+        orders = [...new Set(orders)].sort((a, b) => b - a);   // newest round first
+        let cleared = [];
+        let anyCandidates = [];
+        for (const order of orders) {
           const scores = await api.roundScores(id, order).catch(() => []);
-          const cleared = (scores || []).filter((s) => s.cleared);
-          if (cleared.length) { setEligible(cleared); return; }
+          if (!scores?.length) continue;
+          if (!anyCandidates.length) anyCandidates = scores;   // latest round with candidates
+          const c = scores.filter((s) => s.cleared);
+          if (c.length) { cleared = c; break; }               // prefer cleared/selected
         }
-        setEligible([]);
+        // Prefer the cleared/selected shortlist; otherwise show everyone in the drive.
+        setEligible(cleared.length ? cleared : anyCandidates);
       } catch { setEligible([]); }
     })();
   }, [id]);
@@ -71,10 +78,11 @@ export default function InterviewsTab({ id }) {
               <select required value={form.candidate_id}
                 onChange={(e) => setForm({ ...form, candidate_id: e.target.value })}
                 className="w-full h-11 px-3 rounded-md border border-slate-200 bg-surface text-ink-900">
-                <option value="">Select a shortlisted candidate…</option>
+                <option value="">Select a candidate…</option>
                 {eligible.map((c) => (
                   <option key={c.candidate_id} value={c.candidate_id}>
                     {c.candidate_roll ? `${c.candidate_roll} · ` : ""}{c.candidate_name || c.candidate_id}
+                    {c.cleared ? "  ✓ cleared" : ""}{c.percentage != null ? `  (${Math.round(c.percentage)}%)` : ""}
                   </option>
                 ))}
               </select>
