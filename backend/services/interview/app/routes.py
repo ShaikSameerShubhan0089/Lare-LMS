@@ -39,9 +39,10 @@ def _notify_schedule(iv) -> None:
         common = {"stage": iv.stage, "mode": iv.mode, "slot": iv.slot or "to be confirmed",
                   "link": iv.link or "shared separately", "company": company}
 
-        # 1) the candidate — only if a meeting link was set
+        # 1) the candidate — always notified of their interview (with the join
+        #    link when online; time/venue otherwise).
         cand_email = info.get("email")
-        if iv.link and cand_email:
+        if cand_email:
             cli.post("lare-notify", "/notify/v1/send", {
                 "user_id": iv.candidate_id, "template_key": "interview_scheduled",
                 "channel": "email",
