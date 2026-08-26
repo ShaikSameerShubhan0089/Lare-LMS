@@ -11,7 +11,8 @@ const DEC_TONE = { select: "teal", reject: "rose", hold: "amber", next_round: "b
 export default function InterviewsTab({ id }) {
   const loaded = useAsync(() => withFallback(api.driveInterviews(id), demoInterviews), [id]);
   const [rows, setRows] = useState(null);
-  const [form, setForm] = useState({ candidate_id: "", stage: "technical", mode: "online", link: "", slot: "", interviewer_name: "", interviewer_email: "" });
+  const emptyForm = { candidate_id: "", stage: "technical", mode: "online", link: "", slot: "", interviewers: [{ name: "", email: "" }] };
+  const [form, setForm] = useState(emptyForm);
   // Candidates who cleared the most recent round — those eligible to interview.
   const [eligible, setEligible] = useState([]);
   const list = rows ?? loaded.data ?? [];
@@ -47,14 +48,25 @@ export default function InterviewsTab({ id }) {
 
   async function schedule(e) {
     e.preventDefault();
+    const interviewers = form.interviewers.filter((iw) => iw.email.trim());
     let iv;
     try {
-      iv = await api.scheduleInterview({ drive_id: id, ...form, slot: form.slot.replace("T", " ") });
+      iv = await api.scheduleInterview({ drive_id: id, ...form, interviewers, slot: form.slot.replace("T", " ") });
     } catch {
       iv = { id: `iv-${Date.now()}`, ...form, status: "scheduled" };
     }
     upsert({ id: iv.id, candidate_id: form.candidate_id, stage: form.stage, mode: form.mode, status: "scheduled", decision: null, avg_rating: null });
-    setForm({ candidate_id: "", stage: "technical", mode: "online", link: "", slot: "", interviewer_name: "", interviewer_email: "" });
+    setForm(emptyForm);
+  }
+
+  function addInterviewer() {
+    setForm((f) => ({ ...f, interviewers: [...f.interviewers, { name: "", email: "" }] }));
+  }
+  function removeInterviewer(i) {
+    setForm((f) => ({ ...f, interviewers: f.interviewers.filter((_, j) => j !== i) }));
+  }
+  function updateInterviewer(i, field, value) {
+    setForm((f) => ({ ...f, interviewers: f.interviewers.map((iw, j) => (j === i ? { ...iw, [field]: value } : iw)) }));
   }
 
   async function rate(ivId, competency, score) {
@@ -126,22 +138,31 @@ export default function InterviewsTab({ id }) {
 
           <div className="pt-2 border-t border-slate-100">
             <p className="text-sm font-medium text-ink-900 mb-2 flex items-center gap-1.5">
-              <UserCheck size={15} className="text-brand-500" /> Assigned to (interviewer)
+              <UserCheck size={15} className="text-brand-500" /> Assigned to (interviewers)
             </p>
-            <div className="space-y-3">
-              <Field label="Interviewer name">
-                <Input value={form.interviewer_name}
-                  onChange={(e) => setForm({ ...form, interviewer_name: e.target.value })}
-                  placeholder="e.g. Ravi Kumar" />
-              </Field>
-              <Field label="Interviewer email">
-                <Input type="email" value={form.interviewer_email}
-                  onChange={(e) => setForm({ ...form, interviewer_email: e.target.value })}
-                  placeholder="interviewer@company.com" />
-              </Field>
-              {form.interviewer_email.trim() && (
-                <p className="-mt-1 text-xs text-teal-600 flex items-center gap-1">
-                  <Check size={12} /> The interview details will be emailed to this interviewer too.
+            <div className="space-y-2.5">
+              {form.interviewers.map((iw, i) => (
+                <div key={i} className="rounded-lg border border-slate-100 p-2.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-400">Interviewer {i + 1}</span>
+                    {form.interviewers.length > 1 && (
+                      <button type="button" onClick={() => removeInterviewer(i)}
+                        className="text-slate-300 hover:text-rose-500"><X size={14} /></button>
+                    )}
+                  </div>
+                  <Input value={iw.name} placeholder="Name (e.g. Ravi Kumar)"
+                    onChange={(e) => updateInterviewer(i, "name", e.target.value)} />
+                  <Input type="email" value={iw.email} placeholder="interviewer@company.com"
+                    onChange={(e) => updateInterviewer(i, "email", e.target.value)} />
+                </div>
+              ))}
+              <button type="button" onClick={addInterviewer}
+                className="w-full h-9 rounded-lg border border-dashed border-slate-200 text-slate-500 hover:border-brand-300 hover:text-brand-600 text-sm font-medium flex items-center justify-center gap-1.5">
+                <UserCheck size={14} /> Add another interviewer
+              </button>
+              {form.interviewers.some((iw) => iw.email.trim()) && (
+                <p className="text-xs text-teal-600 flex items-center gap-1">
+                  <Check size={12} /> All interviewers with an email will be sent the interview details.
                 </p>
               )}
             </div>

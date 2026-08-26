@@ -49,16 +49,19 @@ def _notify_schedule(iv) -> None:
             })
             log.info("emailed interview link to candidate %s", iv.candidate_id)
 
-        # 2) the assigned interviewer — if a name/email was provided
-        if iv.interviewer_email:
+        # 2) every assigned interviewer in the panel
+        for member in getattr(iv, "panel", []) or []:
+            email = member.get("email")
+            if not email:
+                continue
             cli.post("lare-notify", "/notify/v1/send", {
-                "user_id": iv.interviewer_email, "template_key": "interview_assigned",
+                "user_id": email, "template_key": "interview_assigned",
                 "channel": "email",
-                "variables": {**common, "email": iv.interviewer_email,
-                              "name": iv.interviewer_name or "Interviewer",
+                "variables": {**common, "email": email,
+                              "name": member.get("name") or "Interviewer",
                               "candidate": candidate_name},
             })
-            log.info("emailed interview assignment to %s", iv.interviewer_email)
+            log.info("emailed interview assignment to %s", email)
     except Exception:  # noqa: BLE001 — notification is best-effort
         log.warning("could not send interview notifications for %s", getattr(iv, "candidate_id", "?"))
 
@@ -88,18 +91,26 @@ def _parse(model, payload):
 @require_roles(*MANAGE)
 def schedule():
     data = _parse(ScheduleIn, request.get_json(silent=True))
+    # Build the interviewer panel: the list, plus the back-compat single field,
+    # de-duplicated by email.
+    panel, seen = [], set()
+    for i in [*data.interviewers,
+              SimpleNamespace(name=data.interviewer_name, email=data.interviewer_email)]:
+        email = (getattr(i, "email", None) or "").strip().lower()
+        if email and email not in seen:
+            seen.add(email)
+            panel.append({"name": getattr(i, "name", None), "email": email})
+
     with _db().session() as s:
         iv = _svc().schedule(s, data)
         out = _svc().out(iv)
         # Snapshot the fields the notifications need before the session closes.
         snap = SimpleNamespace(candidate_id=iv.candidate_id, drive_id=iv.drive_id,
                                stage=iv.stage, mode=iv.mode, link=iv.link, slot=iv.slot,
-                               interviewer_name=data.interviewer_name,
-                               interviewer_email=data.interviewer_email)
-    # Email the candidate (their join link) and the assigned interviewer.
+                               panel=panel)
+    # Email the candidate (their join link) and every assigned interviewer.
     _notify_schedule(snap)
-    return created({**out, "interviewer_name": data.interviewer_name,
-                    "interviewer_email": data.interviewer_email})
+    return created({**out, "interviewers": panel})
 
 
 @bp.post("/drive/v1/interviews/<iid>/allocate")
