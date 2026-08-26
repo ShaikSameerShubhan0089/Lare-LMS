@@ -74,13 +74,12 @@ DEFAULT_EMAIL_TEMPLATES = [
      "If you did not create a LARE account, you can safely ignore this email." + SIGNATURE),
     # Interview scheduling — sent to the candidate with their joining details.
     # Vars from Interview's schedule flow: {name, stage, mode, slot, link, company}.
-    ("interview_scheduled", "Congratulations! Your interview with {company} is scheduled",
+    ("interview_scheduled", "Congratulations! Your interview is scheduled",
      "Dear {name},\n\n"
      "Greetings from LARE!\n\n"
-     "Congratulations on being shortlisted for the {stage} interview with {company}. "
-     "We are pleased to confirm your interview and look forward to interacting with you.\n\n"
+     "Congratulations on being shortlisted for the {stage} interview. We are "
+     "pleased to confirm your interview and look forward to interacting with you.\n\n"
      "Your interview details:\n\n"
-     "    Company:      {company}\n"
      "    Stage:        {stage} interview\n"
      "    Mode:         {mode}\n"
      "    Date & time:  {slot}\n"
@@ -92,12 +91,12 @@ DEFAULT_EMAIL_TEMPLATES = [
      "confident you will do wonderfully. Wishing you all the very best for your "
      "interview!" + SIGNATURE),
     # Interview assignment — sent to the interviewer/panelist.
-    # Vars: {name, candidate, stage, mode, slot, link, company}.
-    ("interview_assigned", "Interview assignment — {company}",
+    # Vars: {name, candidate, stage, mode, slot, link}.
+    ("interview_assigned", "Interview assignment",
      "Dear {name},\n\n"
      "Greetings from LARE!\n\n"
-     "You have been assigned to conduct the following interview for {company}. "
-     "Thank you for taking the time to support our recruitment process.\n\n"
+     "You have been assigned to conduct the following interview. Thank you for "
+     "taking the time to support our recruitment process.\n\n"
      "Interview details:\n\n"
      "    Candidate:    {candidate}\n"
      "    Stage:        {stage} interview\n"
