@@ -74,26 +74,40 @@ DEFAULT_EMAIL_TEMPLATES = [
      "If you did not create a LARE account, you can safely ignore this email." + SIGNATURE),
     # Interview scheduling — sent to the candidate with their joining details.
     # Vars from Interview's schedule flow: {name, stage, mode, slot, link, company}.
-    ("interview_scheduled", "Your {company} interview is scheduled",
+    ("interview_scheduled", "Congratulations! Your interview with {company} is scheduled",
      "Dear {name},\n\n"
-     "Your {stage} interview has been scheduled. Please find the details below:\n\n"
-     "    Mode:   {mode}\n"
-     "    When:   {slot}\n"
-     "    Join:   {link}\n\n"
-     "Kindly join on time using the link above and keep your documents ready. "
-     "We wish you all the best for your interview." + SIGNATURE),
+     "Greetings from LARE!\n\n"
+     "Congratulations on being shortlisted for the {stage} interview with {company}. "
+     "We are pleased to confirm your interview and look forward to interacting with you.\n\n"
+     "Your interview details:\n\n"
+     "    Company:      {company}\n"
+     "    Stage:        {stage} interview\n"
+     "    Mode:         {mode}\n"
+     "    Date & time:  {slot}\n"
+     "    Join link:    {link}\n\n"
+     "Please join a few minutes early using the link above, keep your resume and "
+     "documents ready, and make sure you have a stable internet connection and a "
+     "quiet space.\n\n"
+     "Do take some time to prepare well and revise your fundamentals — we are "
+     "confident you will do wonderfully. Wishing you all the very best for your "
+     "interview!" + SIGNATURE),
     # Interview assignment — sent to the interviewer/panelist.
     # Vars: {name, candidate, stage, mode, slot, link, company}.
-    ("interview_assigned", "You are assigned a {company} interview",
+    ("interview_assigned", "Interview assignment — {company}",
      "Dear {name},\n\n"
-     "You have been assigned to conduct the following interview:\n\n"
-     "    Candidate:  {candidate}\n"
-     "    Stage:      {stage}\n"
-     "    Mode:       {mode}\n"
-     "    When:       {slot}\n"
-     "    Join:       {link}\n\n"
-     "Please be available at the scheduled time and use the link above to join. "
-     "Thank you for supporting the recruitment process." + SIGNATURE),
+     "Greetings from LARE!\n\n"
+     "You have been assigned to conduct the following interview for {company}. "
+     "Thank you for taking the time to support our recruitment process.\n\n"
+     "Interview details:\n\n"
+     "    Candidate:    {candidate}\n"
+     "    Stage:        {stage} interview\n"
+     "    Mode:         {mode}\n"
+     "    Date & time:  {slot}\n"
+     "    Join link:    {link}\n\n"
+     "Kindly be available at the scheduled time and join using the link above. "
+     "We would be grateful if you could review the candidate's profile beforehand "
+     "and share your feedback after the session.\n\n"
+     "Thank you once again for your valuable time and support." + SIGNATURE),
 ]
 
 
