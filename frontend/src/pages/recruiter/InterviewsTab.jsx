@@ -16,12 +16,23 @@ export default function InterviewsTab({ id }) {
   // Candidates who cleared the most recent round — those eligible to interview.
   const [eligible, setEligible] = useState([]);
   const [names, setNames] = useState({});   // candidate_id -> { name, roll, email }
+  const [rounds, setRounds] = useState([]); // drive workflow rounds
   const list = rows ?? loaded.data ?? [];
+
+  // Map an interview stage to its round in the pipeline, by matching keywords in
+  // the round label/type (technical → the technical-interview round, hr → HR).
+  const STAGE_KW = { technical: ["technical", "tech", "face to face", "f2f"], hr: ["hr", "human"], ppo: ["ppo", "hr"] };
+  function roundForStage(stage) {
+    const kws = STAGE_KW[stage] || [stage];
+    const r = rounds.find((rd) => kws.some((k) => `${rd.label || ""} ${rd.type || ""}`.toLowerCase().includes(k)));
+    return r?.order;
+  }
 
   useEffect(() => {
     (async () => {
       try {
         const wf = await api.getWorkflow(id).catch(() => []);
+        setRounds(wf || []);
         let orders = (wf || []).map((r) => r.order).filter((o) => o != null);
         if (!orders.length) orders = [1, 2, 3, 4, 5];   // fallback if no workflow defined
         orders = [...new Set(orders)].sort((a, b) => b - a);   // newest round first
@@ -93,13 +104,26 @@ export default function InterviewsTab({ id }) {
     setForm((f) => ({ ...f, interviewers: f.interviewers.map((iw, j) => (j === i ? { ...iw, [field]: value } : iw)) }));
   }
 
+  // Push an interview action into the candidate's matching round marks sheet, so
+  // technical/HR interview results show up (and clear) in Rounds & Marks.
+  function syncRound(iv, patch) {
+    const order = iv && roundForStage(iv.stage);
+    if (order != null && iv.candidate_id) {
+      api.setRoundScore(id, order, { candidate_id: iv.candidate_id, ...patch }).catch(() => {});
+    }
+  }
+
   async function rate(ivId, competency, score) {
     try { await api.rateInterview(ivId, { competency, score }); } catch { /* demo */ }
     upsert({ id: ivId, avg_rating: score });
+    // rating (out of 5) → the round's marks sheet
+    syncRound(list.find((x) => x.id === ivId), { marks: score, max_marks: 5 });
   }
   async function decide(ivId, decision) {
     try { await api.decideInterview(ivId, { decision }); } catch { /* demo */ }
     upsert({ id: ivId, decision, status: "completed" });
+    // Select → mark cleared in that round; Reject → not cleared.
+    syncRound(list.find((x) => x.id === ivId), { cleared: decision === "select" });
   }
 
   return (
