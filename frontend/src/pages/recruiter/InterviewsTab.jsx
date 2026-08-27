@@ -11,7 +11,7 @@ const DEC_TONE = { select: "teal", reject: "rose", hold: "amber", next_round: "b
 export default function InterviewsTab({ id }) {
   const loaded = useAsync(() => withFallback(api.driveInterviews(id), demoInterviews), [id]);
   const [rows, setRows] = useState(null);
-  const emptyForm = { candidate_id: "", stage: "technical", mode: "online", link: "", slot: "", interviewers: [{ name: "", email: "" }] };
+  const emptyForm = { candidate_id: "", round_order: "", stage: "technical", mode: "online", link: "", slot: "", interviewers: [{ name: "", email: "" }] };
   const [form, setForm] = useState(emptyForm);
   // Candidates who cleared the most recent round — those eligible to interview.
   const [eligible, setEligible] = useState([]);
@@ -26,6 +26,19 @@ export default function InterviewsTab({ id }) {
     const kws = STAGE_KW[stage] || [stage];
     const r = rounds.find((rd) => kws.some((k) => `${rd.label || ""} ${rd.type || ""}`.toLowerCase().includes(k)));
     return r?.order;
+  }
+  // Infer a sensible stage from the round the recruiter picked.
+  function stageForRound(rd) {
+    const t = `${rd?.label || ""} ${rd?.type || ""}`.toLowerCase();
+    if (t.includes("hr") || t.includes("human")) return "hr";
+    if (t.includes("ppo")) return "ppo";
+    return "technical";
+  }
+  // The round an interview belongs to (explicit choice → stored round_id → stage).
+  function orderForInterview(iv) {
+    if (iv.round_order != null) return iv.round_order;
+    if (iv.round_id != null && `${iv.round_id}`.match(/^\d+$/)) return Number(iv.round_id);
+    return roundForStage(iv.stage);
   }
 
   useEffect(() => {
@@ -84,13 +97,17 @@ export default function InterviewsTab({ id }) {
   async function schedule(e) {
     e.preventDefault();
     const interviewers = form.interviewers.filter((iw) => iw.email.trim());
+    // Persist the chosen round in round_id (as its order) so the link survives reloads.
+    const round_id = form.round_order !== "" ? String(form.round_order) : null;
     let iv;
     try {
-      iv = await api.scheduleInterview({ drive_id: id, ...form, interviewers, slot: form.slot.replace("T", " ") });
+      iv = await api.scheduleInterview({ drive_id: id, ...form, round_id, interviewers, slot: form.slot.replace("T", " ") });
     } catch {
       iv = { id: `iv-${Date.now()}`, ...form, status: "scheduled" };
     }
-    upsert({ id: iv.id, candidate_id: form.candidate_id, stage: form.stage, mode: form.mode, status: "scheduled", decision: null, avg_rating: null });
+    upsert({ id: iv.id, candidate_id: form.candidate_id, stage: form.stage, mode: form.mode,
+             round_order: form.round_order !== "" ? Number(form.round_order) : undefined,
+             status: "scheduled", decision: null, avg_rating: null });
     setForm(emptyForm);
   }
 
@@ -107,7 +124,7 @@ export default function InterviewsTab({ id }) {
   // Push an interview action into the candidate's matching round marks sheet, so
   // technical/HR interview results show up (and clear) in Rounds & Marks.
   function syncRound(iv, patch) {
-    const order = iv && roundForStage(iv.stage);
+    const order = iv && orderForInterview(iv);
     if (order != null && iv.candidate_id) {
       api.setRoundScore(id, order, { candidate_id: iv.candidate_id, ...patch }).catch(() => {});
     }
@@ -153,6 +170,23 @@ export default function InterviewsTab({ id }) {
                 placeholder="No cleared candidates yet — enter a candidate id" />
             )}
           </Field>
+          {rounds.length > 0 && (
+            <Field label="Round (from Rounds & Marks)">
+              <select value={form.round_order}
+                onChange={(e) => {
+                  const order = e.target.value === "" ? "" : Number(e.target.value);
+                  const rd = rounds.find((r) => r.order === order);
+                  setForm((f) => ({ ...f, round_order: e.target.value === "" ? "" : order,
+                                    stage: rd ? stageForRound(rd) : f.stage }));
+                }}
+                className="w-full h-11 px-3 rounded-md border border-slate-200 bg-surface text-ink-900">
+                <option value="">Not linked to a round</option>
+                {rounds.map((r) => (
+                  <option key={r.order} value={r.order}>{r.order}. {r.label || r.type}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-ink-900 mb-1.5">Stage</label>
@@ -242,6 +276,10 @@ export default function InterviewsTab({ id }) {
                 )}
                 <p className="text-sm text-slate-500 capitalize flex items-center gap-2 mt-0.5">
                   {iv.mode === "online" && <Video size={14} />} {iv.stage} · {iv.mode.replace("_", " ")}
+                  {(() => {
+                    const r = rounds.find((rd) => rd.order === orderForInterview(iv));
+                    return r ? <span className="normal-case text-xs text-brand-600">· {r.label || r.type}</span> : null;
+                  })()}
                 </p>
               </div>
               {iv.decision ? (
