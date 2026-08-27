@@ -17,7 +17,9 @@ export default function InterviewsTab({ id }) {
   const [eligible, setEligible] = useState([]);
   const [names, setNames] = useState({});   // candidate_id -> { name, roll, email }
   const [rounds, setRounds] = useState([]); // drive workflow rounds
+  const [marksDraft, setMarksDraft] = useState({}); // ivId -> { marks, max }
   const list = rows ?? loaded.data ?? [];
+  const draftFor = (ivId) => marksDraft[ivId] || { marks: "", max: "100" };
 
   // Map an interview stage to its round in the pipeline, by matching keywords in
   // the round label/type (technical → the technical-interview round, hr → HR).
@@ -141,6 +143,23 @@ export default function InterviewsTab({ id }) {
     upsert({ id: ivId, decision, status: "completed" });
     // Select → mark cleared in that round; Reject → not cleared.
     syncRound(list.find((x) => x.id === ivId), { cleared: decision === "select" });
+  }
+
+  function setDraft(ivId, field, value) {
+    setMarksDraft((d) => ({ ...d, [ivId]: { ...draftFor(ivId), [field]: value } }));
+  }
+  async function saveMarks(iv) {
+    const d = draftFor(iv.id);
+    if (d.marks === "" || d.marks == null) return;
+    const marks = Number(d.marks);
+    const max = Number(d.max) || 100;
+    if (Number.isNaN(marks)) return;
+    // Save the marks into the linked round's marks sheet.
+    syncRound(iv, { marks, max_marks: max });
+    // Reflect an out-of-5 rating on the interview so its avg shows too.
+    const score = Math.max(1, Math.min(5, Math.round((marks / max) * 5)));
+    try { await api.rateInterview(iv.id, { competency: "technical", score }); } catch { /* demo */ }
+    upsert({ id: iv.id, marks, max_marks: max, avg_rating: score });
   }
 
   return (
@@ -296,14 +315,22 @@ export default function InterviewsTab({ id }) {
             )}
 
             {!iv.decision && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-                <span className="text-xs text-slate-400 mr-1">Rate:</span>
-                {[3, 4, 5].map((s) => (
-                  <button key={s} onClick={() => rate(iv.id, "technical", s)}
-                    className="grid place-items-center h-8 w-8 rounded-md bg-slate-100 hover:bg-amber-500/15 text-slate-600 text-sm font-semibold">
-                    {s}
-                  </button>
-                ))}
+              <div className="mt-4 border-t border-slate-100 pt-4 flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Marks</label>
+                  <input type="number" value={draftFor(iv.id).marks} placeholder="0"
+                    onChange={(e) => setDraft(iv.id, "marks", e.target.value)}
+                    onBlur={() => saveMarks(iv)}
+                    className="w-20 h-10 px-2.5 rounded-md border border-slate-200 bg-surface text-ink-900 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Out of</label>
+                  <input type="number" value={draftFor(iv.id).max} placeholder="100"
+                    onChange={(e) => setDraft(iv.id, "max", e.target.value)}
+                    onBlur={() => saveMarks(iv)}
+                    className="w-20 h-10 px-2.5 rounded-md border border-slate-200 bg-surface text-ink-900 text-sm" />
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => saveMarks(iv)}>Save marks</Button>
                 <div className="flex-1" />
                 <Button size="sm" variant="secondary" onClick={() => decide(iv.id, "reject")}>
                   <X size={14} /> Reject
