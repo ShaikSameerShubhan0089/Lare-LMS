@@ -15,6 +15,7 @@ export default function InterviewsTab({ id }) {
   const [form, setForm] = useState(emptyForm);
   // Candidates who cleared the most recent round — those eligible to interview.
   const [eligible, setEligible] = useState([]);
+  const [names, setNames] = useState({});   // candidate_id -> { name, roll, email }
   const list = rows ?? loaded.data ?? [];
 
   useEffect(() => {
@@ -39,6 +40,29 @@ export default function InterviewsTab({ id }) {
       } catch { setEligible([]); }
     })();
   }, [id]);
+
+  // Resolve candidate names/rolls for the eligible list + every scheduled
+  // interview, so the list shows people instead of raw UUIDs.
+  const idsKey = list.map((iv) => iv.candidate_id).join(",");
+  useEffect(() => {
+    const map = {};
+    eligible.forEach((c) => {
+      map[c.candidate_id] = { name: c.candidate_name, roll: c.candidate_roll, email: c.candidate_email };
+    });
+    const missing = [...new Set(list.map((iv) => iv.candidate_id).filter((cid) => cid && !map[cid]))];
+    (async () => {
+      if (missing.length) {
+        try {
+          const r = await api.resolveCandidates(missing);
+          Object.entries(r || {}).forEach(([cid, info]) => {
+            map[cid] = { name: info.full_name || info.name, roll: info.roll_number || info.roll, email: info.email };
+          });
+        } catch { /* fall back to the id */ }
+      }
+      setNames(map);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eligible, idsKey]);
 
   if (loaded.loading) return <Loading />;
 
@@ -182,8 +206,16 @@ export default function InterviewsTab({ id }) {
         {list.map((iv) => (
           <Card key={iv.id} className="p-5">
             <div className="flex items-start justify-between">
-              <div>
-                <p className="font-medium text-ink-900">{iv.candidate_id}</p>
+              <div className="min-w-0">
+                <p className="font-medium text-ink-900">
+                  {names[iv.candidate_id]?.name || iv.candidate_id}
+                  {names[iv.candidate_id]?.roll && (
+                    <span className="ml-2 text-xs font-normal text-slate-400">· {names[iv.candidate_id].roll}</span>
+                  )}
+                </p>
+                {names[iv.candidate_id]?.email && (
+                  <p className="text-xs text-slate-400 truncate">{names[iv.candidate_id].email}</p>
+                )}
                 <p className="text-sm text-slate-500 capitalize flex items-center gap-2 mt-0.5">
                   {iv.mode === "online" && <Video size={14} />} {iv.stage} · {iv.mode.replace("_", " ")}
                 </p>

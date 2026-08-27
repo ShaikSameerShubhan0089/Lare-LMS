@@ -374,6 +374,7 @@ export const api = {
   setPpo: (id, body) => request(`/drive/v1/drives/${id}/ppo-config`, { method: "POST", body }),
 
   // ---- Interview (recruiter) ----
+  resolveCandidates: (ids) => request(`/drive/v1/candidates/resolve?ids=${(ids || []).join(",")}`),
   scheduleInterview: (body) => request("/drive/v1/interviews/schedule", { method: "POST", body }),
   allocateInterview: (id, interviewer_id) => request(`/drive/v1/interviews/${id}/allocate`, { method: "POST", body: { interviewer_id } }),
   rateInterview: (id, body) => request(`/drive/v1/interviews/${id}/rate`, { method: "POST", body }),
